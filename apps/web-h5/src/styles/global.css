@@ -1,0 +1,71 @@
+/* /styles/global.css */
+
+/* 1) 全局盒模型，更贴近小程序的默认布局体验 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 2) 顶层页面：把小程序的 page → 网页的 html, body */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f6f6f6;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  color: #111;
+}
+
+/* 3) 保留你原有的容器样式 */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 虽然上面已全局 box-sizing:border-box，这里保留以兼容旧写法 */
+  box-sizing: border-box;
+}
+
+/* 4) 按钮：还原为无样式按钮并提供可见焦点（替代 outline:0 的无障碍问题） */
+button {
+  background: none;        /* 比 background: initial 更通用 */
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* 若不想显示焦点外圈，可删掉 focus-visible 这两段；但建议保留以提升可访问性 */
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 120, 255, 0.35);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 120, 255, 0.45);
+}
+
+/* 小程序的 button::after 清除边框 → 网页里直接禁用伪元素 */
+button::after {
+  content: none;
+  border: none;
+}
+
+/* 如你有顶层 #app / .main 容器，也可保持与小程序结构一致 */
+#app,
+.main {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 100%;
+}

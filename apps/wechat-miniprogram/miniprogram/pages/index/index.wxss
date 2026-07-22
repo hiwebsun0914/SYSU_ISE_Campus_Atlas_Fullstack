@@ -1,0 +1,70 @@
+/* ===== 布局基础 ===== */
+.bg-wrapper { position: relative; width: 100%; height: 100vh; overflow: hidden; }
+.bg-img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; filter:brightness(0.92); }
+.content { position:relative; z-index:1; padding:20rpx; box-sizing:border-box; overflow-y:auto; }
+
+/* ===== 顶部/LOGO/标题 ===== */
+.logo-container { display:flex; justify-content:center; margin-bottom:30rpx; }
+.logo-img { width:300rpx; }
+.header { text-align:center; margin-bottom:30rpx; }
+.title { font-size:36rpx; font-weight:bold; color:#fff; text-shadow:2rpx 2rpx 4rpx rgba(0,0,0,.3); }
+
+/* ===== 顶部按钮 ===== */
+.menu-icon, .back-icon, .map-icon {
+  position: fixed; top: 20rpx; z-index: 10000;
+  font-size: 50rpx; color: black; line-height: 1;
+  background: transparent; padding: 0;
+}
+.menu-icon { left: 20rpx; }
+.back-icon { right: 20rpx; }
+.map-icon { right: 20rpx; }  /* 地图按钮位于返回左侧，避免重叠 */
+
+/* ===== 侧边栏 ===== */
+.sidebar-mask { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.4); z-index:1000; }
+.sidebar {
+  background: rgba(0, 51, 20, 0.92); color:#fff;
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif; font-weight:800;
+  width:450rpx; height:100%; position:fixed; z-index:9999; top:0; left:0;
+  display:flex; flex-direction:column; box-shadow:0 0 20rpx rgba(0,0,0,.3);
+  padding-left:40rpx; padding-top:80rpx;
+}
+.sidebar-button { padding:30rpx 30rpx; font-size:34rpx; color:#fff; border-bottom:1rpx solid rgba(255,255,255,.2); letter-spacing:2rpx; line-height:60rpx; font-stretch:condensed; }
+
+/* ===== 相册弹层 ===== */
+.viewer-mask { position:fixed; inset:0; z-index:15000; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:32rpx; }
+.viewer-swiper { width:100%; height:62vh; border-radius:24rpx; overflow:hidden; box-shadow:0 10rpx 40rpx rgba(0,0,0,.35); background:#000; }
+.viewer-img { width:100%; height:100%; display:block; }
+.viewer-pager { position:fixed; right:48rpx; bottom:48rpx; z-index:15001; padding:8rpx 18rpx; border-radius:18rpx; font-size:26rpx; color:#fff; background:rgba(0,0,0,.45); }
+.viewer-close { position:fixed; right:48rpx; top:48rpx; z-index:15001; width:56rpx; height:56rpx; line-height:56rpx; text-align:center; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:40rpx; }
+
+/* ===== 地图“照片”弹层 ===== */
+.map-mask { position:fixed; inset:0; z-index:15000; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:32rpx; }
+.map-photo {
+  width: 100%;
+  max-height: 80vh;   /* 保持可视高度，避免溢出 */
+  object-fit: contain;
+  border-radius: 24rpx;
+  background: #000;
+  box-shadow: 0 10rpx 40rpx rgba(0,0,0,.35);
+}
+.map-close { position:fixed; right:48rpx; top:48rpx; z-index:15001; width:56rpx; height:56rpx; line-height:56rpx; text-align:center; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:40rpx; }
+
+/* ===== 列表区 ===== */
+.card-list { max-height:85vh; overflow-y:scroll; padding-right:20rpx; margin-right:-10rpx; }
+.card-horizontal { display:flex; background:rgba(255,255,255,.9); border-radius:20rpx; margin-bottom:30rpx; box-shadow:0 4rpx 10rpx rgba(0,0,0,.1); overflow:hidden; align-items:center; }
+.img-wrap { position:relative; width:45%; height:230rpx; margin-left:20rpx; border-radius:20rpx; overflow:hidden; }
+.card-img-left { width:100%; height:100%; object-fit:cover; flex-shrink:0; border-radius:20rpx; }
+
+/* 骨架 */
+.skeleton { position:absolute; inset:0; background:#eee; border-radius:20rpx; overflow:hidden; }
+.shimmer::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, rgba(238,238,238,0) 0%, rgba(255,255,255,0.8) 50%, rgba(238,238,238,0) 100%); animation:shimmer 1.2s infinite; }
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+.card-info { flex:1; padding:20rpx; display:flex; flex-direction:column; justify-content:space-between; box-sizing:border-box; min-width:0; }
+.card-title { font-size:32rpx; font-weight:bold; margin-bottom:10rpx; color:#333; }
+.card-meta { font-size:26rpx; color:#666; margin-bottom:6rpx; }
+.btn-group { display:flex; flex-direction:column; gap:8rpx; margin-top:8rpx; width:100%; box-sizing:border-box; }
+.checkin-btn { width:100%; max-width:100%; box-sizing:border-box; background:#175c28; color:#fff; font-size:26rpx; padding:8rpx 32rpx; border-radius:8rpx; }
+.detail-btn { width:100%; max-width:100%; box-sizing:border-box; background:#ddd; color:#333; font-size:26rpx; padding:8rpx 20rpx; border-radius:8rpx; }
+
+.card-description { background:rgba(255,255,255,.95); padding:30rpx; margin:-10rpx 0 40rpx 0; border-radius:0 0 20rpx 20rpx; font-size:26rpx; line-height:1.6; color:#333; }

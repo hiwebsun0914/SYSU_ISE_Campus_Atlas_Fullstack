@@ -1,0 +1,45 @@
+  <!-- 背景图 -->
+  <image class="bg-img" src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/bg.jpg" mode="aspectFill" />
+
+  <!-- Logo 单独显示 -->
+  <view class="logo-container">
+  <!-- 管理端（admin / highadmin）用另一张图 -->
+    <image  class="logo-img"
+          src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo.png"
+          mode="widthFix" />
+  </view>
+
+  <!-- 系统信息区域 -->
+  <view class="section">
+    <text class="title">📱 系统信息</text>
+    <view>品牌：{{systemInfo.brand}}</view>
+    <view>机型：{{systemInfo.model}}</view>
+    <view>系统版本：{{systemInfo.system}}</view>
+    <view>平台：{{systemInfo.platform}}</view>
+    <view>语言：{{systemInfo.language}}</view>
+    <view>窗口宽高：{{systemInfo.windowWidth}} × {{systemInfo.windowHeight}}</view>
+  </view>
+
+  <!-- 联系方式区域 -->
+  <view class="section">
+    <text class="title">📮 联系我们</text>
+    <view>邮箱：sysuzgxytj@hiwebsun.top</view>
+    <view>电话：18561827151</view>
+    <view>企业微信：张日轩、许桂冰</view>
+    <view class="spacer" aria-hidden="true"></view>
+    <view>您的任何问题都可以与我们联系</view>
+    <view>我们24小时解决您的任何问题</view>
+    <view>欢迎对项目感兴趣的同学与我们联系</view>
+    <view>项目将于每日凌晨2:00-3:00定时维护</view>
+    <view class="spacer" aria-hidden="true"></view>
+    <view>愿每一次点击都是发现，每一步前行都有惊喜</view>
+    <view>智工迎新活动组校园图鉴开发团队</view>
+    <view></view>
+  </view>
+
+  <view class="section">
+    <text class="title">📕 备案</text>
+    <view>鲁ICP备2025179873号</view>
+  </view>
+
+  <button class="home-btn" bindtap="goHome">🏠 返回首页</button>

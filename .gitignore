@@ -1,0 +1,60 @@
+# Dependencies
+**/node_modules/
+**/miniprogram_npm/
+
+# Local environment and secrets
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+
+# Build output and caches
+**/dist/
+**/build/
+**/.cache/
+**/.gradle/
+**/.cxx/
+**/.externalNativeBuild/
+**/coverage/
+**/unpackage/
+**/*.apk
+**/*.aab
+
+# Capacitor-generated web assets
+apps/android/android/app/src/main/assets/public/
+apps/android/android/app/bin/
+apps/android/android/capacitor-cordova-android-plugins/
+
+# IDE / OS files
+**/.idea/
+**/.vscode/
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/*.swo
+**/*.swn
+**/local.properties
+**/project.private.config.json
+
+# Logs and temporary files
+**/logs/
+**/*.log
+**/tmp/
+**/temp/
+
+# Server runtime data (may contain personal information)
+services/weapp-auth-server/data_runtime/
+services/weapp-auth-server/users.json
+services/weapp-auth-server/checkins.json
+services/weapp-auth-server/bottles.json
+services/weapp-auth-server/resp.json
+
+# Keep the intentionally archived production deployment snapshot
+!deploy/web-h5-dist/
+!deploy/web-h5-dist/**
+

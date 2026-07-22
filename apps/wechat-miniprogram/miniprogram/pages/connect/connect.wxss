@@ -1,0 +1,43 @@
+.bg-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow: visible;
+}
+.bg-img {
+  position: fixed;
+  left: 0; top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  object-fit: cover;
+}
+
+
+  .section {
+    padding: 30rpx;
+    background-color: rgba(255, 255, 255, 0.85);
+    margin: 20rpx;
+    border-radius: 20rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+  }
+
+  .title {
+    font-size: 36rpx;
+    font-weight: bold;
+    color: #007d65;
+    margin-bottom: 20rpx;
+    display: block;
+  }
+  .home-btn {
+    margin-top: 30rpx;
+    background-color: rgba(0, 51, 20, 0.95);
+    color: white;
+    border: none;
+    font-weight: bold;
+    font-size: 30rpx;
+    border-radius: 16rpx;
+  }
+
+  .spacer { height: 24rpx; }
+  .right { text-align: right; }

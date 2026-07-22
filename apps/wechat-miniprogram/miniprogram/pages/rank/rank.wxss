@@ -1,0 +1,87 @@
+/* ===== 颜色常量（WXSS 不支持 :root/var，直接写实色） ===== */
+.page{ min-height:100vh; }
+
+/* —— 全屏背景 —— */
+.bg{
+  position:fixed; left:0; top:0; width:100vw; height:100vh;
+  z-index:-2;
+}
+/* 可选的浅遮罩，让前景更清晰 */
+.bg-mask{
+  position:fixed; left:0; top:0; width:100vw; height:100vh;
+  background: rgba(255,255,255,.06);
+  z-index:-1;
+}
+
+
+/* —— 内容容器 —— */
+.content{ padding:24rpx; }
+
+/* 我的排名卡片 */
+.my-card{
+  display:flex; align-items:center;
+  background:rgba(255,255,255,.88);
+  border:1rpx solid rgba(255,255,255,.6);
+  border-radius:22rpx; padding:24rpx;
+  box-shadow:0 10rpx 28rpx rgba(0,0,0,.12);
+}
+.avatar{ width:84rpx; height:84rpx; border-radius:50%; background:#eee; }
+.avatar.lg{ width:96rpx; height:96rpx; }
+
+/* 代替 gap：给右侧块手动加外边距 */
+.my-card .avatar{ margin-right:22rpx; }
+
+.info{ flex:1; min-width:0; }
+.name{
+  font-size:30rpx; font-weight:700; color:#111;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.sub{ font-size:24rpx; color:#9fb0b6; margin-top:6rpx; }
+.num{ color:#175c28; font-weight:800; }
+
+/* 名次圆徽 */
+.chip{
+  width:88rpx; height:88rpx; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:30rpx; font-weight:800;
+  background:linear-gradient(135deg,#175c28,#1c6a31);
+}
+.chip.first{  background:linear-gradient(135deg,#ffcc4d,#f3a000); color:#3b2a00; }
+.chip.second{ background:linear-gradient(135deg,#cfd8ff,#6ea0ff); color:#0f2c5a; }
+.chip.third{  background:linear-gradient(135deg,#ffd9b3,#ffb266); color:#6b3c00; }
+
+.section-title{ color:#000; font-size:24rpx; margin:22rpx 8rpx 14rpx; }
+
+/* 列表行 */
+.row{
+  display:flex; align-items:center;
+  background:rgba(255,255,255,.86);
+  border:1rpx solid rgba(255,255,255,.55);
+  border-radius:18rpx; padding:20rpx;
+  margin-bottom:16rpx;
+  box-shadow:0 6rpx 18rpx rgba(0,0,0,.10);
+}
+/* 代替 gap：逐个元素加右外边距 */
+.row .rank{ margin-right:18rpx; }
+.row .avatar{ margin-right:18rpx; }
+
+.rank{
+  min-width:64rpx; height:64rpx; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; color:#fff; background:#9fb3c2;
+}
+.rank.first{  background:#ffcc4d; color:#3b2a00; }
+.rank.second{ background:#9fc2ff; color:#10305e; }
+.rank.third{  background:#ffc28a; color:#6b3c00; }
+
+.cell{ flex:1; min-width:0; }
+.title{
+  font-size:28rpx; font-weight:600; color:#1e2930;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.desc{ font-size:24rpx; color:#6f8189; margin-top:2rpx; }
+
+.empty{ color:#e6edf0; text-align:center; padding:80rpx 0; }
+.row.me { border-color:#175c28; box-shadow:0 6rpx 22rpx rgba(23,92,40,.18); }
+.me-tag { color:#175c28; font-size:22rpx; margin-left:6rpx; }
+

@@ -1,0 +1,20 @@
+# 80 -> 443
+server {
+    listen 80;
+    server_name sysuzgxytj.top www.sysuzgxytj.top;
+    return 301 https://$host$request_uri;
+}
+
+# 443 上做 301 到 a1.ccyyff.cn
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name sysuzgxytj.top www.sysuzgxytj.top;
+
+    # 先签发证书（见下一步）
+    ssl_certificate     /etc/letsencrypt/live/sysuzgxytj.top/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/sysuzgxytj.top/privkey.pem;
+
+    # 统一跳到 a1，保留原路径和查询参数
+    return 301 https://a1.ccyyff.cn$request_uri;
+}

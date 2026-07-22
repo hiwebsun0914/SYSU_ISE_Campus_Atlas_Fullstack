@@ -1,0 +1,10 @@
+{
+  "appId": "com.sysu.isecampusguide",
+  "appName": "SYSU ISE Campus Guide",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,95 @@
+<view class="bg-wrapper">
+  <!-- 背景图 -->
+  <image class="bg-img"
+         src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/bg.jpg"
+         mode="aspectFill" />
+
+  <!-- 内容区 -->
+  <view class="content">
+    <!-- 顶部按钮：右侧🗺地图（最右） | 左侧🖼相册 -->
+    <view class="menu-icon" bindtap="toggleSidebar">☰</view>
+    <view class="map-icon" bindtap="openMap">＜</view>
+
+    <view class="logo-container">
+      <image class="logo-img"
+             src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo.png"
+             mode="widthFix" />
+    </view>
+
+    <view class="header">
+      <text class="title">🎓 欢迎参加校园图鉴打卡活动</text>
+    </view>
+
+    <!-- 侧边栏 -->
+    <view wx:if="{{sidebarVisible}}" class="sidebar-mask" bindtap="toggleSidebar">
+      <view class="sidebar" catchtap="noop">
+        <view class="sidebar-button" bindtap="goToRank">🏆 打卡排名</view>
+        <view class="sidebar-button" bindtap="goToConnect">🛠️ 问题反馈</view>
+      </view>
+    </view>
+
+    <!-- 相册弹层（来自 /home/gallery） -->
+    <view wx:if="{{viewerVisible}}" class="viewer-mask" catchtouchmove="noop">
+      <swiper class="viewer-swiper"
+              indicator-dots="true"
+              indicator-active-color="#ffffff"
+              indicator-color="rgba(255,255,255,.35)"
+              circular="true"
+              autoplay="false"
+              current="{{current}}"
+              bindchange="onSwiperChange">
+        <block wx:for="{{images}}" wx:key="*this">
+          <swiper-item>
+            <image class="viewer-img"
+                   src="{{item}}"
+                   mode="aspectFill"
+                   bindtap="previewCurrent" />
+          </swiper-item>
+        </block>
+      </swiper>
+      <view class="viewer-pager">{{current + 1}} / {{images.length}}</view>
+      <view class="viewer-close" bindtap="closeViewer">×</view>
+    </view>
+
+    <!-- 地图“照片”弹层（来自 /home/gallery） -->
+    <view wx:if="{{mapVisible}}" class="map-mask" catchtouchmove="noop">
+      <image class="map-photo"
+             src="{{mapPhotoLocal}}"
+             mode="widthFix"
+             show-menu-by-longpress
+             bindtap="previewMapPhoto" />
+      <view class="map-close" bindtap="closeMap">×</view>
+    </view>
+
+    <!-- 列表：文字+骨架先显示，缩略图异步到 -->
+    <view class="card-list" wx:if="{{showList}}">
+      <block wx:for="{{locations}}" wx:key="id">
+        <view class="card-horizontal js-card" data-id="{{item.id}}">
+          <view class="img-wrap">
+            <image class="card-img-left"
+                   src="{{item.imageFullLocal || item.imageThumbLocal}}"
+                   mode="aspectFill"
+                   lazy-load="true" />
+            <view wx:if="{{item.__skeleton}}" class="skeleton shimmer"></view>
+          </view>
+
+          <view class="card-info">
+            <text class="card-title">{{item.name}}</text>
+            <text class="card-meta">编号：{{item.id}}</text>
+            <text class="card-meta">位置：{{item.position}}</text>
+            <view class="btn-group">
+              <button class="checkin-btn" bindtap="checkIn" data-id="{{item.id}}">查看大图</button>
+              <button class="detail-btn" bindtap="toggleDescription" data-id="{{item.id}}">
+                {{item.expanded ? '收起详情' : '展开详情'}}
+              </button>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{item.expanded}}" class="card-description">
+          <rich-text nodes="{{item.description}}"></rich-text>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,72 @@
+# /etc/nginx/conf.d/a1.ccyyff.cn.conf
+
+server {
+    listen 80;
+    server_name a1.ccyyff.cn;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name a1.ccyyff.cn;
+
+    ssl_certificate     /etc/letsencrypt/live/a1.ccyyff.cn/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/a1.ccyyff.cn/privkey.pem;
+
+    # ===== 前端静态站点 =====
+    root  /www/web-h5/dist;
+    index index.html;
+
+    # 静态资源长缓存（带 hash）
+    location ~* \.(?:js|css|png|jpe?g|gif|svg|ico|woff2?)$ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # 文本验证等
+    location ~* \.txt$ {
+        root /www/web-h5/dist;
+        default_type text/plain;
+        expires -1;
+        add_header Cache-Control "no-store";
+        try_files $uri =404;
+    }
+
+    # index.html 不缓存
+    location = /index.html {
+        add_header Cache-Control "no-store";
+    }
+
+    # ===== /api/* → Node：去掉 /api 前缀 =====
+    # 例如  /api/rank/list  →  http://127.0.0.1:3000/rank/list
+    location ^~ /api/ {
+        proxy_pass http://127.0.0.1:3000/;   # 尾部 / 非常关键
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        add_header Cache-Control "no-store";
+    }
+
+    # ===== 小程序直连的“原始路径”接口（可选，保留）=====
+    location ~ ^/(home|locations|login_or_register|auth|checkin|rank|bottle|admin|avatar|health)(/|$) {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        add_header Cache-Control "no-store";
+    }
+
+    # ===== SPA 回退 =====
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

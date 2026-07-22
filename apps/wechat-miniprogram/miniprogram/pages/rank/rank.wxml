@@ -1,0 +1,43 @@
+<!-- pages/rank/rank.wxml -->
+<view class="page">
+  <!-- 全屏背景 -->
+  <image class="bg" src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/bg.jpg" mode="aspectFill" />
+  <view class="bg-mask"></view>
+
+  <!-- 顶部 Logo -->
+  <view class="logo-container">
+  
+      <image
+            src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo.png"
+            mode="widthFix" />
+    </view>
+
+  <!-- 内容 -->
+  <view class="content">
+
+    <view class="section-title">全部排名</view>
+
+    <!-- ===== 完整列表（包含我自己） ===== -->
+    <block wx:for="{{list}}" wx:key="userId">
+      <view class="row {{item.rankClass}} {{item.me ? 'me' : ''}}">
+        <view class="rank {{item.rankClass}}">
+          {{ item.rank==1?'🥇':(item.rank==2?'🥈':(item.rank==3?'🥉':item.rank)) }}
+        </view>
+
+        <image class="avatar" src="{{item.avatar}}" mode="aspectFill" />
+
+        <view class="cell">
+          <view class="title">
+            {{item.username}}
+            <text wx:if="{{item.me}}" class="me-tag">（我）</text>
+          </view>
+          <view class="desc">
+            已解锁 {{item.unlocked}} · 审核中 {{item.locking}} · 总计 {{item.count}} ·
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="empty" wx:if="{{!loading && (!list || !list.length)}}">暂无数据</view>
+  </view>
+</view>

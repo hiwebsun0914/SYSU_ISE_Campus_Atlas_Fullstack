@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "笃行校园图鉴",
+  "enablePullDownRefresh": false,
+  "usingComponents": {},
+  "pageOrientation": "portrait",
+  "initialRenderingCache": "static"
+}
