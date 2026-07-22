@@ -1,0 +1,107 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">SYSU ISE Campus Atlas</title>
+  <desc id="desc">A campus atlas full-stack platform for web, Android and WeChat</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071B22"/>
+      <stop offset="0.55" stop-color="#0A332D"/>
+      <stop offset="1" stop-color="#12604A"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="150" y1="80" x2="420" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#80F5B4"/>
+      <stop offset="1" stop-color="#35C889"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="700" y1="80" x2="1090" y2="345" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F6FFFA"/>
+      <stop offset="1" stop-color="#DDF7E9"/>
+    </linearGradient>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.5" fill="#88E5B4" fill-opacity="0.16"/>
+    </pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#001B14" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="420" rx="32" fill="url(#bg)"/>
+  <rect width="1200" height="420" rx="32" fill="url(#dots)"/>
+  <circle cx="1090" cy="-20" r="250" fill="#62E6A1" fill-opacity="0.07"/>
+  <circle cx="1130" cy="410" r="170" fill="#0BBA78" fill-opacity="0.1"/>
+  <path d="M-40 346C122 260 242 390 388 313C526 240 591 173 734 215C877 257 915 353 1247 209" stroke="#72E6AA" stroke-opacity="0.12" stroke-width="2"/>
+  <path d="M-28 373C143 287 247 417 407 340C545 273 605 213 748 249C900 287 970 378 1240 268" stroke="#72E6AA" stroke-opacity="0.08" stroke-width="2"/>
+
+  <g transform="translate(78 62)">
+    <rect width="54" height="54" rx="16" fill="url(#accent)"/>
+    <path d="M27 12C20.4 12 15 17.4 15 24C15 33 27 43 27 43C27 43 39 33 39 24C39 17.4 33.6 12 27 12Z" fill="#07352B"/>
+    <circle cx="27" cy="24" r="4.5" fill="#A8FFD0"/>
+  </g>
+
+  <text x="150" y="82" fill="#A5F3C9" font-size="17" font-weight="700" letter-spacing="3" font-family="Inter, Segoe UI, Arial, sans-serif">SYSU · ISE</text>
+  <text x="78" y="172" fill="white" font-size="64" font-weight="760" letter-spacing="-2" font-family="Inter, Segoe UI, Arial, sans-serif">Campus Atlas</text>
+  <text x="80" y="214" fill="#C7EFDB" font-size="22" font-weight="450" font-family="Inter, Segoe UI, Arial, sans-serif">Explore · Check in · Connect</text>
+  <text x="80" y="250" fill="#8FCFB0" font-size="16" font-family="Inter, Segoe UI, Arial, sans-serif">A full-stack campus discovery experience across every screen.</text>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="650">
+    <rect x="80" y="294" width="89" height="35" rx="17.5" fill="#FFFFFF" fill-opacity="0.1" stroke="#9BE8BF" stroke-opacity="0.2"/>
+    <text x="105" y="316" fill="#D8F8E7">WEB</text>
+    <rect x="179" y="294" width="112" height="35" rx="17.5" fill="#FFFFFF" fill-opacity="0.1" stroke="#9BE8BF" stroke-opacity="0.2"/>
+    <text x="202" y="316" fill="#D8F8E7">ANDROID</text>
+    <rect x="301" y="294" width="112" height="35" rx="17.5" fill="#FFFFFF" fill-opacity="0.1" stroke="#9BE8BF" stroke-opacity="0.2"/>
+    <text x="323" y="316" fill="#D8F8E7">WECHAT</text>
+    <rect x="423" y="294" width="96" height="35" rx="17.5" fill="#FFFFFF" fill-opacity="0.1" stroke="#9BE8BF" stroke-opacity="0.2"/>
+    <text x="445" y="316" fill="#D8F8E7">NODE.JS</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="765" y="63" width="354" height="231" rx="20" fill="url(#screen)"/>
+    <rect x="765" y="63" width="354" height="40" rx="20" fill="#FFFFFF"/>
+    <rect x="765" y="84" width="354" height="19" fill="#FFFFFF"/>
+    <circle cx="790" cy="83" r="5" fill="#FF7A7A"/>
+    <circle cx="808" cy="83" r="5" fill="#FFC967"/>
+    <circle cx="826" cy="83" r="5" fill="#64D98B"/>
+    <rect x="852" y="76" width="208" height="14" rx="7" fill="#E3F0E9"/>
+
+    <rect x="786" y="120" width="134" height="152" rx="14" fill="#0D4E3D"/>
+    <path d="M804 241C827 204 838 229 861 190C882 154 899 168 913 137" stroke="#67E6A4" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 10"/>
+    <circle cx="861" cy="190" r="13" fill="#FFCF5C"/>
+    <circle cx="861" cy="190" r="5" fill="#0D4E3D"/>
+    <circle cx="906" cy="145" r="10" fill="#7EF0B1"/>
+    <circle cx="812" cy="231" r="8" fill="#7EF0B1"/>
+
+    <rect x="938" y="120" width="157" height="37" rx="10" fill="#FFFFFF"/>
+    <circle cx="958" cy="138" r="8" fill="#68D99D"/>
+    <rect x="974" y="131" width="92" height="6" rx="3" fill="#9CB8A9"/>
+    <rect x="974" y="142" width="62" height="5" rx="2.5" fill="#D7E6DE"/>
+    <rect x="938" y="168" width="157" height="37" rx="10" fill="#FFFFFF"/>
+    <circle cx="958" cy="186" r="8" fill="#FFCA61"/>
+    <rect x="974" y="179" width="79" height="6" rx="3" fill="#9CB8A9"/>
+    <rect x="974" y="190" width="99" height="5" rx="2.5" fill="#D7E6DE"/>
+    <rect x="938" y="216" width="157" height="56" rx="10" fill="#FFFFFF"/>
+    <rect x="951" y="230" width="68" height="8" rx="4" fill="#3AC887"/>
+    <rect x="951" y="246" width="126" height="5" rx="2.5" fill="#D7E6DE"/>
+    <rect x="951" y="257" width="94" height="5" rx="2.5" fill="#D7E6DE"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="674" y="131" width="134" height="236" rx="27" fill="#071E1A"/>
+    <rect x="682" y="139" width="118" height="220" rx="21" fill="#F4FFF9"/>
+    <rect x="714" y="146" width="54" height="8" rx="4" fill="#0A2922"/>
+    <rect x="696" y="170" width="90" height="52" rx="12" fill="#1A6A50"/>
+    <path d="M706 207C725 185 743 213 774 180" stroke="#8AF2B8" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 7"/>
+    <circle cx="744" cy="196" r="8" fill="#FFD16B"/>
+    <circle cx="744" cy="196" r="3" fill="#1A6A50"/>
+    <rect x="696" y="235" width="90" height="35" rx="9" fill="#FFFFFF"/>
+    <circle cx="710" cy="252" r="7" fill="#64D99A"/>
+    <rect x="722" y="246" width="51" height="5" rx="2.5" fill="#789C8C"/>
+    <rect x="722" y="257" width="38" height="4" rx="2" fill="#D0E4DA"/>
+    <rect x="696" y="279" width="90" height="35" rx="9" fill="#FFFFFF"/>
+    <circle cx="710" cy="296" r="7" fill="#FFD16B"/>
+    <rect x="722" y="290" width="47" height="5" rx="2.5" fill="#789C8C"/>
+    <rect x="722" y="301" width="55" height="4" rx="2" fill="#D0E4DA"/>
+    <rect x="709" y="326" width="64" height="18" rx="9" fill="#2CC47D"/>
+  </g>
+
+  <circle cx="1126" cy="329" r="8" fill="#7DF0B0" fill-opacity="0.5"/>
+  <circle cx="1099" cy="350" r="4" fill="#FFD16B" fill-opacity="0.8"/>
+</svg>
+
