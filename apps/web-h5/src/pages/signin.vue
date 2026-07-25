@@ -20,8 +20,8 @@
       <input class="input" placeholder="请输入昵称" v-model.trim="username" />
       <input v-if="mode==='register'"
              class="input"
-             placeholder="请输入手机号（仅用于联系）"
-             inputmode="numeric" maxlength="11" v-model.trim="phone" />
+             placeholder="请输入真实姓名（仅用于联系）"
+             v-model.trim="phone" />
       <input class="input" placeholder="请输入密码" type="password" v-model="password" />
     </div>
 
@@ -112,10 +112,6 @@ function idle(cb){
   if ('requestIdleCallback' in window) return requestIdleCallback(cb, { timeout: 1500 })
   return setTimeout(cb, 200)
 }
-function isValidPhone(val) {
-  if (!val) return true
-  return /^1[3-9]\d{9}$/.test(String(val))
-}
 function extToMime(ext = 'jpg') {
   const m = String(ext || '').toLowerCase()
   if (m === 'png') return 'image/png'
@@ -129,10 +125,6 @@ async function onSubmit() {
   if (!username.value || !password.value) {
     alert('请输入账号密码'); return
   }
-  if (mode.value === 'register' && !isValidPhone(phone.value)) {
-    alert('手机号格式不正确'); return
-  }
-
   submitting.value = true
   try {
     if (mode.value === 'login') {
