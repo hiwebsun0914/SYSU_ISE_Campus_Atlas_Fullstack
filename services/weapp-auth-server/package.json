@@ -4,7 +4,8 @@
   "main": "app.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "test": "node --test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -18,3 +19,4 @@
     "qcloud-cos-sts": "^3.1.3"
   }
 }
+
