@@ -11,6 +11,7 @@ export default createRouter({
     { path: '/myCheckins',   component: () => import('../pages/myCheckins.vue') },
     { path: '/rank',         component: () => import('../pages/rank.vue') },
     { path: '/message',      component: () => import('../pages/message.vue') },
+    { path: '/future-card',  component: () => import('../pages/futureCard.vue') },
     { path: '/signin',       component: () => import('../pages/signin.vue') },
     { path: '/connect',      component: () => import('../pages/connect.vue') },
 

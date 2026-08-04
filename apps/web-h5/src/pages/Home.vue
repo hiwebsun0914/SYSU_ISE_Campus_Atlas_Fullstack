@@ -96,10 +96,10 @@
           </span>
         </button>
 
-        <button class="feature-card future-card grid-item" type="button" @click="showComingSoon('期盼卡片')">
+        <button class="feature-card future-card grid-item" type="button" @click="goProtected('/future-card')">
           <span class="feature-top">
             <span class="icon-tile"><Send :size="22" aria-hidden="true" /></span>
-            <span class="coming-label">即将开放</span>
+            <span class="coming-label">立即进入</span>
           </span>
           <span class="feature-copy">
             <small>TO FUTURE ME / 四年后见</small>
