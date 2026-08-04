@@ -670,7 +670,7 @@ async function nativeShare() {
   --teal: #2f4f4f;
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: clip;
   background: var(--canvas);
   color: var(--ink);
   font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
