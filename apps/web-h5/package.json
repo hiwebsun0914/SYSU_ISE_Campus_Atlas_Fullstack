@@ -1,6 +1,8 @@
 {
   "dependencies": {
-    "@lucide/vue": "^1.28.0",
+    "@fontsource/ma-shan-zheng": "^5.3.0",
+    "@fontsource/noto-sans-sc": "^5.3.0",
+    "@fontsource/noto-serif-sc": "^5.3.0",
     "axios": "^1.11.0",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
@@ -15,3 +17,4 @@
     "preview": "vite preview --port 5000"
   }
 }
+

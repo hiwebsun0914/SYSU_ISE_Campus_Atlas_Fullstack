@@ -24,6 +24,7 @@
           <div class="sidebar-button" @click="goToMyCheckins">📍 我的打卡</div>
           <div class="sidebar-button" @click="goToRank">🏆 打卡排名</div>
           <div class="sidebar-button" @click="goToMessage">🪁 漂流瓶</div>
+          <div class="sidebar-button" @click="goToFutureCard">💌 时光信笺</div>
           <div class="sidebar-button" @click="goToConnect">🛠️ 问题反馈</div>
           <div v-if="userRole === 'admin'" class="sidebar-button" @click="goToAdmin">🧰 审核管理</div>
         </div>
@@ -645,6 +646,11 @@ function pushOrRedirect(path){
 function goToMyCheckins(){ isAuthed() ? pushOrRedirect('/myCheckins') : pushOrRedirect('/signin') }
 function goToRank(){ isAuthed() ? pushOrRedirect('/rank') : pushOrRedirect('/signin') }
 function goToMessage(){ isAuthed() ? pushOrRedirect('/message') : pushOrRedirect('/signin') }
+function goToFutureCard(){
+  if (isAuthed()) return pushOrRedirect('/future-card')
+  if (router) return router.push({ path: '/signin', query: { redirect: '/future-card' } })
+  window.location.href = '/signin?redirect=%2Ffuture-card'
+}
 function goToConnect(){ pushOrRedirect('/connect') }
 function goToAdmin(){ pushOrRedirect('/admin/review') }
 </script>
@@ -749,3 +755,4 @@ function goToAdmin(){ pushOrRedirect('/admin/review') }
 }
 
 </style>
+
