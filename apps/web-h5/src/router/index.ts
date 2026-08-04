@@ -4,8 +4,8 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 export default createRouter({
   history: createWebHashHistory(), // 先用 # 路由，百分百能出首页
   routes: [
-    // ✅ 你有 Index.vue（大写 I）
-    { path: '/', component: () => import('../pages/Index.vue') },
+    { path: '/', component: () => import('../pages/Home.vue') },
+    { path: '/atlas', component: () => import('../pages/Index.vue') },
 
     // 其余页面都用懒加载（就算文件没就位也不影响首页）
     { path: '/myCheckins',   component: () => import('../pages/myCheckins.vue') },

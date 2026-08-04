@@ -11,6 +11,7 @@
 html,
 body {
   height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -20,10 +21,16 @@ body {
   flex-direction: column;
   justify-content: flex-start;
   min-height: 100%;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
   color: #111;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+body.dialog-open { overflow: hidden; }
+
+a, button { touch-action: manipulation; }
 
 /* 3) 保留你原有的容器样式 */
 .container {
@@ -51,8 +58,15 @@ button:focus {
 }
 
 button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 120, 255, 0.45);
+  outline: 3px solid #c7f24a;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(10, 46, 59, 0.7);
+}
+
+a:focus-visible {
+  outline: 3px solid #c7f24a;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* 小程序的 button::after 清除边框 → 网页里直接禁用伪元素 */
