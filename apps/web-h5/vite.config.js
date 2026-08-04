@@ -2,8 +2,13 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
-const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || 'https://hiwebsun.top'
-const keepApiPrefix = process.env.VITE_API_PROXY_REWRITE !== 'strip'
+const useLocalApi = process.env.VITE_API_PROXY_REWRITE === 'strip'
+const apiProxyTarget = useLocalApi
+  ? (process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3100')
+  : (process.env.VITE_API_PROXY_TARGET?.startsWith('http') && !process.env.VITE_API_PROXY_TARGET.includes('127.0.0.1') && !process.env.VITE_API_PROXY_TARGET.includes('localhost')
+      ? process.env.VITE_API_PROXY_TARGET
+      : 'https://hiwebsun.top')
+const keepApiPrefix = !useLocalApi
 
 export default defineConfig({
   plugins: [vue()],
