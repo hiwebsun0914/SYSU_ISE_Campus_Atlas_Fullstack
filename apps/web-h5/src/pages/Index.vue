@@ -18,12 +18,20 @@
         <div class="title">🎓 欢迎参加校园打卡活动</div>
       </div>
 
+      <button class="place-entry" type="button" @click="goToPlace">
+        <span class="place-entry-kicker">NEW · SOUTH CAMPUS</span>
+        <span class="place-entry-title">PLACE @ SYSU</span>
+        <span class="place-entry-copy">测测你的校园类型，看看今天适合去哪里。</span>
+        <span class="place-entry-go">开始测试 →</span>
+      </button>
+
       <!-- 侧边栏 -->
       <div v-if="sidebarVisible" class="sidebar-mask" @click="toggleSidebar">
         <div class="sidebar" @click.stop>
           <div class="sidebar-button" @click="goToMyCheckins">📍 我的打卡</div>
           <div class="sidebar-button" @click="goToRank">🏆 打卡排名</div>
           <div class="sidebar-button" @click="goToMessage">🪁 漂流瓶</div>
+          <div class="sidebar-button" @click="goToPlace">🧭 PLACE 校园测试</div>
           <div class="sidebar-button" @click="goToConnect">🛠️ 问题反馈</div>
           <div v-if="userRole === 'admin'" class="sidebar-button" @click="goToAdmin">🧰 审核管理</div>
         </div>
@@ -645,6 +653,7 @@ function pushOrRedirect(path){
 function goToMyCheckins(){ isAuthed() ? pushOrRedirect('/myCheckins') : pushOrRedirect('/signin') }
 function goToRank(){ isAuthed() ? pushOrRedirect('/rank') : pushOrRedirect('/signin') }
 function goToMessage(){ isAuthed() ? pushOrRedirect('/message') : pushOrRedirect('/signin') }
+function goToPlace(){ pushOrRedirect('/place') }
 function goToConnect(){ pushOrRedirect('/connect') }
 function goToAdmin(){ pushOrRedirect('/admin/review') }
 </script>
@@ -678,6 +687,34 @@ function goToAdmin(){ pushOrRedirect('/admin/review') }
 .logo-img { width: 150px; }
 .header { text-align: center; margin-bottom: 15px; }
 .title  { font-size: 18px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,.3); }
+
+.place-entry {
+  position: relative;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 22px 24px;
+  overflow: hidden;
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 18px;
+  color: #fff;
+  background: #8c1515;
+  box-shadow: 0 12px 30px rgba(65, 8, 8, .24);
+  text-align: left;
+}
+.place-entry::after {
+  content: 'P';
+  position: absolute;
+  right: 18px;
+  top: -28px;
+  color: rgba(255,255,255,.09);
+  font: 500 130px Georgia, serif;
+}
+.place-entry-kicker { grid-column: 1 / -1; color: #efbdbd; font: 600 10px Georgia, serif; letter-spacing: .12em; }
+.place-entry-title { position: relative; z-index: 1; font: 600 28px Georgia, serif; letter-spacing: -.02em; }
+.place-entry-copy { position: relative; z-index: 1; grid-column: 1; color: #f8dede; font-size: 13px; line-height: 1.5; }
+.place-entry-go { position: relative; z-index: 1; grid-column: 2; grid-row: 2 / 4; align-self: center; padding: 10px 14px; border-radius: 999px; color: #8c1515; background: #fff; font-size: 12px; font-weight: 700; }
 
 /* viewer：网页内查看，不触发下载 */
 .viewer-mask { position: fixed; inset: 0; z-index: 15000; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 16px; }

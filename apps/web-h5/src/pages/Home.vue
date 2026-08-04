@@ -109,15 +109,15 @@
           <span class="future-year" aria-hidden="true">2030</span>
         </button>
 
-        <button class="feature-card test-card grid-item" type="button" @click="showComingSoon('ISE 人格测试')">
+        <button class="feature-card test-card grid-item" type="button" aria-label="进入 PLACE 校园人格测试" @click="router.push('/place')">
           <span class="feature-top">
             <span class="icon-tile icon-tile-dark"><ScanFace :size="23" aria-hidden="true" /></span>
-            <span class="coming-label coming-label-dark">即将开放</span>
+            <span class="coming-label coming-label-dark">立即进入</span>
           </span>
           <span class="feature-copy">
-            <small>ISE PERSONALITY / 学院限定</small>
-            <strong>你的大学生活是哪种人格？</strong>
-            <span>从课程、社团和探索偏好里找到同频伙伴</span>
+            <small>PLACE @ SYSU / 校园人格</small>
+            <strong>测测你的校园类型</strong>
+            <span>从 28 个选择里找到你的校园人格与今日去处</span>
           </span>
           <span class="scan-line" aria-hidden="true"></span>
         </button>
