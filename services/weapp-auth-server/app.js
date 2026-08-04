@@ -120,7 +120,10 @@ app.use((req, res, next) => {
 app.use('/avatar',  avatarRouter);
 app.use('/checkin', checkinRouter);
 app.use('/bottle',  bottleRouter);
-app.use('/future-cards', futureCardsRouter);
+app.use('/future-cards', express.raw({
+  type: ['image/png', 'application/octet-stream'],
+  limit: process.env.FUTURE_CARD_IMAGE_LIMIT || '8mb'
+}), futureCardsRouter);
 app.use('/admin',   auth, adminOnly, adminRouter);
 
 /* ========= 文件路径 ========= */

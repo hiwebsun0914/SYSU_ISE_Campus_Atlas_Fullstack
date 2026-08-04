@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const COS = require('cos-nodejs-sdk-v5');
 
 const auth = require('../middleware/auth');
 
@@ -19,6 +20,14 @@ const WRITE_LIMIT = Math.max(1, Number(process.env.FUTURE_CARD_WRITE_LIMIT || 30
 const BODY_LIMIT = Math.max(1024, Number(process.env.FUTURE_CARD_BODY_LIMIT || 16 * 1024));
 const WRITE_WINDOW_MS = 60 * 1000;
 const writeWindows = new Map();
+const COS_BUCKET = process.env.COS_BUCKET;
+const COS_REGION = process.env.COS_REGION;
+const COS_SECRET_ID = process.env.COS_SECRET_ID || process.env.TENCENT_SECRET_ID;
+const COS_SECRET_KEY = process.env.COS_SECRET_KEY || process.env.TENCENT_SECRET_KEY;
+const IMAGE_LIMIT_BYTES = Math.max(256 * 1024, Number(process.env.FUTURE_CARD_IMAGE_LIMIT || 8 * 1024 * 1024));
+const cos = COS_BUCKET && COS_REGION && COS_SECRET_ID && COS_SECRET_KEY
+  ? new COS({ SecretId: COS_SECRET_ID, SecretKey: COS_SECRET_KEY })
+  : null;
 
 class ApiError extends Error {
   constructor(status, errorCode, message) {
@@ -205,13 +214,44 @@ function ownCard(store, id, userId) {
   return store.cards.find(card => card.id === id && String(card.ownerId) === String(userId));
 }
 
+function imageKeyFor(userId, cardId) {
+  const random = crypto.randomBytes(6).toString('hex');
+  return `FutureCard/${String(userId)}/${String(cardId)}/${Date.now()}_${random}.png`;
+}
+
+function signedImageUrl(key) {
+  if (!cos || !key) return null;
+  try {
+    return cos.getObjectUrl({
+      Bucket: COS_BUCKET,
+      Region: COS_REGION,
+      Key: key,
+      Sign: true,
+      Expires: 600
+    });
+  } catch {
+    return null;
+  }
+}
+
+function cardForResponse(card) {
+  const output = { ...card };
+  if (card.imageKey) output.imageUrl = signedImageUrl(card.imageKey);
+  return output;
+}
+
+function requireCos() {
+  if (!cos) throw new ApiError(503, 'COS_UNAVAILABLE', '图片存储服务暂不可用，请稍后重试');
+  return cos;
+}
+
 router.get('/', auth, (req, res) => {
   try {
     const store = readStore();
     const cards = store.cards
       .filter(card => String(card.ownerId) === String(req.userId))
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-    return res.json({ code: 0, data: { cards } });
+    return res.json({ code: 0, data: { cards: cards.map(cardForResponse) } });
   } catch (error) {
     return sendError(res, error);
   }
@@ -222,7 +262,7 @@ router.get('/:id', auth, (req, res) => {
     const store = readStore();
     const card = ownCard(store, String(req.params.id || ''), req.userId);
     if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
-    return res.json({ code: 0, data: { card } });
+    return res.json({ code: 0, data: { card: cardForResponse(card) } });
   } catch (error) {
     return sendError(res, error);
   }
@@ -242,7 +282,7 @@ router.post('/', auth, enforceBodyLimit, writeRateLimit, (req, res) => {
     };
     store.cards.unshift(card);
     writeStore(store);
-    return res.status(201).json({ code: 0, data: { card } });
+    return res.status(201).json({ code: 0, data: { card: cardForResponse(card) } });
   } catch (error) {
     return sendError(res, error);
   }
@@ -256,8 +296,54 @@ router.patch('/:id', auth, enforceBodyLimit, writeRateLimit, (req, res) => {
     if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
     Object.assign(card, validated, { updatedAt: new Date().toISOString() });
     writeStore(store);
-    return res.json({ code: 0, data: { card } });
+    return res.json({ code: 0, data: { card: cardForResponse(card) } });
   } catch (error) {
+    return sendError(res, error);
+  }
+});
+
+router.post('/:id/image', auth, writeRateLimit, async (req, res) => {
+  let uploadedKey = '';
+  try {
+    const contentType = String(req.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const body = Buffer.isBuffer(req.body) ? req.body : null;
+    if (contentType !== 'image/png' || !body?.length) {
+      throw new ApiError(400, 'INVALID_IMAGE', '仅支持非空 PNG 图片');
+    }
+    if (body.length > IMAGE_LIMIT_BYTES) {
+      throw new ApiError(413, 'IMAGE_TOO_LARGE', '图片大小超过限制');
+    }
+
+    const store = readStore();
+    const card = ownCard(store, String(req.params.id || ''), req.userId);
+    if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
+
+    const client = requireCos();
+    uploadedKey = imageKeyFor(req.userId, card.id);
+    await client.putObject({
+      Bucket: COS_BUCKET,
+      Region: COS_REGION,
+      Key: uploadedKey,
+      Body: body,
+      ContentType: 'image/png'
+    });
+
+    const previousKey = card.imageKey;
+    card.imageKey = uploadedKey;
+    card.imageUpdatedAt = new Date().toISOString();
+    writeStore(store);
+
+    if (previousKey && previousKey !== uploadedKey) {
+      client.deleteObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: previousKey })
+        .catch(error => console.warn('[future-cards] old image cleanup failed:', error?.code || error?.message));
+    }
+
+    return res.status(201).json({ code: 0, data: { card: cardForResponse(card) } });
+  } catch (error) {
+    if (uploadedKey && cos) {
+      cos.deleteObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: uploadedKey })
+        .catch(cleanupError => console.warn('[future-cards] image cleanup failed:', cleanupError?.code || cleanupError?.message));
+    }
     return sendError(res, error);
   }
 });
@@ -269,8 +355,12 @@ router.delete('/:id', auth, writeRateLimit, (req, res) => {
       card.id === String(req.params.id || '') && String(card.ownerId) === String(req.userId)
     ));
     if (index === -1) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
-    const [{ id }] = store.cards.splice(index, 1);
+    const [{ id, imageKey }] = store.cards.splice(index, 1);
     writeStore(store);
+    if (imageKey && cos) {
+      cos.deleteObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: imageKey })
+        .catch(error => console.warn('[future-cards] deleted image cleanup failed:', error?.code || error?.message));
+    }
     return res.json({ code: 0, data: { id } });
   } catch (error) {
     return sendError(res, error);
@@ -283,7 +373,9 @@ router._test = {
   visibleLength,
   moderationFingerprint,
   contentRejected,
-  validatePayload
+  validatePayload,
+  imageKeyFor,
+  cardForResponse
 };
 
 module.exports = router;
