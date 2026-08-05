@@ -53,15 +53,14 @@
         <p class="question-number">Q{{ String(currentQuestion.id).padStart(2, '0') }}</p>
         <h2>{{ currentQuestion.prompt }}</h2>
 
-        <div class="answer-list" role="radiogroup" :aria-label="currentQuestion.prompt">
+        <div class="answer-list" role="group" :aria-label="currentQuestion.prompt">
           <button
             v-for="(item, index) in currentQuestion.options"
             :key="item.label"
             class="answer-option"
             :class="{ selected: answers[questionIndex] === index }"
             type="button"
-            role="radio"
-            :aria-checked="answers[questionIndex] === index"
+            :aria-pressed="answers[questionIndex] === index"
             @click="selectAnswer(index)"
           >
             <span class="answer-letter">{{ String.fromCharCode(65 + index) }}</span>
@@ -88,15 +87,14 @@
         <h2>{{ currentTodayField.prompt }}</h2>
         <p v-if="currentTodayField.note" class="field-note">{{ currentTodayField.note }}</p>
 
-        <div class="today-options" :class="{ compact: currentTodayField.id === 'origin' }" role="radiogroup">
+        <div class="today-options" :class="{ compact: currentTodayField.id === 'origin' }" role="group" :aria-label="currentTodayField.prompt">
           <button
             v-for="item in currentTodayField.options"
             :key="item.value"
             class="today-option"
             :class="{ selected: todayAnswers[currentTodayField.id] === item.value }"
             type="button"
-            role="radio"
-            :aria-checked="todayAnswers[currentTodayField.id] === item.value"
+            :aria-pressed="todayAnswers[currentTodayField.id] === item.value"
             @click="selectToday(item.value)"
           >
             <b>{{ item.label }}</b>
@@ -225,7 +223,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import doneVisual from '../assets/place/main/done.webp'
@@ -331,8 +329,13 @@ onMounted(() => {
   window.scrollTo({ top: 0, left: 0 })
 })
 
+onBeforeUnmount(() => {
+  document.body.classList.remove('dialog-open')
+})
+
 function scrollTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' })
 }
 
 function startTest() {
@@ -563,7 +566,7 @@ function restart() {
 }
 
 function goHome() {
-  router.push('/')
+  router.push('/atlas')
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {
@@ -609,6 +612,7 @@ async function makeShareCard() {
   canvas.width = 900
   canvas.height = 1200
   const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
 
   ctx.fillStyle = '#FCF9F8'
   ctx.fillRect(0, 0, 900, 1200)
@@ -745,12 +749,22 @@ async function makeShareCard() {
 async function openShareCard() {
   shareCardVisible.value = true
   shareImage.value = ''
-  await nextTick()
-  shareImage.value = await makeShareCard()
+  document.body.classList.add('dialog-open')
+  try {
+    await nextTick()
+    const image = await makeShareCard()
+    if (!image) throw new Error('Share card rendering is unavailable')
+    shareImage.value = image
+  } catch (error) {
+    console.error('Share card generation failed', error)
+    closeShareCard()
+  }
 }
 
 function closeShareCard() {
   shareCardVisible.value = false
+  shareImage.value = ''
+  document.body.classList.remove('dialog-open')
 }
 
 function downloadShareCard() {
@@ -1050,7 +1064,7 @@ async function nativeShare() {
 .result-actions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px; }
 .secondary-action { min-height: 48px; padding: 0 20px; border: 1px solid var(--hairline); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; }
 
-.share-modal { position: fixed; inset: 0; z-index: 100; padding: 24px; overflow-y: auto; display: grid; place-items: center; background: rgba(26,26,26,.72); backdrop-filter: blur(14px); }
+.share-modal { position: fixed; inset: 0; z-index: 13000; padding: 24px; overflow-y: auto; display: grid; place-items: center; background: rgba(26,26,26,.72); backdrop-filter: blur(14px); }
 .share-dialog { width: min(480px, 100%); padding: 18px; border-radius: 24px; background: var(--canvas); box-shadow: 0 30px 80px rgba(0,0,0,.25); }
 .share-dialog-head { padding: 4px 4px 14px; display: flex; align-items: center; justify-content: space-between; }
 .share-dialog-head small, .share-dialog-head b { display: block; }
