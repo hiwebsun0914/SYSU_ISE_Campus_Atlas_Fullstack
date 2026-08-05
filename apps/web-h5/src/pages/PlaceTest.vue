@@ -127,7 +127,18 @@
       </div>
 
       <div class="result-grid">
-        <article class="subtype-panel">
+        <article
+          class="subtype-panel"
+          :class="resultVisual ? [
+            'has-type-visual',
+            `main-visual-${resultVisual.mainCode.toLowerCase()}`,
+            `sub-visual-${resultVisual.subCode.toLowerCase()}`
+          ] : null"
+        >
+          <div v-if="resultVisual" class="result-type-visual" aria-hidden="true">
+            <img class="result-type-visual-main" :src="resultVisual.main" alt="">
+            <img class="result-type-visual-sub" :src="resultVisual.sub" alt="">
+          </div>
           <div class="panel-index">01</div>
           <p class="panel-label">CAMPUS EXPLORATION TYPE</p>
           <div class="subtype-code">{{ result.subCode }}</div>
@@ -215,6 +226,20 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
+import doneVisual from '../assets/place/main/done.webp'
+import ddlVisual from '../assets/place/main/ddl.webp'
+import growVisual from '../assets/place/main/grow.webp'
+import hostVisual from '../assets/place/main/host.webp'
+import pingVisual from '../assets/place/main/ping.webp'
+import sideVisual from '../assets/place/main/side.webp'
+import syncVisual from '../assets/place/main/sync.webp'
+import tryVisual from '../assets/place/main/try.webp'
+import baseVisual from '../assets/place/subtypes/base.webp'
+import lensVisual from '../assets/place/subtypes/lens.webp'
+import mapsVisual from '../assets/place/subtypes/maps.webp'
+import runVisual from '../assets/place/subtypes/run.webp'
+import treeVisual from '../assets/place/subtypes/tree.webp'
+import wikiVisual from '../assets/place/subtypes/wiki.webp'
 import {
   SIGNALS,
   badgeDefs,
@@ -241,9 +266,40 @@ const advancing = ref(false)
 const shareCardVisible = ref(false)
 const shareImage = ref('')
 
+const mainVisuals = {
+  GROW: growVisual,
+  SIDE: sideVisual,
+  DONE: doneVisual,
+  DDL: ddlVisual,
+  HOST: hostVisual,
+  SYNC: syncVisual,
+  TRY: tryVisual,
+  PING: pingVisual
+}
+
+const subtypeVisuals = {
+  TREE: treeVisual,
+  MAPS: mapsVisual,
+  RUN: runVisual,
+  LENS: lensVisual,
+  WIKI: wikiVisual,
+  BASE: baseVisual
+}
+
 const currentQuestion = computed(() => questions[questionIndex.value])
 const currentTodayField = computed(() => todayFields[todayIndex.value])
 const canNativeShare = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function')
+const resultVisual = computed(() => {
+  const mainCode = result.value?.mainCode
+  const subCode = result.value?.subCode
+  if (!mainCode || !subCode || !mainVisuals[mainCode] || !subtypeVisuals[subCode]) return null
+  return {
+    main: mainVisuals[mainCode],
+    sub: subtypeVisuals[subCode],
+    mainCode,
+    subCode
+  }
+})
 const progressPercent = computed(() => {
   if (stage.value === 'questions') return ((questionIndex.value + 1) / questions.length) * 82
   if (stage.value === 'today') return 82 + ((todayIndex.value + 1) / todayFields.length) * 18
@@ -518,6 +574,15 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
   return y + lineHeight * Math.min(lines.length, maxLines)
 }
 
+function loadCanvasImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.src = src
+  })
+}
+
 async function makeShareCard() {
   if (!result.value) return ''
   const card = result.value
@@ -532,6 +597,19 @@ async function makeShareCard() {
   ctx.beginPath(); ctx.arc(780, 70, 220, 0, Math.PI * 2); ctx.fill()
   ctx.fillStyle = '#E8F5E9'
   ctx.beginPath(); ctx.arc(40, 1120, 190, 0, Math.PI * 2); ctx.fill()
+
+  if (resultVisual.value) {
+    try {
+      const [mainImage, subImage] = await Promise.all([
+        loadCanvasImage(resultVisual.value.main),
+        loadCanvasImage(resultVisual.value.sub)
+      ])
+      ctx.drawImage(mainImage, 575, 112, 285, 285)
+      ctx.drawImage(subImage, 520, 112, 300, 300)
+    } catch (error) {
+      console.warn('Result artwork render failed', error)
+    }
+  }
 
   ctx.fillStyle = '#8C1515'
   ctx.fillRect(64, 58, 52, 52)
@@ -893,6 +971,24 @@ async function nativeShare() {
 .subtype-panel, .place-panel { position: relative; min-height: 350px; padding: 28px; overflow: hidden; border-radius: 22px; }
 .subtype-panel { color: #fff; background: var(--teal); }
 .place-panel { background: var(--surface); }
+.result-type-visual { position: absolute; inset: 0 0 0 40%; z-index: 0; pointer-events: none; }
+.result-type-visual img { position: absolute; display: block; width: auto; height: auto; object-fit: contain; }
+.result-type-visual-main { right: -12%; top: -6%; max-width: 108%; max-height: 108%; opacity: .78; }
+.result-type-visual-sub { right: -4%; bottom: -12%; max-width: 102%; max-height: 102%; filter: drop-shadow(0 10px 16px rgba(16, 48, 47, .22)); }
+.main-visual-sync .result-type-visual-main,
+.main-visual-try .result-type-visual-main { right: -24%; max-width: 132%; }
+.main-visual-grow .result-type-visual-main,
+.main-visual-side .result-type-visual-main { top: -2%; max-width: 102%; max-height: 102%; }
+.main-visual-host .result-type-visual-main { right: -18%; }
+.sub-visual-maps .result-type-visual-sub { right: 0; max-width: 88%; max-height: 96%; }
+.sub-visual-lens .result-type-visual-sub,
+.sub-visual-wiki .result-type-visual-sub { right: -2%; max-width: 96%; max-height: 96%; }
+.sub-visual-tree .result-type-visual-sub { right: -8%; max-width: 108%; }
+.sub-visual-base .result-type-visual-sub { right: -10%; bottom: -8%; max-width: 112%; max-height: 106%; }
+.subtype-panel.has-type-visual > :not(.result-type-visual) { position: relative; z-index: 1; }
+.subtype-panel.has-type-visual .subtype-code,
+.subtype-panel.has-type-visual h3,
+.subtype-panel.has-type-visual > p:last-child { max-width: 55%; }
 .panel-index { position: absolute; right: 28px; top: 20px; color: rgba(255,255,255,.25); font: 500 64px Georgia, serif; }
 .place-panel .panel-index { color: rgba(26,26,26,.08); }
 .subtype-panel .panel-label { color: #b8d0cd; }
