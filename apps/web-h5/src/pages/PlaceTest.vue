@@ -115,20 +115,11 @@
     <section v-else-if="stage === 'result' && result" class="result-shell">
       <div class="result-heading">
         <p class="eyebrow">YOUR PLACE TYPE · SOUTH CAMPUS EDITION</p>
-        <div class="result-identity">
-          <p class="result-kicker">你的校园主类型是</p>
-          <h1 :style="{ color: result.main.color }">{{ result.main.displayCode || result.mainCode }}</h1>
-          <h2>{{ result.main.name }}</h2>
-        </div>
-        <div class="result-summary">
-          <blockquote>{{ result.main.hook }}</blockquote>
-          <p class="result-intro">{{ result.main.intro }}</p>
-        </div>
       </div>
 
       <div class="result-grid">
         <article
-          class="subtype-panel"
+          class="type-profile"
           :class="resultVisual ? [
             'has-type-visual',
             `main-visual-${resultVisual.mainCode.toLowerCase()}`,
@@ -139,15 +130,23 @@
             <img class="result-type-visual-main" :src="resultVisual.main" alt="">
             <img class="result-type-visual-sub" :src="resultVisual.sub" alt="">
           </div>
-          <div class="panel-index">01</div>
-          <p class="panel-label">CAMPUS EXPLORATION TYPE</p>
-          <div class="subtype-code">{{ result.subCode }}</div>
-          <h3>{{ result.sub.name }}</h3>
-          <p>{{ result.sub.note }}</p>
+          <p class="panel-label">YOUR CAMPUS TYPE</p>
+          <p class="result-kicker">你的校园类型组合</p>
+          <div class="type-code-lockup">
+            <strong :style="{ color: result.main.color }">{{ result.main.displayCode || result.mainCode }}</strong>
+            <span>/</span>
+            <b>{{ result.subCode }}</b>
+          </div>
+          <h1>{{ result.main.name }}<i>·</i><span>{{ result.sub.name }}</span></h1>
+          <blockquote>{{ result.main.hook }}</blockquote>
+          <p class="result-intro">{{ result.main.intro }}</p>
+          <div class="subtype-note">
+            <small>探索偏好 · {{ result.subCode }}</small>
+            <p>{{ result.sub.note }}</p>
+          </div>
         </article>
 
         <article class="place-panel">
-          <div class="panel-index">02</div>
           <p class="panel-label">TODAY'S PLACE</p>
           <div class="place-title-row">
             <div>
@@ -174,7 +173,10 @@
           <h3>你还掉落了这些校园徽章</h3>
         </div>
         <div class="badge-list">
-          <span v-for="badge in result.badges" :key="badge.name">{{ badge.name }}</span>
+          <article v-for="badge in result.badges" :key="badge.name" class="badge-item">
+            <img :src="badge.icon" alt="" aria-hidden="true">
+            <span>{{ badge.name }}</span>
+          </article>
         </div>
       </section>
 
@@ -240,6 +242,13 @@ import mapsVisual from '../assets/place/subtypes/maps.webp'
 import runVisual from '../assets/place/subtypes/run.webp'
 import treeVisual from '../assets/place/subtypes/tree.webp'
 import wikiVisual from '../assets/place/subtypes/wiki.webp'
+import aiVerifierBadge from '../assets/place/badges/ai-verifier.webp'
+import ddlIgniterBadge from '../assets/place/badges/ddl-igniter.webp'
+import detourBadge from '../assets/place/badges/detour.webp'
+import fixedSeatBadge from '../assets/place/badges/fixed-seat.webp'
+import groupStarterBadge from '../assets/place/badges/group-starter.webp'
+import mealCallerBadge from '../assets/place/badges/meal-caller.webp'
+import photoKeeperBadge from '../assets/place/badges/photo-keeper.webp'
 import {
   SIGNALS,
   badgeDefs,
@@ -284,6 +293,16 @@ const subtypeVisuals = {
   LENS: lensVisual,
   WIKI: wikiVisual,
   BASE: baseVisual
+}
+
+const badgeVisuals = {
+  ddlIgniter: ddlIgniterBadge,
+  groupStarter: groupStarterBadge,
+  fixedSeat: fixedSeatBadge,
+  mealCaller: mealCallerBadge,
+  aiVerifier: aiVerifierBadge,
+  detour: detourBadge,
+  photoKeeper: photoKeeperBadge
 }
 
 const currentQuestion = computed(() => questions[questionIndex.value])
@@ -429,7 +448,7 @@ function chooseBadges(mainCode) {
   })
   let candidates = Object.entries(counts)
     .filter(([, count]) => count >= 2)
-    .map(([code, count]) => ({ code, count, ...badgeDefs[code] }))
+    .map(([code, count]) => ({ code, count, icon: badgeVisuals[code], ...badgeDefs[code] }))
     .sort((a, b) => b.count - a.count)
 
   if (mainCode === 'DDL') candidates = candidates.filter(item => item.code !== 'ddlIgniter')
@@ -604,8 +623,8 @@ async function makeShareCard() {
         loadCanvasImage(resultVisual.value.main),
         loadCanvasImage(resultVisual.value.sub)
       ])
-      ctx.drawImage(mainImage, 575, 112, 285, 285)
-      ctx.drawImage(subImage, 520, 112, 300, 300)
+      ctx.drawImage(mainImage, 638, 104, 226, 226)
+      ctx.drawImage(subImage, 574, 108, 270, 270)
     } catch (error) {
       console.warn('Result artwork render failed', error)
     }
@@ -625,27 +644,34 @@ async function makeShareCard() {
   ctx.font = '500 14px Arial, sans-serif'
   ctx.fillText('CAMPUS PERSONALITY SPECIMEN · SOUTH CAMPUS', 136, 106)
 
+  const mainDisplayCode = card.main.displayCode || card.mainCode
   ctx.fillStyle = card.main.color || '#8C1515'
-  ctx.font = '500 140px Georgia, serif'
-  ctx.fillText(card.main.displayCode || card.mainCode, 62, 274)
-  ctx.fillStyle = '#1A1A1A'
-  ctx.font = '600 42px "PingFang SC", "Microsoft YaHei", sans-serif'
-  ctx.fillText(card.main.name, 68, 334)
-  ctx.fillStyle = '#4A4A4A'
-  ctx.font = '400 28px "PingFang SC", "Microsoft YaHei", sans-serif'
-  const hookBottom = drawWrappedText(ctx, card.main.hook, 68, 388, 730, 42, 2)
-
-  const subtypeY = hookBottom + 18
+  ctx.font = '500 124px Georgia, serif'
+  ctx.fillText(mainDisplayCode, 62, 272)
+  const mainCodeWidth = ctx.measureText(mainDisplayCode).width
+  const subCodeX = Math.min(62 + mainCodeWidth + 24, 500)
+  ctx.fillStyle = '#B8C9C6'
+  ctx.font = '400 42px Georgia, serif'
+  ctx.fillText('/', subCodeX, 258)
   ctx.fillStyle = '#2F4F4F'
-  roundedRect(ctx, 64, subtypeY, 772, 82, 24); ctx.fill()
-  ctx.fillStyle = '#B8D0CD'
-  ctx.font = '600 12px Arial, sans-serif'
-  ctx.fillText('CAMPUS EXPLORATION TYPE', 92, subtypeY + 27)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = '600 24px "PingFang SC", sans-serif'
-  ctx.fillText(`${card.subCode} · ${card.sub.name}`, 92, subtypeY + 61)
+  ctx.font = '600 44px Georgia, serif'
+  ctx.fillText(card.subCode, subCodeX + 30, 258)
+  ctx.fillStyle = '#1A1A1A'
+  ctx.font = '600 36px "PingFang SC", "Microsoft YaHei", sans-serif'
+  ctx.fillText(`${card.main.name} · ${card.sub.name}`, 68, 332)
+  ctx.fillStyle = '#4A4A4A'
+  ctx.font = '500 27px "PingFang SC", "Microsoft YaHei", sans-serif'
+  const hookBottom = drawWrappedText(ctx, card.main.hook, 68, 384, 730, 40, 2)
 
-  const placeY = subtypeY + 98
+  const subtypeY = hookBottom + 8
+  ctx.fillStyle = '#2F4F4F'
+  ctx.font = '600 14px Arial, sans-serif'
+  ctx.fillText(`${card.subCode} · EXPLORATION PREFERENCE`, 68, subtypeY)
+  ctx.fillStyle = '#4A4A4A'
+  ctx.font = '500 23px "PingFang SC", "Microsoft YaHei", sans-serif'
+  const subtypeBottom = drawWrappedText(ctx, card.sub.note, 68, subtypeY + 34, 730, 32, 2)
+
+  const placeY = subtypeBottom + 20
   ctx.fillStyle = '#8C1515'
   roundedRect(ctx, 64, placeY, 772, 320, 30); ctx.fill()
   ctx.fillStyle = '#F9D7D7'
@@ -658,24 +684,30 @@ async function makeShareCard() {
   ctx.font = '400 25px "PingFang SC", "Microsoft YaHei", sans-serif'
   drawWrappedText(ctx, card.line, 102, placeY + 176, 690, 40, 3)
 
-  let badgeX = 66
-  let badgeY = placeY + 370
+  const shareBadges = card.badges.slice(0, 2)
+  const badgeImages = await Promise.all(shareBadges.map(async badge => {
+    try {
+      return await loadCanvasImage(badge.icon)
+    } catch (error) {
+      console.warn('Badge artwork render failed', error)
+      return null
+    }
+  }))
+  const badgeY = placeY + 370
   ctx.fillStyle = '#8C1515'
   ctx.font = '600 13px Arial, sans-serif'
-  ctx.fillText('SIDE BADGES', badgeX, badgeY - 16)
-  card.badges.slice(0, 2).forEach(badge => {
-    ctx.font = '500 20px "PingFang SC", sans-serif'
-    const width = Math.ceil(ctx.measureText(`# ${badge.name}`).width) + 44
-    if (badgeX + width > 650) {
-      badgeX = 66
-      badgeY += 62
-    }
-    ctx.fillStyle = '#F4F4F2'
-    roundedRect(ctx, badgeX, badgeY, width, 54, 27); ctx.fill()
+  ctx.fillText('SIDE BADGES', 66, badgeY - 16)
+  shareBadges.forEach((badge, index) => {
+    const badgeX = 66 + index * 198
+    ctx.fillStyle = '#F7F5F1'
+    roundedRect(ctx, badgeX, badgeY, 184, 144, 24); ctx.fill()
+    if (badgeImages[index]) ctx.drawImage(badgeImages[index], badgeX + 40, badgeY + 2, 104, 104)
     ctx.fillStyle = '#1A1A1A'
-    ctx.fillText(`# ${badge.name}`, badgeX + 22, badgeY + 35)
-    badgeX += width + 12
+    ctx.font = '500 14px "PingFang SC", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(badge.name, badgeX + 92, badgeY + 132)
   })
+  ctx.textAlign = 'left'
 
   try {
     const shareUrl = window.location.href.split('?')[0]
@@ -954,27 +986,16 @@ async function nativeShare() {
   padding: 52px 0 76px;
 }
 .result-heading {
-  margin-bottom: 40px;
-  display: grid;
-  grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
-  gap: 24px 72px;
-  align-items: end;
+  margin-bottom: 18px;
 }
-.result-heading > .eyebrow { grid-column: 1 / -1; }
-.result-kicker { margin: 0 0 4px; color: var(--body); font-size: 14px; }
-.result-heading h1 { margin: 0 0 -6px; font: 500 clamp(88px, 12vw, 150px)/.92 Georgia, serif; letter-spacing: -.07em; }
-.result-heading h2 { margin: 0; font-size: clamp(30px, 4vw, 44px); letter-spacing: -.04em; }
-.result-summary { padding-bottom: 8px; }
-.result-heading blockquote { margin: 0; padding-left: 20px; border-left: 3px solid var(--primary); font-size: clamp(20px, 2.5vw, 26px); font-weight: 600; line-height: 1.5; }
-.result-intro { max-width: 560px; margin: 16px 0 0; color: var(--body); font-size: 14px; line-height: 1.75; }
-.result-grid { display: grid; grid-template-columns: .78fr 1.22fr; gap: 16px; align-items: stretch; }
-.subtype-panel, .place-panel { position: relative; min-height: 350px; padding: 28px; overflow: hidden; border-radius: 22px; }
-.subtype-panel { color: #fff; background: var(--teal); }
+.result-grid { display: grid; grid-template-columns: 1.22fr .78fr; gap: 16px; align-items: stretch; }
+.type-profile, .place-panel { position: relative; min-height: 430px; padding: 30px; overflow: hidden; border-radius: 22px; }
+.type-profile { border: 1px solid rgba(47,79,79,.12); background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(238,243,241,.88)); }
 .place-panel { background: var(--surface); }
-.result-type-visual { position: absolute; inset: 0 0 0 40%; z-index: 0; pointer-events: none; }
+.result-type-visual { position: absolute; inset: 0 0 0 48%; z-index: 0; pointer-events: none; }
 .result-type-visual img { position: absolute; display: block; width: auto; height: auto; object-fit: contain; }
-.result-type-visual-main { right: -12%; top: -6%; max-width: 108%; max-height: 108%; opacity: .78; }
-.result-type-visual-sub { right: -4%; bottom: -12%; max-width: 102%; max-height: 102%; filter: drop-shadow(0 10px 16px rgba(16, 48, 47, .22)); }
+.result-type-visual-main { right: -8%; top: -4%; max-width: 108%; max-height: 108%; opacity: .68; }
+.result-type-visual-sub { right: -3%; bottom: -8%; max-width: 104%; max-height: 104%; filter: drop-shadow(0 10px 16px rgba(16, 48, 47,.18)); }
 .main-visual-sync .result-type-visual-main,
 .main-visual-try .result-type-visual-main { right: -24%; max-width: 132%; }
 .main-visual-grow .result-type-visual-main,
@@ -985,16 +1006,23 @@ async function nativeShare() {
 .sub-visual-wiki .result-type-visual-sub { right: -2%; max-width: 96%; max-height: 96%; }
 .sub-visual-tree .result-type-visual-sub { right: -8%; max-width: 108%; }
 .sub-visual-base .result-type-visual-sub { right: -10%; bottom: -8%; max-width: 112%; max-height: 106%; }
-.subtype-panel.has-type-visual > :not(.result-type-visual) { position: relative; z-index: 1; }
-.subtype-panel.has-type-visual .subtype-code,
-.subtype-panel.has-type-visual h3,
-.subtype-panel.has-type-visual > p:last-child { max-width: 55%; }
-.panel-index { position: absolute; right: 28px; top: 20px; color: rgba(255,255,255,.25); font: 500 64px Georgia, serif; }
-.place-panel .panel-index { color: rgba(26,26,26,.08); }
-.subtype-panel .panel-label { color: #b8d0cd; }
-.subtype-code { margin-top: 58px; font: 500 66px/1 Georgia, serif; letter-spacing: -.05em; }
-.subtype-panel h3 { margin: 10px 0 12px; font-size: 24px; }
-.subtype-panel > p:last-child { max-width: 340px; color: #d4dfde; font-size: 13px; line-height: 1.65; }
+.type-profile.has-type-visual > :not(.result-type-visual) { position: relative; z-index: 1; }
+.type-profile.has-type-visual > :not(.result-type-visual) { max-width: 58%; }
+.type-profile .panel-label { color: var(--primary); }
+.result-kicker { margin: 26px 0 5px; color: var(--body); font-size: 12px; }
+.type-code-lockup { min-height: 92px; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
+.type-code-lockup strong { font: 500 clamp(68px, 7.2vw, 104px)/.88 Georgia, serif; letter-spacing: -.07em; }
+.type-code-lockup span { color: #aab9b6; font: 400 30px Georgia, serif; }
+.type-code-lockup b { color: var(--teal); font: 600 clamp(30px, 3.4vw, 46px)/1 Georgia, serif; letter-spacing: -.04em; }
+.type-profile h1 { margin: 10px 0 16px; font-size: clamp(23px, 2.3vw, 30px); letter-spacing: -.04em; }
+.type-profile.has-type-visual h1 { max-width: 76%; }
+.type-profile h1 i { margin: 0 8px; color: #b7b7b4; font-style: normal; font-weight: 400; }
+.type-profile h1 span { color: var(--teal); }
+.type-profile blockquote { margin: 0; padding-left: 14px; border-left: 3px solid var(--primary); font-size: 18px; font-weight: 600; line-height: 1.55; }
+.result-intro { margin: 12px 0 0; color: var(--body); font-size: 12px; line-height: 1.7; }
+.subtype-note { margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.78); }
+.subtype-note small { color: var(--teal); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+.subtype-note p { margin: 5px 0 0; color: var(--body); font-size: 11px; line-height: 1.55; }
 .place-title-row { margin-top: 36px; display: flex; justify-content: space-between; gap: 20px; align-items: start; }
 .place-title-row span { color: var(--body); font-size: 11px; letter-spacing: .08em; }
 .place-title-row h3 { margin: 6px 0 0; font-size: clamp(30px, 4vw, 42px); letter-spacing: -.04em; }
@@ -1010,7 +1038,9 @@ async function nativeShare() {
 .badge-section { border: 1px solid var(--hairline); background: rgba(255,255,255,.52); }
 .badge-section h3, .share-section h3 { margin: 8px 0 0; font-size: 22px; }
 .badge-list { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.badge-list span { padding: 9px 14px; border-radius: 999px; color: #6b5000; background: #fff3c7; font-size: 12px; font-weight: 600; }
+.badge-item { min-width: 152px; padding: 8px 12px 8px 8px; border: 1px solid rgba(140,21,21,.08); border-radius: 18px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.72); }
+.badge-item img { width: 52px; height: 52px; flex: 0 0 auto; object-fit: contain; }
+.badge-item span { color: #5e4610; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .share-section { margin-top: 24px; color: #fff; background: var(--primary); }
 .share-section .panel-label { color: #f1bebe; }
 .share-section p:last-child { margin: 8px 0 0; color: #f6dcdc; font-size: 12px; }
@@ -1102,20 +1132,28 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(140,21,21,.22);
   .today-options, .today-options.compact { grid-template-columns: 1fr; }
   .today-option { min-height: 86px; }
   .result-shell { width: min(100% - 32px, 1120px); padding: 48px 0 72px; }
-  .result-heading { margin-bottom: 32px; grid-template-columns: 1fr; gap: 0; }
-  .result-heading > .eyebrow { grid-column: auto; }
-  .result-identity { margin-top: 32px; }
-  .result-summary { margin-top: 24px; padding-bottom: 0; }
-  .result-kicker { margin: 0 0 4px; }
+  .result-heading { margin-bottom: 18px; }
   .result-grid { grid-template-columns: 1fr; }
-  .subtype-panel, .place-panel { min-height: 330px; padding: 26px; }
-  .subtype-code { margin-top: 62px; }
+  .type-profile, .place-panel { min-height: 360px; padding: 26px; }
+  .type-profile.has-type-visual > :not(.result-type-visual) { max-width: 64%; }
+  .result-type-visual { left: 44%; opacity: .82; }
+  .type-code-lockup { min-height: 76px; }
   .badge-section, .share-section { padding: 26px; align-items: flex-start; flex-direction: column; }
   .badge-list { justify-content: flex-start; }
   .share-section .primary-action { width: 100%; }
   .result-actions { justify-content: stretch; }
   .result-actions button { flex: 1; }
   .place-footer { width: min(100% - 32px, 1120px); flex-direction: column; justify-content: center; gap: 4px; align-items: flex-start; }
+}
+
+@media (max-width: 560px) {
+  .type-profile { min-height: 500px; }
+  .type-profile.has-type-visual > :not(.result-type-visual) { max-width: none; }
+  .result-type-visual { inset: auto 0 0 30%; height: 52%; opacity: .34; }
+  .type-code-lockup { gap: 8px; }
+  .type-code-lockup strong { font-size: 64px; }
+  .type-code-lockup b { font-size: 30px; }
+  .type-profile h1 { font-size: 24px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
