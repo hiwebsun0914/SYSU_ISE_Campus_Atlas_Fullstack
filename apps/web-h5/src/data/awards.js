@@ -5,6 +5,7 @@ export const AWARD_CONFIG = {
   perUserPerCategory: 1,
   maxImagesPerWork: 3,
   maxImageMB: 10,
+  maxVotesPerDay: 3,
   allowedImageTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   categories: [
     {

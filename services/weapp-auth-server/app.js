@@ -225,7 +225,7 @@ function respondSuccess(res, user) {
 }
 
 // 创建用户（哈希密码 + 默认字段）
-function createUser({ username, passwordPlain, phone }) {
+function createUser({ username, passwordPlain, phone, realName }) {
   const hashedPassword = bcrypt.hashSync(passwordPlain, 8);
   const now = Date.now();
   return {
@@ -233,6 +233,7 @@ function createUser({ username, passwordPlain, phone }) {
     username,
     password: hashedPassword,
     phone: phone || '',
+    realName: realName || phone || '',
     avatar: DEFAULT_AVATAR,
     avatarKey: null,
     role: DEFAULT_ROLE,
@@ -410,10 +411,11 @@ app.post('/auth/login', (req, res) => {
 
 // 明确注册：重名返回 1003
 app.post('/auth/register', (req, res) => {
-  let { username, password, phone = '' } = req.body || {};
+  let { username, password, phone = '', realName } = req.body || {};
   username = typeof username === 'string' ? username.trim() : '';
   password = typeof password === 'string' ? password.trim() : '';
   phone    = typeof phone    === 'string' ? phone.trim()    : '';
+  realName = typeof realName === 'string' ? realName.trim() : (phone || '');
   if (!username || !password) {
     return res.json({ code: 1, message: '用户名或密码不能为空' });
   }
@@ -421,17 +423,18 @@ app.post('/auth/register', (req, res) => {
   const exists = users.find(u => u.username === username);
   if (exists) return res.json({ code: ERR_USERNAME_TAKEN, message: '用户名已存在' });
 
-  const newUser = createUser({ username, passwordPlain: password, phone });
+  const newUser = createUser({ username, passwordPlain: password, phone, realName });
   users.push(newUser); writeUsers(users);
   return respondSuccess(res, newUser);
 });
 
 /* ========= 登录 / 注册（兼容旧端；新端请优先用 /auth/*） ========= */
 app.post('/login_or_register', (req, res) => {
-  let { username, password, phone = '', mode, allowCreate, registerIfNotExist } = req.body || {};
+  let { username, password, phone = '', realName, mode, allowCreate, registerIfNotExist } = req.body || {};
   username = typeof username === 'string' ? username.trim() : '';
   password = typeof password === 'string' ? password.trim() : '';
   phone    = typeof phone    === 'string' ? phone.trim()    : '';
+  realName = typeof realName === 'string' ? realName.trim() : (phone || '');
 
   if (!username || !password) {
     return res.json({ code: 1, message: '用户名或密码不能为空' });
@@ -468,7 +471,7 @@ app.post('/login_or_register', (req, res) => {
     if (exists) {
       return res.json({ code: ERR_USERNAME_TAKEN, message: '用户名已存在' });
     }
-    const newUser = createUser({ username, passwordPlain: password, phone });
+    const newUser = createUser({ username, passwordPlain: password, phone, realName });
     users.push(newUser);
     writeUsers(users);
     return respondSuccess(res, newUser);
@@ -476,7 +479,7 @@ app.post('/login_or_register', (req, res) => {
 
   // —— 旧端兼容：不带任何控制参数 => 维持“自动注册”的旧行为 —— 
   if (!exists) {
-    const newUser = createUser({ username, passwordPlain: password, phone });
+    const newUser = createUser({ username, passwordPlain: password, phone, realName });
     users.push(newUser);
     writeUsers(users);
     return respondSuccess(res, newUser);

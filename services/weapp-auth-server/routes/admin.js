@@ -391,14 +391,21 @@ router.post('/submissions/:id/approve', auth, adminOnly, (req, res) => {
   const list = readSubmissionsArray();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
-  if (item.status !== 'pending') return res.json({ code: 1, message: '该投稿已审核' });
+  const isAppeal = item.status === 'rejected' && item.appealStatus === 'pending';
+  if (item.status !== 'pending' && !isAppeal) return res.json({ code: 1, message: '该投稿已审核' });
 
   item.status = 'approved';
   item.updatedAt = Date.now();
   item.reviewedAt = Date.now();
-  item.reviewNote = String(req.body?.note || '').trim();
+  if (req.body?.note !== undefined && req.body?.note !== null) {
+    item.reviewNote = String(req.body.note || '').trim();
+  }
+  if (isAppeal) {
+    item.appealStatus = 'resolved';
+    item.appealResult = 'approved';
+  }
   writeSubmissionsArray(list);
-  res.json({ code: 0, message: '已通过' });
+  res.json({ code: 0, message: isAppeal ? '已通过申诉' : '已通过' });
 });
 
 // ====== Reject ======
@@ -407,14 +414,21 @@ router.post('/submissions/:id/reject', auth, adminOnly, (req, res) => {
   const list = readSubmissionsArray();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
-  if (item.status !== 'pending') return res.json({ code: 1, message: '该投稿已审核' });
+  const isAppeal = item.status === 'rejected' && item.appealStatus === 'pending';
+  if (item.status !== 'pending' && !isAppeal) return res.json({ code: 1, message: '该投稿已审核' });
 
+  const note = String(req.body?.note || '').trim();
+  if (!note) return res.json({ code: 1, message: '请填写驳回理由' });
   item.status = 'rejected';
   item.updatedAt = Date.now();
   item.reviewedAt = Date.now();
-  item.reviewNote = String(req.body?.note || '').trim();
+  item.reviewNote = note;
+  if (isAppeal) {
+    item.appealStatus = 'resolved';
+    item.appealResult = 'rejected';
+  }
   writeSubmissionsArray(list);
-  res.json({ code: 0, message: '已驳回' });
+  res.json({ code: 0, message: isAppeal ? '已驳回申诉' : '已驳回' });
 });
 
 // ====== Mark / unmark featured ======

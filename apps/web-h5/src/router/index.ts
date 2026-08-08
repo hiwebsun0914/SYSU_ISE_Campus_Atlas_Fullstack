@@ -19,6 +19,7 @@ export default createRouter({
     { path: '/award/submit', component: () => import('../pages/award/AwardSubmit.vue') },
     { path: '/award/my',     component: () => import('../pages/award/AwardMine.vue') },
     { path: '/award/results', component: () => import('../pages/award/AwardResults.vue') },
+    { path: '/award/submission/:id', component: () => import('../pages/award/AwardSubmissionDetail.vue') },
 
     // 如果 Review 在 src/pages/admin/Review.vue，用下面这一行
     { path: '/admin/review', component: () => import('../pages/admin/Review.vue') },

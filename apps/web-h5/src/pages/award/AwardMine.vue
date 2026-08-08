@@ -23,6 +23,7 @@
             <div class="row1">
               <b>{{ item.title }}</b>
               <span class="status" :class="item.status">{{ statusText(item.status) }}</span>
+              <span v-if="item.appealStatus === 'pending'" class="appeal-badge">申诉中</span>
               <span v-if="item.winnerRank" class="winner-badge">{{ item.winnerLabel }}</span>
             </div>
             <p class="desc">{{ item.description }}</p>
@@ -33,9 +34,14 @@
               <span>{{ fmtTime(item.createdAt) }}</span>
             </div>
             <p v-if="item.reviewNote" class="note">审核意见：{{ item.reviewNote }}</p>
-            <button v-if="item.status === 'pending'" class="withdraw-btn" type="button" @click="withdraw(item)">
-              撤销投稿
-            </button>
+            <div class="card-actions">
+              <button class="detail-btn" type="button" @click="router.push(`/award/submission/${encodeURIComponent(item.id)}`)">
+                查看详情
+              </button>
+              <button v-if="item.status === 'pending'" class="withdraw-btn" type="button" @click="withdraw(item)">
+                撤销投稿
+              </button>
+            </div>
           </div>
         </article>
       </div>
@@ -127,12 +133,15 @@ onMounted(() => {
 .status.pending { background: #fff7e6; color: #b45309; }
 .status.approved { background: #e6f7ef; color: #0a7a54; }
 .status.rejected { background: #fdeeee; color: #b42318; }
+.appeal-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; background: #fff7e6; color: #b45309; }
 .winner-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; background: #fdece8; color: #c2410c; }
 .desc { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; }
 .meta { display: flex; flex-wrap: wrap; gap: 8px; }
 .meta span { font-size: 11px; color: #8a958f; background: #f3f1ea; padding: 3px 9px; border-radius: 999px; }
 .note { margin: 8px 0 0; color: #b42318; font-size: 12px; }
-.withdraw-btn { margin-top: 10px; border: 1px solid #e2b6b1; background: transparent; color: #b42318; padding: 6px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+.card-actions { display: flex; gap: 8px; margin-top: 10px; }
+.detail-btn { border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 6px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+.withdraw-btn { border: 1px solid #e2b6b1; background: transparent; color: #b42318; padding: 6px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
 .empty { padding: 60px 0; text-align: center; color: #8a958f; }
 .empty p { margin: 0 0 16px; }
 .primary-btn { border: 0; background: #0d9488; color: #fff; padding: 11px 24px; border-radius: 999px; font-size: 14px; cursor: pointer; }

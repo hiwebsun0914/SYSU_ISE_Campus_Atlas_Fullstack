@@ -9,7 +9,7 @@
           用一张照片或一个创意，记录你眼中的校园。<br />
           最佳创意奖与最佳摄影奖，等你来投。
         </p>
-        <div class="deadline-chip" :class="{ closed: closed }">
+        <div class="deadline-chip" :class="{ closed }">
           <span v-if="!closed">投稿截止：{{ deadlineText }}</span>
           <span v-else>投稿已截止</span>
         </div>
@@ -58,6 +58,9 @@
             <span>支持 JPG、PNG、WebP、GIF 格式</span>
           </div>
         </div>
+        <div class="vote-rule">
+          🗳️ 每人每天最多投 <b>{{ maxVotesPerDay }}</b> 票，同一作品每天限 1 票，次日可重新投票。
+        </div>
         <p class="rules-note">
           投稿作品经管理员审核通过后将在下方展示；优秀作品将获得特别标注。
         </p>
@@ -68,7 +71,7 @@
       <section v-if="featured.length" class="featured-section" aria-labelledby="featured-title">
         <h2 id="featured-title">🌟 优秀作品</h2>
         <div class="featured-track">
-          <figure v-for="w in featured" :key="w.id" class="featured-card" @click="openImage(w)">
+          <figure v-for="w in featured" :key="w.id" class="featured-card" @click="openWorkModal(w)">
             <img :src="w.images[0]?.url" :alt="w.title" loading="lazy" />
             <figcaption>
               <b>{{ w.title }}</b>
@@ -78,10 +81,10 @@
         </div>
       </section>
 
-      <!-- 作品展示区 -->
+      <!-- 作品展示 / 人气排行 -->
       <section class="gallery-section" aria-labelledby="gallery-title">
         <div class="gallery-head">
-          <h2 id="gallery-title">作品展示</h2>
+          <h2 id="gallery-title">{{ galleryFilter === 'rank' ? '人气排行' : '作品展示' }}</h2>
           <div class="filter-chips">
             <button
               v-for="f in galleryFilters"
@@ -91,6 +94,9 @@
               @click="setGalleryFilter(f.value)"
             >{{ f.label }}</button>
           </div>
+          <span v-if="loggedIn && !closed" class="quota-chip">
+            今日剩余 <b>{{ remainingVotes }}</b> 票
+          </span>
           <button class="results-link" type="button" @click="goResults">🏆 获奖结果公示</button>
         </div>
 
@@ -99,7 +105,7 @@
           暂无已通过的作品，快去投出第一份吧！
         </div>
         <div v-else class="work-grid">
-          <article v-for="w in works" :key="w.id" class="work-card" @click="openImage(w)">
+          <article v-for="w in works" :key="w.id" class="work-card" @click="openWorkModal(w)">
             <img :src="w.images[0]?.url" :alt="w.title" loading="lazy" />
             <div class="work-info">
               <div class="work-title-row">
@@ -113,25 +119,73 @@
                 <span>{{ w.locationName }}</span>
                 <span>{{ w.username }}</span>
               </div>
-              <button
-                class="like-btn"
-                :class="{ liked: w.likedByMe }"
-                type="button"
-                @click.stop="toggleLike(w)"
-              >
-                <Heart :size="15" aria-hidden="true" />
-                <span>{{ w.likeCount || 0 }}</span>
-              </button>
+              <div class="work-actions">
+                <button class="intro-btn" type="button" @click.stop="openWorkModal(w)">查看作品介绍</button>
+                <button
+                  class="vote-btn"
+                  :class="{ voted: w.votedToday }"
+                  type="button"
+                  :disabled="closed"
+                  @click.stop="toggleVote(w)"
+                >
+                  <Heart :size="15" aria-hidden="true" />
+                  <span>{{ w.likeCount || 0 }}</span>
+                </button>
+              </div>
             </div>
           </article>
         </div>
       </section>
     </main>
 
-    <!-- 图片预览 -->
-    <div v-if="previewUrl" class="preview-mask" @click.self="previewUrl = ''">
-      <img :src="previewUrl" alt="作品大图" />
-      <button type="button" @click="previewUrl = ''">关闭</button>
+    <!-- 作品介绍弹窗 -->
+    <div v-if="modalWork" class="modal-mask" @click.self="modalWork = null">
+      <div class="modal-card">
+        <button class="modal-close" type="button" @click="modalWork = null">×</button>
+        <div class="modal-images">
+          <img
+            v-if="modalImages.length"
+            :src="modalImages[modalImageIndex]"
+            :alt="modalWork.title"
+          />
+          <div v-if="modalImages.length > 1" class="modal-thumbs">
+            <button
+              v-for="(img, i) in modalImages"
+              :key="i"
+              type="button"
+              :class="{ active: i === modalImageIndex }"
+              @click="modalImageIndex = i"
+            >
+              <img :src="img" :alt="`图 ${i + 1}`" />
+            </button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="modal-title-row">
+            <b>{{ modalWork.title }}</b>
+            <span v-if="modalWork.featured" class="featured-badge">优秀</span>
+            <span v-if="modalWork.winnerRank" class="winner-badge">{{ modalWork.winnerLabel }}</span>
+          </div>
+          <p class="modal-desc">{{ modalWork.description }}</p>
+          <div class="modal-meta">
+            <span>{{ modalWork.categoryName }}</span>
+            <span>{{ modalWork.locationName }}</span>
+            <span>{{ modalWork.username }}</span>
+            <span>{{ fmtTime(modalWork.createdAt) }}</span>
+          </div>
+          <button
+            class="modal-vote"
+            :class="{ voted: modalWork.votedToday }"
+            type="button"
+            :disabled="closed"
+            @click="toggleVote(modalWork)"
+          >
+            <Heart :size="16" aria-hidden="true" />
+            {{ modalWork.votedToday ? '已投票（点击取消）' : '投我一票' }}
+            · {{ modalWork.likeCount || 0 }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -149,13 +203,16 @@ const works = ref([])
 const featured = ref([])
 const galleryFilter = ref('all')
 const loading = ref(true)
-const previewUrl = ref('')
+const quota = ref(null)
+const modalWork = ref(null)
+const modalImageIndex = ref(0)
 
 const categories = computed(() => meta.value?.categories || AWARD_CONFIG.categories)
 const deadline = computed(() => meta.value?.deadline || AWARD_CONFIG.deadline)
 const perUserPerCategory = computed(() => meta.value?.perUserPerCategory ?? AWARD_CONFIG.perUserPerCategory)
 const maxImagesPerWork = computed(() => meta.value?.maxImagesPerWork ?? AWARD_CONFIG.maxImagesPerWork)
 const maxImageMB = computed(() => meta.value?.maxImageMB ?? AWARD_CONFIG.maxImageMB)
+const maxVotesPerDay = computed(() => meta.value?.maxVotesPerDay ?? AWARD_CONFIG.maxVotesPerDay)
 const closed = computed(() => {
   if (!deadline.value) return false
   return Date.now() > new Date(deadline.value).getTime()
@@ -167,11 +224,26 @@ const deadlineText = computed(() => {
     return deadline.value
   }
 })
+const loggedIn = computed(() => !!localStorage.getItem('token'))
+const remainingVotes = computed(() =>
+  quota.value != null ? quota.value.remaining : maxVotesPerDay.value
+)
+const modalImages = computed(() => (modalWork.value?.images || []).map(img => img.url).filter(Boolean))
 
-const galleryFilters = [
+const galleryFilters = computed(() => [
   { value: 'all', label: '全部' },
-  ...categories.value.map(c => ({ value: c.id, label: c.name }))
-]
+  ...categories.value.map(c => ({ value: c.id, label: c.name })),
+  { value: 'rank', label: '人气排行' }
+])
+
+function fmtTime(ts) {
+  if (!ts) return ''
+  try {
+    return new Date(ts).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  } catch {
+    return String(ts)
+  }
+}
 
 async function loadMeta() {
   try {
@@ -180,14 +252,25 @@ async function loadMeta() {
   } catch {}
 }
 
+async function loadQuota() {
+  if (!loggedIn.value) return
+  try {
+    const res = await request('/submissions/votes/quota', 'GET')
+    if (res?.data?.code === 0) quota.value = res.data.data
+  } catch {}
+}
+
+async function fetchWorks(params = {}) {
+  const res = await request('/submissions', 'GET', { limit: 200, ...params })
+  if (res?.data?.code === 0) return res.data.list || []
+  return []
+}
+
 async function loadWorks() {
   loading.value = true
   try {
-    const res = await request('/submissions', 'GET', { limit: 200 }, {})
-    if (res?.data?.code === 0) {
-      works.value = res.data.list || []
-      featured.value = works.value.filter(w => w.featured).slice(0, 10)
-    }
+    works.value = await fetchWorks()
+    featured.value = works.value.filter(w => w.featured).slice(0, 10)
   } catch {
     works.value = []
   } finally {
@@ -195,23 +278,61 @@ async function loadWorks() {
   }
 }
 
-function setGalleryFilter(value) {
+async function setGalleryFilter(value) {
   galleryFilter.value = value
-  reloadFiltered()
+  await reloadFiltered()
 }
 
 async function reloadFiltered() {
   loading.value = true
   try {
-    const params = { limit: 200 }
-    if (galleryFilter.value !== 'all') params.category = galleryFilter.value
-    const res = await request('/submissions', 'GET', params, {})
-    if (res?.data?.code === 0) works.value = res.data.list || []
+    const params = {}
+    if (galleryFilter.value !== 'all' && galleryFilter.value !== 'rank') {
+      params.category = galleryFilter.value
+    }
+    let list = await fetchWorks(params)
+    if (galleryFilter.value === 'rank') {
+      list = list.slice().sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+    }
+    works.value = list
   } catch {
     works.value = []
   } finally {
     loading.value = false
   }
+}
+
+async function toggleVote(work) {
+  if (!loggedIn.value) {
+    router.push({ path: '/signin', query: { redirect: '/award' } })
+    return
+  }
+  if (closed.value) return
+  try {
+    const res = await request(`/submissions/${encodeURIComponent(work.id)}/vote`, 'POST', {
+      action: work.votedToday ? 'unvote' : 'vote'
+    })
+    if (res?.data?.code === 0) {
+      work.likeCount = res.data.likeCount
+      work.votedToday = res.data.votedToday
+      if (quota.value) {
+        quota.value.usedToday = res.data.usedToday
+        quota.value.remaining = res.data.remaining
+      }
+    } else if (res?.data?.code === 3) {
+      alert(res.data.message)
+      await loadQuota()
+    } else {
+      alert(res?.data?.message || '操作失败')
+    }
+  } catch {
+    alert('操作失败，请重试')
+  }
+}
+
+function openWorkModal(work) {
+  modalWork.value = work
+  modalImageIndex.value = 0
 }
 
 function goSubmit(category) {
@@ -226,35 +347,11 @@ function goResults() {
   router.push('/award/results')
 }
 
-async function toggleLike(work) {
-  if (!localStorage.getItem('token')) {
-    router.push({ path: '/signin', query: { redirect: '/award' } })
-    return
-  }
-  try {
-    const res = await request(`/submissions/${encodeURIComponent(work.id)}/like`, 'POST', {
-      action: work.likedByMe ? 'unlike' : 'like'
-    })
-    if (res?.data?.code === 0) {
-      work.likeCount = res.data.likeCount
-      work.likedByMe = res.data.likedByMe
-    } else {
-      alert(res?.data?.message || '操作失败')
-    }
-  } catch {
-    alert('操作失败，请重试')
-  }
-}
-
-function openImage(work) {
-  const url = work.images?.[0]?.url
-  if (url) previewUrl.value = url
-}
-
 onMounted(() => {
   document.title = '奖项投稿 · 2026 迎新'
   loadMeta()
   loadWorks()
+  loadQuota()
 })
 </script>
 
@@ -284,10 +381,12 @@ onMounted(() => {
 
 .rules-panel { margin-top: 34px; padding: 24px; border-radius: 18px; background: #fff; border: 1px dashed #d8d4c9; }
 .rules-panel h2, .featured-section h2, .gallery-head h2 { margin: 0; font-size: 20px; }
-.rules-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 18px 0; }
+.rules-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 18px 0 12px; }
 .rule-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: #f5f3ec; }
 .rule-item b { font-size: 18px; color: #0d9488; }
 .rule-item span { color: #5f6d66; font-size: 12px; }
+.vote-rule { margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; background: #fff7e6; color: #7a5200; font-size: 13px; }
+.vote-rule b { color: #b45309; }
 .rules-note { margin: 0 0 14px; color: #7b857f; font-size: 12px; line-height: 1.7; }
 .ghost-btn { border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 9px 16px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 
@@ -300,35 +399,61 @@ onMounted(() => {
 .featured-card span { font-size: 11px; color: #7b857f; }
 
 .gallery-section { margin-top: 40px; }
-.gallery-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.gallery-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.gallery-head h2 { margin-right: auto; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-chips button { border: 1px solid #d8d4c9; background: #fff; color: #49584f; padding: 7px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
 .filter-chips button.active { background: #102a2e; border-color: #102a2e; color: #fff; }
+.quota-chip { padding: 7px 14px; border-radius: 999px; background: #eef7f3; border: 1px solid #cfe6dc; color: #0d6e5f; font-size: 12px; }
+.quota-chip b { font-size: 14px; }
+.results-link { border: 1px solid #e2b36b; background: #fffaf2; color: #9a6200; padding: 8px 15px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+
 .work-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 20px; }
 .work-card { overflow: hidden; border-radius: 16px; background: #fff; border: 1px solid #e8e4da; cursor: zoom-in; transition: transform .18s ease, box-shadow .18s ease; }
 .work-card:hover { transform: translateY(-3px); box-shadow: 0 16px 38px rgba(23,35,30,.1); }
 .work-card img { width: 100%; height: 210px; object-fit: cover; display: block; }
 .work-info { padding: 14px 16px 16px; }
-.work-title-row { display: flex; align-items: center; gap: 8px; }
+.work-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .work-title-row b { font-size: 15px; color: #17231e; }
 .featured-badge { padding: 2px 8px; border-radius: 999px; background: #fff1d6; color: #a16207; font-size: 11px; }
 .winner-badge { padding: 2px 8px; border-radius: 999px; background: #fdece8; color: #c2410c; font-size: 11px; }
 .work-info p { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .work-meta { display: flex; flex-wrap: wrap; gap: 8px; }
 .work-meta span { font-size: 11px; color: #8a958f; background: #f3f1ea; padding: 3px 9px; border-radius: 999px; }
-.like-btn { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2d3d3; background: #fff; color: #7b6a6a; padding: 6px 13px; border-radius: 999px; font-size: 12px; cursor: pointer; }
-.like-btn.liked { border-color: #ef6a6a; background: #fff1f1; color: #d43a3a; }
-.results-link { border: 1px solid #e2b36b; background: #fffaf2; color: #9a6200; padding: 8px 15px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+.work-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.intro-btn { border: 1px solid #d8d4c9; background: #fff; color: #49584f; padding: 7px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+.intro-btn:hover { border-color: #0d9488; color: #0d9488; }
+.vote-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2d3d3; background: #fff; color: #7b6a6a; padding: 7px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+.vote-btn.voted { border-color: #ef6a6a; background: #fff1f1; color: #d43a3a; }
+.vote-btn:disabled { opacity: .55; cursor: not-allowed; }
 
 .empty { padding: 42px 0; text-align: center; color: #8a958f; font-size: 14px; }
-.preview-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.82); }
-.preview-mask img { max-width: 92vw; max-height: 84vh; border-radius: 12px; box-shadow: 0 22px 60px rgba(0,0,0,.4); }
-.preview-mask button { position: fixed; top: 20px; right: 20px; border: 0; border-radius: 999px; background: rgba(255,255,255,.15); color: #fff; padding: 9px 16px; cursor: pointer; }
+
+.modal-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.78); }
+.modal-card { width: min(720px, 100%); max-height: 92vh; overflow: auto; position: relative; border-radius: 18px; background: #fff; display: grid; grid-template-columns: 1fr; }
+.modal-close { position: absolute; z-index: 2; top: 12px; right: 14px; width: 38px; height: 38px; border: 0; border-radius: 50%; background: rgba(0,0,0,.42); color: #fff; font-size: 22px; cursor: pointer; }
+.modal-images img { width: 100%; height: 320px; object-fit: cover; display: block; }
+.modal-thumbs { display: flex; gap: 8px; padding: 10px 14px; }
+.modal-thumbs button { border: 2px solid transparent; border-radius: 8px; overflow: hidden; padding: 0; background: #f1efe8; cursor: pointer; }
+.modal-thumbs button.active { border-color: #0d9488; }
+.modal-thumbs img { width: 64px; height: 48px; object-fit: cover; display: block; }
+.modal-body { padding: 6px 20px 22px; }
+.modal-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.modal-title-row b { font-size: 19px; color: #17231e; }
+.modal-desc { margin: 12px 0; color: #3f4d45; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+.modal-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.modal-meta span { font-size: 11px; color: #8a958f; background: #f3f1ea; padding: 3px 9px; border-radius: 999px; }
+.modal-vote { margin-top: 18px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #ef6a6a; background: #fff1f1; color: #d43a3a; padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.modal-vote:not(.voted) { border-color: #0d9488; background: #0d9488; color: #fff; }
+.modal-vote:disabled { opacity: .55; cursor: not-allowed; }
 
 @media (min-width: 720px) {
   .category-grid { grid-template-columns: repeat(2, 1fr); }
   .rules-grid { grid-template-columns: repeat(4, 1fr); }
   .work-grid { grid-template-columns: repeat(2, 1fr); }
+  .modal-card { grid-template-columns: 1.1fr 1fr; }
+  .modal-images img { height: 100%; min-height: 380px; }
+  .modal-thumbs { padding: 10px; }
 }
 @media (min-width: 1024px) {
   .work-grid { grid-template-columns: repeat(3, 1fr); }

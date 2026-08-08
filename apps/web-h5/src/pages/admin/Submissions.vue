@@ -64,8 +64,12 @@
             <span class="tag" :class="item.status">{{ statusText(item.status) }}</span>
             <span v-if="item.featured" class="tag featured">优秀</span>
             <span v-if="item.winnerRank" class="tag winner">{{ item.winnerLabel }}</span>
+            <span v-if="item.appealStatus === 'pending'" class="tag appeal">申诉中</span>
           </div>
           <p class="desc">{{ item.description }}</p>
+          <p v-if="item.appealStatus === 'pending'" class="appeal-reason">
+            申诉理由：{{ item.appealReason }}
+          </p>
           <div class="meta">
             <span>投稿人：{{ item.username }}</span>
             <span>打卡点：{{ item.locationName }}</span>
@@ -75,19 +79,19 @@
         </div>
         <div class="ops">
           <button
-            v-if="item.status === 'pending'"
+            v-if="item.status === 'pending' || (item.status === 'rejected' && item.appealStatus === 'pending')"
             class="btn approve"
             type="button"
             :disabled="busy[item.id]"
             @click="approve(item)"
-          >通过</button>
+          >{{ item.appealStatus === 'pending' ? '通过申诉' : '通过' }}</button>
           <button
-            v-if="item.status === 'pending'"
+            v-if="item.status === 'pending' || (item.status === 'rejected' && item.appealStatus === 'pending')"
             class="btn reject"
             type="button"
             :disabled="busy[item.id]"
             @click="reject(item)"
-          >驳回</button>
+          >{{ item.appealStatus === 'pending' ? '维持驳回' : '驳回' }}</button>
           <button
             v-if="item.status === 'approved'"
             class="btn feature"
@@ -216,8 +220,13 @@ async function approve(item) {
 
 async function reject(item) {
   if (busy.value[item.id]) return
-  const note = window.prompt(`驳回《${item.title}》，可填写原因（选填）：`, '')
+  let note = window.prompt(`驳回《${item.title}》，请填写驳回理由：`, '')
   if (note === null) return
+  while (!String(note).trim()) {
+    alert('请填写驳回理由，用户需要看到原因')
+    note = window.prompt(`驳回《${item.title}》，请填写驳回理由：`, '')
+    if (note === null) return
+  }
   markBusy(item.id, true)
   try {
     const res = await request(`/admin/submissions/${encodeURIComponent(item.id)}/reject`, 'POST', { note })
@@ -336,6 +345,8 @@ onMounted(() => {
 .tag.rejected { background: #fdeeee; color: #b42318; }
 .tag.featured { background: #fff1d6; color: #a16207; }
 .tag.winner { background: #fdece8; color: #c2410c; }
+.tag.appeal { background: #eef2ff; color: #3730a3; }
+.appeal-reason { margin: 8px 0 0; color: #3730a3; font-size: 12px; background: #eef2ff; padding: 8px 10px; border-radius: 8px; }
 .desc { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; }
 .meta { display: flex; flex-wrap: wrap; gap: 10px; color: #8a958f; font-size: 11px; }
 .note { margin: 8px 0 0; color: #b42318; font-size: 12px; }

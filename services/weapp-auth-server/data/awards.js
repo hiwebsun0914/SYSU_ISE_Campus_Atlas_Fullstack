@@ -14,6 +14,9 @@ module.exports = {
   // 单张图片大小上限（MB）
   maxImageMB: 10,
 
+  // 每个用户每天最多投票数（防止刷票）
+  maxVotesPerDay: 3,
+
   // 允许的图片类型
   allowedImageTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
 

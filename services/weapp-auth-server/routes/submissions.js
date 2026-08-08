@@ -103,6 +103,48 @@ const validLocationIds = () => {
   return ids;
 };
 
+// 北京时间（UTC+8）的日期，格式 YYYY-MM-DD，用于“每天”的投票与限额
+function beijingDay(ts = Date.now()) {
+  return new Date(Number(ts) + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+// 用户“真实姓名”作为投票身份（防止同一个人注册多个账号刷票）
+function realNameOfUser(u) {
+  return String((u && (u.realName || u.phone || u.username)) || '').trim();
+}
+
+// 一条投票记录的“身份键”：优先用注册时的真实姓名
+function voteKey(v, usersById) {
+  if (v && v.name) return String(v.name).trim();
+  const u = usersById && usersById[String(v && v.userId)];
+  return u ? realNameOfUser(u) : String((v && v.userId) || '');
+}
+
+// 统计某“真实姓名”在某天总共投出的票数（跨所有账号与作品）
+function countUserVotesToday(list, myKey, day, usersById) {
+  let n = 0;
+  for (const s of list) {
+    if (!Array.isArray(s.votes)) continue;
+    for (const v of s.votes) {
+      if (voteKey(v, usersById) === myKey && v.day === day) n += 1;
+    }
+  }
+  return n;
+}
+
+// 构造“当前查看者”上下文（用于投票状态与限额）
+function buildViewerContext(userId) {
+  if (userId == null) return null;
+  const users = readUsers();
+  const me = users.find(u => u.id === userId);
+  const usersById = users.reduce((m, u) => { m[String(u.id)] = u; return m; }, {});
+  return {
+    userId,
+    myKey: realNameOfUser(me),
+    usersById
+  };
+}
+
 function categoryById(id) {
   return (awards.categories || []).find(c => c.id === id) || null;
 }
@@ -128,8 +170,9 @@ function findById(id) {
 }
 
 // 保留投稿记录中用户可读信息
-function publicView(s, withUser = false, viewerId = null) {
-  const likes = Array.isArray(s.likes) ? s.likes : [];
+function publicView(s, withUser = false, viewer = null) {
+  const votes = Array.isArray(s.votes) ? s.votes : [];
+  const today = beijingDay();
   const base = {
     id: s.id,
     category: s.category,
@@ -146,8 +189,12 @@ function publicView(s, withUser = false, viewerId = null) {
     featured: !!s.featured,
     winnerRank: s.winnerRank || '',
     winnerLabel: winnerLabelOf(s.winnerRank),
-    likeCount: likes.length,
-    likedByMe: viewerId != null && likes.some(id => String(id) === String(viewerId)),
+    likeCount: votes.length,
+    votedToday: viewer != null && votes.some(v => voteKey(v, viewer.usersById) === viewer.myKey && v.day === today),
+    appealReason: s.appealReason || '',
+    appealTime: s.appealTime || 0,
+    appealStatus: s.appealStatus || '',
+    appealResult: s.appealResult || '',
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     reviewedAt: s.reviewedAt || 0,
@@ -171,6 +218,7 @@ router.get('/meta', (_req, res) => {
       perUserPerCategory: awards.perUserPerCategory,
       maxImagesPerWork: awards.maxImagesPerWork,
       maxImageMB: awards.maxImageMB,
+      maxVotesPerDay: awards.maxVotesPerDay,
       allowedImageTypes: awards.allowedImageTypes,
       categories: awards.categories
     }
@@ -299,6 +347,7 @@ router.post('/', auth, (req, res) => {
     avatar: me.avatar || '',
     status: 'pending',
     featured: false,
+    votes: [],
     createdAt: now,
     updatedAt: now,
     reviewedAt: 0,
@@ -336,7 +385,8 @@ router.get('/', optionalAuth, (req, res) => {
   list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
   const limit = Math.min(Number(q.limit) || 50, 200);
-  const page = list.slice(0, limit).map(s => publicView(s, true, req.userId));
+  const viewer = buildViewerContext(req.userId);
+  const page = list.slice(0, limit).map(s => publicView(s, true, viewer));
   res.json({ code: 0, list: page, total: list.length });
 });
 
@@ -350,36 +400,123 @@ router.get('/winners', optionalAuth, (_req, res) => {
       const orderB = (awards.winnerRanks || []).findIndex(r => r.id === b.winnerRank);
       return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
     })
-    .map(s => publicView(s, true, _req.userId));
+    .map(s => publicView(s, true, buildViewerContext(_req.userId)));
   res.json({ code: 0, list });
 });
 
-// ====== 6c. 点赞 / 取消点赞（仅已通过作品，登录用户） ======
-// POST /submissions/:id/like  { action: 'like' | 'unlike' }
-router.post('/:id/like', auth, (req, res) => {
+// ====== 6c. 投票 / 取消当天投票（仅已通过作品，必须登录） ======
+// POST /submissions/:id/vote  { action: 'vote' | 'unvote' }
+// 规则：每个用户每天最多投 maxVotesPerDay 票；同一作品每天最多 1 票；
+// 再次点击同一作品 = 取消当天的投票；第二天可重新投票。
+router.post('/:id/vote', auth, (req, res) => {
   const list = readSubmissions();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '作品不存在' });
   if (item.status !== 'approved') {
-    return res.json({ code: 1, message: '作品通过审核后才能点赞' });
+    return res.json({ code: 1, message: '作品通过审核后才能投票' });
   }
 
-  const action = String(req.body?.action || 'like');
-  let likes = Array.isArray(item.likes) ? item.likes : [];
-  const already = likes.some(id => String(id) === String(req.userId));
+  const day = beijingDay();
+  const maxVotesPerDay = awards.maxVotesPerDay || 3;
+  const users = readUsers();
+  const me = users.find(u => u.id === req.userId);
+  if (!me) return res.status(401).json({ code: 1, message: '用户不存在' });
+  const usersById = users.reduce((m, u) => { m[String(u.id)] = u; return m; }, {});
+  const myKey = realNameOfUser(me);
+  let votes = Array.isArray(item.votes) ? item.votes : [];
+  const idx = votes.findIndex(v => voteKey(v, usersById) === myKey && v.day === day);
+  const action = String(req.body?.action || 'vote');
 
-  if (action === 'like' && !already) likes.push(req.userId);
-  if (action === 'unlike' && already) likes = likes.filter(id => String(id) !== String(req.userId));
+  if (action === 'unvote') {
+    // 取消当天投票
+    if (idx !== -1) votes.splice(idx, 1);
+  } else {
+    if (idx !== -1) {
+      // 已投过当天 → 再次点击 = 取消当天投票
+      votes.splice(idx, 1);
+    } else {
+      const usedToday = countUserVotesToday(list, myKey, day, usersById);
+      if (usedToday >= maxVotesPerDay) {
+        return res.json({ code: 3, message: `每天最多投 ${maxVotesPerDay} 票，明天再来吧` });
+      }
+      votes.push({ userId: req.userId, name: myKey, day, ts: Date.now() });
+    }
+  }
 
-  item.likes = likes;
+  item.votes = votes;
   item.updatedAt = Date.now();
   writeSubmissions(list);
 
+  const votedToday = votes.some(v => voteKey(v, usersById) === myKey && v.day === day);
+  const usedToday = countUserVotesToday(list, myKey, day, usersById);
   res.json({
     code: 0,
-    likeCount: likes.length,
-    likedByMe: likes.some(id => String(id) === String(req.userId))
+    likeCount: votes.length,
+    votedToday,
+    usedToday,
+    remaining: Math.max(0, maxVotesPerDay - usedToday)
   });
+});
+
+// ====== 6d. 今日剩余票数 ======
+// GET /submissions/votes/quota
+router.get('/votes/quota', auth, (_req, res) => {
+  const day = beijingDay();
+  const users = readUsers();
+  const me = users.find(u => u.id === _req.userId);
+  if (!me) return res.status(401).json({ code: 1, message: '用户不存在' });
+  const usersById = users.reduce((m, u) => { m[String(u.id)] = u; return m; }, {});
+  const usedToday = countUserVotesToday(readSubmissions(), realNameOfUser(me), day, usersById);
+  const maxVotesPerDay = awards.maxVotesPerDay || 3;
+  res.json({
+    code: 0,
+    data: {
+      maxVotesPerDay,
+      usedToday,
+      remaining: Math.max(0, maxVotesPerDay - usedToday)
+    }
+  });
+});
+
+// ====== 6e. 投稿详情（仅本人） ======
+// GET /submissions/:id
+router.get('/:id', auth, (req, res) => {
+  const item = readSubmissions().find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  if (String(item.userId) !== String(req.userId)) {
+    return res.status(403).json({ code: 1, message: '只能查看自己的投稿' });
+  }
+  res.json({ code: 0, data: { submission: publicView(item, true, buildViewerContext(req.userId)) } });
+});
+
+// ====== 6f. 提交申诉（仅被驳回的投稿） ======
+// POST /submissions/:id/appeal  { reason }
+router.post('/:id/appeal', auth, (req, res) => {
+  const list = readSubmissions();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  if (String(item.userId) !== String(req.userId)) {
+    return res.status(403).json({ code: 1, message: '只能操作自己的投稿' });
+  }
+  if (item.status !== 'rejected') {
+    return res.json({ code: 1, message: '只有被驳回的投稿可以申诉' });
+  }
+  if (item.appealStatus === 'pending') {
+    return res.json({ code: 1, message: '申诉处理中，请耐心等待' });
+  }
+
+  const reason = String(req.body?.reason || '').trim();
+  if (!reason) return res.json({ code: 1, message: '请填写申诉理由' });
+  if (reason.length > 300) return res.json({ code: 1, message: '申诉理由最多 300 个字' });
+
+  item.appealReason = reason;
+  item.appealTime = Date.now();
+  item.appealStatus = 'pending';
+  item.appealResult = '';
+  item.updatedAt = Date.now();
+  writeSubmissions(list);
+
+  res.json({ code: 0, message: '申诉已提交，等待管理员复核', data: { submission: publicView(item, true, buildViewerContext(req.userId)) } });
 });
 
 // ====== 7. 撤销投稿（仅自己、仅待审核） ======
@@ -400,3 +537,4 @@ router.delete('/:id', auth, (req, res) => {
 });
 
 module.exports = router;
+module.exports._test = { beijingDay, countUserVotesToday, realNameOfUser, voteKey };
