@@ -109,6 +109,19 @@
           <span class="future-year" aria-hidden="true">2030</span>
         </button>
 
+        <button class="feature-card award-card grid-item" type="button" @click="goProtected('/award')" aria-label="进入奖项投稿页面">
+          <span class="feature-top">
+            <span class="icon-tile"><Sparkles :size="22" aria-hidden="true" /></span>
+            <span class="coming-label">立即投稿</span>
+          </span>
+          <span class="feature-copy">
+            <small>AWARD GALLERY / 奖项投稿</small>
+            <strong>最佳创意奖 · 最佳摄影奖</strong>
+            <span>上传你的创意与摄影作品，赢取属于你的校园高光时刻</span>
+          </span>
+          <span class="award-spark" aria-hidden="true">✦</span>
+        </button>
+
         <button class="feature-card test-card grid-item" type="button" aria-label="进入 PLACE 校园人格测试" @click="router.push('/place')">
           <span class="feature-top">
             <span class="icon-tile icon-tile-dark"><ScanFace :size="23" aria-hidden="true" /></span>
@@ -194,7 +207,7 @@ import { useRouter } from 'vue-router'
 import {
   ArrowRight, ArrowUpRight, ChevronRight, CircleUserRound, Clock3, House,
   LifeBuoy, Map, MapPinned, MessageCircleMore, Navigation, ScanFace,
-  Send, Trophy, WifiOff, X,
+  Send, Sparkles, Trophy, WifiOff, X,
 } from '@lucide/vue'
 import { request } from '@/utils/request'
 
@@ -410,6 +423,7 @@ onBeforeUnmount(() => {
 .coming-label-dark { border-color: rgba(255,255,255,.23); color: var(--accent); background: rgba(255,255,255,.07); }
 .profile-stats { display: flex; gap: 22px; margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }.profile-stats span { display: grid; }.profile-stats b { color: var(--ink); font-family: "DIN Alternate", sans-serif; font-size: 26px; }
 .future-card { background: #e8f4ef; }.future-year { position: absolute; right: -7px; bottom: -25px; font-family: "DIN Alternate", sans-serif; font-size: 76px; font-weight: 900; color: rgba(10,46,59,.06); letter-spacing: 0; transition: transform .24s ease, opacity .24s ease; }.future-card:hover .future-year { transform: translateY(-4px); opacity: .86; }
+.award-card { background: #f4f0fa; }.award-spark { position: absolute; right: 14px; top: 12px; color: rgba(109,40,217,.28); font-size: 34px; transition: transform .24s ease, opacity .24s ease; }.award-card:hover .award-spark { transform: rotate(18deg) scale(1.12); opacity: .9; }
 .test-card { color: #fff; background: var(--primary); border-color: var(--primary); }.test-card .feature-copy small { color: rgba(255,255,255,.66); }.test-card .feature-copy strong { color: #fff; }.test-card .feature-copy > span { color: rgba(255,255,255,.75); }.scan-line { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 1px; background: repeating-linear-gradient(90deg,var(--accent) 0 18px,transparent 18px 26px); opacity: .75; }
 .test-card:hover .scan-line { animation: scan-sweep 1.1s ease-in-out infinite; }
 .message-card { background: #f7f8dd; }.message-route { display: flex; gap: 6px; margin-top: auto; padding-top: 18px; }.message-route i { width: 8px; height: 8px; border: 2px solid var(--ink); border-radius: 50%; }.message-route i:nth-child(2) { width: 54px; border-radius: 999px; background: var(--accent); transform-origin: left; }.message-card:hover .message-route i:nth-child(2) { animation: message-pulse 1.2s ease-in-out infinite; }

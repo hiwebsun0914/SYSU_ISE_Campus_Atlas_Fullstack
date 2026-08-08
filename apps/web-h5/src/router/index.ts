@@ -15,9 +15,13 @@ export default createRouter({
     { path: '/future-card',  component: () => import('../pages/futureCard.vue') },
     { path: '/signin',       component: () => import('../pages/signin.vue') },
     { path: '/connect',      component: () => import('../pages/connect.vue') },
+    { path: '/award',        component: () => import('../pages/award/AwardHome.vue') },
+    { path: '/award/submit', component: () => import('../pages/award/AwardSubmit.vue') },
+    { path: '/award/my',     component: () => import('../pages/award/AwardMine.vue') },
 
     // 如果 Review 在 src/pages/admin/Review.vue，用下面这一行
     { path: '/admin/review', component: () => import('../pages/admin/Review.vue') },
+    { path: '/admin/submissions', component: () => import('../pages/admin/Submissions.vue') },
     // 如果你其实放在 src/pages/Review.vue，请改成：
     // { path: '/admin/review', component: () => import('../pages/Review.vue') },
 
