@@ -151,6 +151,7 @@ test('meta returns categories, deadline and limits', async () => {
   assert.equal(body.code, 0);
   assert.equal(body.data.categories.length, 2);
   assert.ok(body.data.deadline);
+  assert.ok(body.data.awardCeremony);
   assert.ok(body.data.maxImagesPerWork > 0);
   assert.ok(body.data.maxVotesPerDay > 0);
 });
@@ -590,6 +591,40 @@ test('rejection reason, appeal and re-review flow', async () => {
   assert.equal(after.body.data.submission.status, 'approved');
   assert.equal(after.body.data.submission.appealStatus, 'resolved');
   assert.equal(after.body.data.submission.appealResult, 'approved');
+});
+
+test('blocks user operations after activity deadline; admin still works', async () => {
+  const awards = require('../data/awards');
+  const originalDeadline = awards.deadline;
+  awards.deadline = '2020-01-01T00:00:00+08:00';
+  try {
+    const create = await api(101, '/submissions', {
+      method: 'POST',
+      body: JSON.stringify(validPayload({ category: 'photography' }))
+    });
+    assert.equal(create.body.code, 4);
+
+    const vote = await api(101, '/submissions/whatever/vote', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'vote' })
+    });
+    assert.equal(vote.body.code, 4);
+
+    const appeal = await api(101, '/submissions/whatever/appeal', {
+      method: 'POST',
+      body: JSON.stringify({ reason: '请复核' })
+    });
+    assert.equal(appeal.body.code, 4);
+
+    const del = await api(101, '/submissions/whatever', { method: 'DELETE' });
+    assert.equal(del.body.code, 4);
+
+    // 管理员功能不受截止时间影响
+    const adminList = await api(202, '/admin/submissions');
+    assert.equal(adminList.body.code, 0);
+  } finally {
+    awards.deadline = originalDeadline;
+  }
 });
 
 test('handles corrupted storage without crashing', async () => {

@@ -103,6 +103,14 @@ const validLocationIds = () => {
   return ids;
 };
 
+// 活动是否已截止（截止后普通用户不能再投稿、申诉、删除、投票）
+function isActivityEnded() {
+  if (!awards.deadline) return false;
+  return Date.now() > new Date(awards.deadline).getTime();
+}
+
+const ACTIVITY_ENDED_MSG = '活动已截止，无法进行操作，请耐心期待最终结果公布';
+
 // 北京时间（UTC+8）的日期，格式 YYYY-MM-DD，用于“每天”的投票与限额
 function beijingDay(ts = Date.now()) {
   return new Date(Number(ts) + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -223,6 +231,7 @@ router.get('/meta', (_req, res) => {
     code: 0,
     data: {
       deadline: awards.deadline,
+      awardCeremony: awards.awardCeremony || '',
       perUserPerCategory: awards.perUserPerCategory,
       maxImagesPerWork: awards.maxImagesPerWork,
       maxImageMB: awards.maxImageMB,
@@ -286,6 +295,7 @@ router.post('/commit', auth, async (req, res) => {
 // ====== 4. 创建投稿 ======
 // POST /submissions  { category, title, description, locationId, images: [{key}] }
 router.post('/', auth, (req, res) => {
+  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
   const body = req.body || {};
   const category = String(body.category || '');
   const cat = categoryById(category);
@@ -425,6 +435,7 @@ router.get('/winners', optionalAuth, (_req, res) => {
 // 规则：每个用户每天最多投 maxVotesPerDay 票；同一作品每天最多 1 票；
 // 再次点击同一作品 = 取消当天的投票；第二天可重新投票。
 router.post('/:id/vote', auth, (req, res) => {
+  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
   const list = readSubmissions();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '作品不存在' });
@@ -508,6 +519,7 @@ router.get('/:id', auth, (req, res) => {
 // ====== 6f. 提交申诉（仅被驳回的投稿） ======
 // POST /submissions/:id/appeal  { reason }
 router.post('/:id/appeal', auth, (req, res) => {
+  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
   const list = readSubmissions();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
@@ -538,6 +550,7 @@ router.post('/:id/appeal', auth, (req, res) => {
 // ====== 7. 删除投稿（仅自己；任何状态都可删除，删除后无法找回） ======
 // DELETE /submissions/:id
 router.delete('/:id', auth, (req, res) => {
+  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
   const list = readSubmissions();
   const idx = list.findIndex(s => String(s.id) === String(req.params.id));
   if (idx === -1) return res.status(404).json({ code: 1, message: '投稿不存在' });
@@ -561,4 +574,4 @@ router.delete('/:id', auth, (req, res) => {
 });
 
 module.exports = router;
-module.exports._test = { beijingDay, countUserVotesToday, realNameOfUser, voteKey, ownerKey };
+module.exports._test = { beijingDay, countUserVotesToday, realNameOfUser, voteKey, ownerKey, isActivityEnded };

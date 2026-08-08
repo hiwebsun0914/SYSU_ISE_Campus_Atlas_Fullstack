@@ -98,7 +98,7 @@ function preview(url) {
 }
 
 onMounted(() => {
-  document.title = '我的投稿 · 奖项投稿'
+  document.title = '我的投稿 · 打卡作品投稿'
   load()
 })
 </script>

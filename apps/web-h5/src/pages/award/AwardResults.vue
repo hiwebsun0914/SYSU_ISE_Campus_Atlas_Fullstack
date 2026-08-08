@@ -9,7 +9,7 @@
     <main class="results-main">
       <div v-if="loading" class="empty">加载中…</div>
       <div v-else-if="!winners.length" class="empty">
-        <p>评审进行中，结果即将公布，敬请期待！</p>
+        <p>评审进行中，获奖结果将在 2026年9月19日迎新晚会后公布，敬请期待！</p>
         <button class="back-btn" type="button" @click="router.push('/award')">返回投稿首页</button>
       </div>
 

@@ -4,7 +4,7 @@
       <a class="back-link" href="#/" @click.prevent="router.push('/')">‹ 返回首页</a>
       <div class="header-inner">
         <p class="eyebrow">SYSU ISE · 2026 WELCOME</p>
-        <h1>奖项投稿</h1>
+        <h1>打卡作品投稿</h1>
         <p class="lede">
           用一张照片或一个创意，记录你眼中的校园。<br />
           最佳创意奖与最佳摄影奖，等你来投。
@@ -27,14 +27,22 @@
         >
           <div class="cat-icon" aria-hidden="true">{{ cat.icon }}</div>
           <h2>{{ cat.name }}</h2>
+          <p class="cat-welcome">{{ cat.welcome || cat.description }}</p>
           <p>{{ cat.description }}</p>
           <ul class="req-list">
             <li v-for="(r, i) in cat.requirements" :key="i">{{ r }}</li>
           </ul>
-          <button class="submit-btn" type="button" @click="goSubmit(cat.id)" :disabled="closed">
+          <button class="submit-btn" :class="{ closed }" type="button" @click="goSubmit(cat.id)">
             {{ closed ? '已截止' : '立即投稿' }}
           </button>
         </article>
+      </section>
+
+      <!-- 活动说明 -->
+      <section class="activity-note">
+        <p>
+          请在投稿前认真阅读投稿须知，填写好作品名字、介绍、和打卡地点等内容。我们在审核通过后会将投稿作品展出，大家也可以为自己喜欢的作品投票（每人每天三票，最多每天给一个作品投一票）。我们将会在2026年9月16日23:59截止投稿、点赞等相关活动，并在2026年9月19日的迎新晚会后颁奖。
+        </p>
       </section>
 
       <!-- 投稿规则 -->
@@ -47,7 +55,7 @@
           </div>
           <div class="rule-item">
             <b>{{ maxImagesPerWork }}</b>
-            <span>每份作品最多 {{ maxImagesPerWork }} 张图片</span>
+            <span>每份作品限 {{ maxImagesPerWork }} 张图片</span>
           </div>
           <div class="rule-item">
             <b>{{ maxImageMB }}MB</b>
@@ -62,8 +70,9 @@
           🗳️ 每人每天最多投 <b>{{ maxVotesPerDay }}</b> 票，同一作品每天限 1 票，次日可重新投票。
         </div>
         <p class="rules-note">
-          投稿作品经管理员审核通过后将在下方展示；优秀作品将获得特别标注。
+          投稿作品经管理员审核通过后将在下方展示；优秀作品将被选在首行特别展出。
         </p>
+        <p class="ceremony-line">🏆 颁奖时间：{{ ceremonyText }}</p>
         <button class="ghost-btn" type="button" @click="goMine">查看我的投稿 →</button>
       </section>
 
@@ -94,8 +103,9 @@
               @click="setGalleryFilter(f.value)"
             >{{ f.label }}</button>
           </div>
-          <span v-if="loggedIn && !closed" class="quota-chip">
-            今日剩余 <b>{{ remainingVotes }}</b> 票
+          <span v-if="loggedIn" class="quota-chip" :class="{ ended: closed }">
+            <template v-if="!closed">今日剩余 <b>{{ remainingVotes }}</b> 票</template>
+            <template v-else>投票已截止</template>
           </span>
           <button class="results-link" type="button" @click="goResults">🏆 获奖结果公示</button>
         </div>
@@ -123,9 +133,8 @@
                 <button class="intro-btn" type="button" @click.stop="openWorkModal(w)">查看作品介绍</button>
                 <button
                   class="vote-btn"
-                  :class="{ voted: w.votedToday }"
+                  :class="{ voted: w.votedToday, closed }"
                   type="button"
-                  :disabled="closed"
                   @click.stop="toggleVote(w)"
                 >
                   <Heart :size="15" aria-hidden="true" />
@@ -175,9 +184,8 @@
           </div>
           <button
             class="modal-vote"
-            :class="{ voted: modalWork.votedToday }"
+            :class="{ voted: modalWork.votedToday, closed }"
             type="button"
-            :disabled="closed"
             @click="toggleVote(modalWork)"
           >
             <Heart :size="16" aria-hidden="true" />
@@ -231,6 +239,7 @@ const deadlineText = computed(() => {
     return deadline.value
   }
 })
+const ceremonyText = computed(() => meta.value?.awardCeremony || AWARD_CONFIG.awardCeremony || '待定')
 const loggedIn = computed(() => !!localStorage.getItem('token'))
 const remainingVotes = computed(() =>
   quota.value != null ? quota.value.remaining : maxVotesPerDay.value
@@ -316,11 +325,14 @@ async function reloadFiltered() {
 }
 
 async function toggleVote(work) {
+  if (closed.value) {
+    showToast('活动已截止，无法进行操作，请耐心期待最终结果公布')
+    return
+  }
   if (!loggedIn.value) {
     router.push({ path: '/signin', query: { redirect: '/award' } })
     return
   }
-  if (closed.value) return
   try {
     const res = await request(`/submissions/${encodeURIComponent(work.id)}/vote`, 'POST', {
       action: work.votedToday ? 'unvote' : 'vote'
@@ -349,6 +361,10 @@ function openWorkModal(work) {
 }
 
 function goSubmit(category) {
+  if (closed.value) {
+    showToast('活动已截止，无法进行操作，请耐心期待最终结果公布')
+    return
+  }
   router.push({ path: '/award/submit', query: { category } })
 }
 
@@ -361,7 +377,7 @@ function goResults() {
 }
 
 onMounted(() => {
-  document.title = '奖项投稿 · 2026 迎新'
+  document.title = '打卡作品投稿 · 2026 迎新'
   loadMeta()
   loadWorks()
   loadQuota()
@@ -385,12 +401,16 @@ onMounted(() => {
 .category-card::before { content: ""; position: absolute; inset: 0; opacity: .08; background: radial-gradient(circle at 85% 12%, var(--cat-color), transparent 46%); }
 .cat-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 15px 5px 15px 5px; background: var(--cat-color); color: #fff; font-size: 24px; }
 .category-card h2 { margin: 18px 0 8px; font-size: 24px; color: #17231e; }
+.cat-welcome { margin: 0 0 10px; color: #3f4d45; font-size: 14px; line-height: 1.85; }
 .category-card > p { margin: 0; color: #5f6d66; font-size: 14px; line-height: 1.7; }
 .req-list { margin: 16px 0 22px; padding: 0; list-style: none; }
 .req-list li { position: relative; padding-left: 18px; color: #49584f; font-size: 13px; line-height: 2; }
 .req-list li::before { content: "•"; position: absolute; left: 4px; color: var(--cat-color); font-weight: 800; }
 .submit-btn { min-height: 46px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--cat-color); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; }
-.submit-btn:disabled { background: #c9cdca; cursor: not-allowed; }
+.submit-btn.closed { background: #c9cdca; cursor: pointer; }
+
+.activity-note { margin-top: 18px; padding: 18px 22px; border-radius: 14px; background: #fffaf2; border: 1px solid #f0d9a8; }
+.activity-note p { margin: 0; color: #6b5628; font-size: 14px; line-height: 1.9; }
 
 .rules-panel { margin-top: 34px; padding: 24px; border-radius: 18px; background: #fff; border: 1px dashed #d8d4c9; }
 .rules-panel h2, .featured-section h2, .gallery-head h2 { margin: 0; font-size: 20px; }
@@ -401,6 +421,7 @@ onMounted(() => {
 .vote-rule { margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; background: #fff7e6; color: #7a5200; font-size: 13px; }
 .vote-rule b { color: #b45309; }
 .rules-note { margin: 0 0 14px; color: #7b857f; font-size: 12px; line-height: 1.7; }
+.ceremony-line { margin: 0 0 14px; color: #9a6200; font-size: 13px; font-weight: 700; }
 .ghost-btn { border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 9px 16px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 
 .featured-section { margin-top: 40px; }
@@ -419,6 +440,7 @@ onMounted(() => {
 .filter-chips button.active { background: #102a2e; border-color: #102a2e; color: #fff; }
 .quota-chip { padding: 7px 14px; border-radius: 999px; background: #eef7f3; border: 1px solid #cfe6dc; color: #0d6e5f; font-size: 12px; }
 .quota-chip b { font-size: 14px; }
+.quota-chip.ended { background: #eef2f7; border-color: #dbe2ea; color: #64748b; }
 .results-link { border: 1px solid #e2b36b; background: #fffaf2; color: #9a6200; padding: 8px 15px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 
 .work-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 20px; }
@@ -438,7 +460,7 @@ onMounted(() => {
 .intro-btn:hover { border-color: #0d9488; color: #0d9488; }
 .vote-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2d3d3; background: #fff; color: #7b6a6a; padding: 7px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
 .vote-btn.voted { border-color: #ef6a6a; background: #fff1f1; color: #d43a3a; }
-.vote-btn:disabled { opacity: .55; cursor: not-allowed; }
+.vote-btn.closed { opacity: .6; cursor: pointer; }
 
 .empty { padding: 42px 0; text-align: center; color: #8a958f; font-size: 14px; }
 .page-toast { position: fixed; left: 50%; bottom: 30px; z-index: 120; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 11px 18px; border-radius: 999px; background: rgba(17,35,30,.92); color: #fff; font-size: 13px; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,.22); }
@@ -461,7 +483,7 @@ onMounted(() => {
 .modal-meta span { font-size: 11px; color: #8a958f; background: #f3f1ea; padding: 3px 9px; border-radius: 999px; }
 .modal-vote { margin-top: 18px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #ef6a6a; background: #fff1f1; color: #d43a3a; padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .modal-vote:not(.voted) { border-color: #0d9488; background: #0d9488; color: #fff; }
-.modal-vote:disabled { opacity: .55; cursor: not-allowed; }
+.modal-vote.closed { opacity: .6; cursor: pointer; }
 
 @media (min-width: 720px) {
   .category-grid { grid-template-columns: repeat(2, 1fr); }

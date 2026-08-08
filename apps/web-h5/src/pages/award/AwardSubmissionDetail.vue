@@ -128,6 +128,10 @@
       <img :src="previewUrl" alt="作品大图" />
       <button type="button" @click="previewUrl = ''">关闭</button>
     </div>
+
+    <Transition name="toast">
+      <div v-if="toast" class="page-toast" role="status">{{ toast }}</div>
+    </Transition>
   </div>
 </template>
 
@@ -135,6 +139,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request } from '@/utils/request'
+import { AWARD_CONFIG } from '@/data/awards'
 
 const route = useRoute()
 const router = useRouter()
@@ -148,6 +153,17 @@ const previewUrl = ref('')
 const deleteModalVisible = ref(false)
 const deleting = ref(false)
 const deleteError = ref('')
+const toast = ref('')
+let toastTimer = 0
+
+const closed = computed(() => Date.now() > new Date(AWARD_CONFIG.deadline).getTime())
+const ACTIVITY_ENDED_MSG = '活动已截止，无法进行操作，请耐心期待最终结果公布'
+
+function showToast(msg) {
+  toast.value = msg
+  window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => { toast.value = '' }, 3200)
+}
 
 const statusText = computed(() => {
   if (!item.value) return ''
@@ -192,6 +208,10 @@ async function load() {
 }
 
 async function submitAppeal() {
+  if (closed.value) {
+    showToast(ACTIVITY_ENDED_MSG)
+    return
+  }
   appealError.value = ''
   const reason = appealReason.value.trim()
   if (!reason) {
@@ -220,6 +240,11 @@ function openDeleteModal() {
 }
 
 async function confirmDelete() {
+  if (closed.value) {
+    deleteModalVisible.value = false
+    showToast(ACTIVITY_ENDED_MSG)
+    return
+  }
   if (deleting.value) return
   deleting.value = true
   try {
@@ -319,4 +344,7 @@ onMounted(() => {
 .modal-warn { margin: 0; color: #5f6d66; font-size: 14px; line-height: 1.7; }
 .modal-warn b { color: #b42318; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.page-toast { position: fixed; left: 50%; bottom: 30px; z-index: 120; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 11px 18px; border-radius: 999px; background: rgba(17,35,30,.92); color: #fff; font-size: 13px; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,.22); }
+.toast-enter-active, .toast-leave-active { transition: opacity .2s ease, transform .2s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translate(-50%, 10px); }
 </style>

@@ -115,7 +115,7 @@
             <span class="coming-label">立即投稿</span>
           </span>
           <span class="feature-copy">
-            <small>AWARD GALLERY / 奖项投稿</small>
+            <small>CHECK-IN GALLERY / 打卡作品投稿</small>
             <strong>最佳创意奖 · 最佳摄影奖</strong>
             <span>上传你的创意与摄影作品，赢取属于你的校园高光时刻</span>
           </span>

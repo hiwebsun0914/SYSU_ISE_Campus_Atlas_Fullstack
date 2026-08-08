@@ -91,7 +91,8 @@
       </form>
 
       <div v-else class="empty">
-        <p>投稿已截止，感谢你的关注！</p>
+        <p>活动已截止，无法进行操作，请耐心期待最终结果公布。</p>
+        <button class="ghost-btn" type="button" @click="router.push('/award')">查看作品</button>
       </div>
     </main>
 
@@ -128,7 +129,6 @@
       ref="fileInput"
       type="file"
       accept="image/jpeg,image/png,image/webp,image/gif"
-      multiple
       hidden
       @change="onFilesChosen"
     />
@@ -378,7 +378,7 @@ async function load() {
 }
 
 onMounted(() => {
-  document.title = '作品投稿 · 奖项投稿'
+  document.title = '作品投稿 · 打卡作品投稿'
   load()
 })
 </script>
