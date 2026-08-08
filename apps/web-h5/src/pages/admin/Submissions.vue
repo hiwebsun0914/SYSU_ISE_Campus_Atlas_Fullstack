@@ -63,6 +63,7 @@
             <span class="tag cat">{{ item.categoryName }}</span>
             <span class="tag" :class="item.status">{{ statusText(item.status) }}</span>
             <span v-if="item.featured" class="tag featured">优秀</span>
+            <span v-if="item.winnerRank" class="tag winner">{{ item.winnerLabel }}</span>
           </div>
           <p class="desc">{{ item.description }}</p>
           <div class="meta">
@@ -94,6 +95,15 @@
             :disabled="busy[item.id]"
             @click="toggleFeature(item)"
           >{{ item.featured ? '取消优秀' : '标记优秀' }}</button>
+          <div v-if="item.status === 'approved'" class="winner-row">
+            <select v-model="winnerDrafts[item.id]" :disabled="busy[item.id]">
+              <option value="">未获奖</option>
+              <option v-for="r in winnerRanks" :key="r.id" :value="r.id">{{ r.label }}</option>
+            </select>
+            <button class="btn feature" type="button" :disabled="busy[item.id]" @click="saveWinner(item)">
+              保存获奖
+            </button>
+          </div>
         </div>
       </article>
     </div>
@@ -110,6 +120,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
+import { AWARD_CONFIG } from '@/data/awards'
 
 const router = useRouter()
 const loading = ref(false)
@@ -120,6 +131,8 @@ const status = ref('all')
 const category = ref('all')
 const busy = ref({})
 const previewUrl = ref('')
+const winnerDrafts = ref({})
+const winnerRanks = AWARD_CONFIG.winnerRanks || []
 
 const statusTabs = [
   { value: 'all', label: '全部' },
@@ -164,6 +177,9 @@ async function fetchList() {
     if (isOk(res)) {
       list.value = res.data.list || []
       stat.value = res.data.stat || null
+      const drafts = {}
+      list.value.forEach(item => { drafts[item.id] = item.winnerRank || '' })
+      winnerDrafts.value = drafts
     }
   } catch {
     list.value = []
@@ -220,6 +236,22 @@ async function toggleFeature(item) {
   try {
     const res = await request(`/admin/submissions/${encodeURIComponent(item.id)}/feature`, 'POST', {
       featured: !item.featured
+    })
+    if (isOk(res)) fetchList()
+    else alert(res?.data?.message || '操作失败')
+  } catch {
+    alert('操作失败，请重试')
+  } finally {
+    markBusy(item.id, false)
+  }
+}
+
+async function saveWinner(item) {
+  if (busy.value[item.id]) return
+  markBusy(item.id, true)
+  try {
+    const res = await request(`/admin/submissions/${encodeURIComponent(item.id)}/winner`, 'POST', {
+      rank: winnerDrafts.value[item.id] || ''
     })
     if (isOk(res)) fetchList()
     else alert(res?.data?.message || '操作失败')
@@ -303,6 +335,7 @@ onMounted(() => {
 .tag.approved { background: #e6f7ef; color: #0a7a54; }
 .tag.rejected { background: #fdeeee; color: #b42318; }
 .tag.featured { background: #fff1d6; color: #a16207; }
+.tag.winner { background: #fdece8; color: #c2410c; }
 .desc { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; }
 .meta { display: flex; flex-wrap: wrap; gap: 10px; color: #8a958f; font-size: 11px; }
 .note { margin: 8px 0 0; color: #b42318; font-size: 12px; }
@@ -312,6 +345,8 @@ onMounted(() => {
 .btn.approve { background: #0d9488; color: #fff; }
 .btn.reject { background: #b42318; color: #fff; }
 .btn.feature { background: #f2c14e; color: #5c3a00; }
+.winner-row { display: flex; align-items: center; gap: 8px; }
+.winner-row select { padding: 7px 9px; border: 1px solid #d8d4c9; border-radius: 10px; background: #fff; font-size: 12px; color: #17231e; }
 
 .empty { padding: 40px 0; text-align: center; color: #8a958f; font-size: 14px; }
 .preview-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.82); }

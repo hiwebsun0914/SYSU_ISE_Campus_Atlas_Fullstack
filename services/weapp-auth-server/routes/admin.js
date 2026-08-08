@@ -8,8 +8,8 @@ const COS = require('cos-nodejs-sdk-v5');
 const auth = require('../middleware/auth');
 
 // ====== 常量 / 配置 ======
-const USERS_FILE   = path.join(__dirname, '..', 'users.json');
-const BOTTLES_FILE = path.join(__dirname, '..', 'bottles.json');
+const USERS_FILE   = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
+const BOTTLES_FILE = path.resolve(process.env.BOTTLES_FILE || path.join(__dirname, '..', 'bottles.json'));
 const DEFAULT_AVATAR = 'https://img.yzcdn.cn/vant/user-active.png';
 const DEFAULT_ROLE   = 'visitor';
 
@@ -303,8 +303,15 @@ router.get('/bottles', auth, adminOnly, (req, res) => {
 // ================================================================
 // Part 6: Best Creativity Award / Best Photography Award review
 // ================================================================
-const SUBMISSIONS_FILE = path.join(__dirname, '..', 'submissions.json');
+const SUBMISSIONS_FILE = path.resolve(
+  process.env.SUBMISSIONS_FILE || path.join(__dirname, '..', 'submissions.json')
+);
 const AWARDS = require('../data/awards');
+
+function winnerLabelOf(rank) {
+  if (!rank) return '';
+  return (AWARDS.winnerRanks || []).find(r => r.id === rank)?.label || '';
+}
 
 function readSubmissionsArray() {
   ensureFile(SUBMISSIONS_FILE, '[]');
@@ -422,6 +429,32 @@ router.post('/submissions/:id/feature', auth, adminOnly, (req, res) => {
   item.updatedAt = Date.now();
   writeSubmissionsArray(list);
   res.json({ code: 0, message: featured ? '已标记为优秀作品' : '已取消优秀标记', featured });
+});
+
+// ====== 设置 / 取消获奖等级 ======
+// POST /admin/submissions/:id/winner  { rank: 'first'|'second'|'third'|'popular'|'' }
+router.post('/submissions/:id/winner', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+
+  const rank = String(req.body?.rank || '').trim();
+  if (rank && !(AWARDS.winnerRanks || []).some(r => r.id === rank)) {
+    return res.json({ code: 1, message: '获奖等级不正确' });
+  }
+  if (rank && item.status !== 'approved') {
+    return res.json({ code: 1, message: '作品通过审核后才能设置获奖' });
+  }
+
+  item.winnerRank = rank;
+  item.updatedAt = Date.now();
+  writeSubmissionsArray(list);
+  res.json({
+    code: 0,
+    message: rank ? `已设置：${winnerLabelOf(rank)}` : '已取消获奖设置',
+    winnerRank: rank,
+    winnerLabel: winnerLabelOf(rank)
+  });
 });
 
 // ====== Export submission list (CSV) ======

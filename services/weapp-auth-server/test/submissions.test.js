@@ -13,7 +13,7 @@ const submissionsFile = path.join(testDir, 'submissions.json');
 const jwtSecret = 'test-only-secret-with-sufficient-length';
 const users = [
   { id: 101, username: 'alice', role: 'visitor' },
-  { id: 202, username: 'bob', role: 'visitor' }
+  { id: 202, username: 'bob', role: 'admin' }
 ];
 
 fs.writeFileSync(usersFile, JSON.stringify(users), 'utf8');
@@ -22,9 +22,21 @@ process.env.SUBMISSIONS_FILE = submissionsFile;
 process.env.JWT_SECRET = jwtSecret;
 
 const submissionsRouter = require('../routes/submissions');
+const adminRouter = require('../routes/admin');
+const authMw = require('../middleware/auth');
 const app = express();
 app.use(express.json({ limit: '64kb' }));
 app.use('/submissions', submissionsRouter);
+
+// 管理员权限（与 app.js 挂载方式一致）
+function adminOnly(req, res, next) {
+  const list = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+  const me = list.find(u => u.id === req.userId);
+  if (!me) return res.status(401).json({ code: 1, message: '未登录' });
+  if (me.role !== 'admin') return res.status(403).json({ code: 1, message: '无管理员权限' });
+  next();
+}
+app.use('/admin', authMw, adminOnly, adminRouter);
 
 const server = app.listen(0, '127.0.0.1');
 let baseUrl = '';
@@ -173,6 +185,121 @@ test('user can withdraw own pending submission only', async () => {
 
   const after = await api(101, '/submissions/mine');
   assert.equal(after.body.list.length, 1);
+});
+
+test('supports like / unlike on approved works', async () => {
+  // 101 投稿摄影类（其创意类已有待审核作品，摄影类可投）
+  const created = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({ category: 'photography', title: '可点赞的作品' }))
+  });
+  assert.equal(created.body.code, 0);
+  const id = created.body.data.submission.id;
+
+  // 管理员通过
+  const approved = await api(202, `/admin/submissions/${encodeURIComponent(id)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  assert.equal(approved.body.code, 0);
+
+  // 101 点赞
+  const like1 = await api(101, `/submissions/${encodeURIComponent(id)}/like`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'like' })
+  });
+  assert.equal(like1.body.code, 0);
+  assert.equal(like1.body.likeCount, 1);
+  assert.equal(like1.body.likedByMe, true);
+
+  // 202 点赞 → 2
+  const like2 = await api(202, `/submissions/${encodeURIComponent(id)}/like`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'like' })
+  });
+  assert.equal(like2.body.likeCount, 2);
+
+  // 101 取消点赞 → 1
+  const unlike = await api(101, `/submissions/${encodeURIComponent(id)}/like`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'unlike' })
+  });
+  assert.equal(unlike.body.likeCount, 1);
+  assert.equal(unlike.body.likedByMe, false);
+
+  // 公开列表：202 视角 likedByMe=true，likeCount=1
+  const publicList = await api(202, '/submissions?category=photography');
+  const target = publicList.body.list.find(x => x.id === id);
+  assert.equal(target.likeCount, 1);
+  assert.equal(target.likedByMe, true);
+});
+
+test('cannot like a pending work', async () => {
+  const created = await api(202, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'creative',
+      title: '待审核作品',
+      images: [{ key: 'Award/202__bob/1700000000000_xyz.jpg' }]
+    }))
+  });
+  assert.equal(created.body.code, 0);
+  const id = created.body.data.submission.id;
+
+  const like = await api(101, `/submissions/${encodeURIComponent(id)}/like`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'like' })
+  });
+  assert.equal(like.body.code, 1);
+});
+
+test('admin can set and unset winner; public winners list reflects it', async () => {
+  const created = await api(202, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      title: '获奖作品',
+      images: [{ key: 'Award/202__bob/1700000000001_xyz.jpg' }]
+    }))
+  });
+  assert.equal(created.body.code, 0);
+  const id = created.body.data.submission.id;
+
+  // 未通过前不能设置获奖
+  const tooEarly = await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
+    method: 'POST',
+    body: JSON.stringify({ rank: 'first' })
+  });
+  assert.equal(tooEarly.body.code, 1);
+
+  // 通过后设置一等奖
+  await api(202, `/admin/submissions/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify({}) });
+  const setWinner = await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
+    method: 'POST',
+    body: JSON.stringify({ rank: 'first' })
+  });
+  assert.equal(setWinner.body.code, 0);
+  assert.equal(setWinner.body.winnerLabel, '一等奖');
+
+  // 公开公示列表包含该作品
+  const winners = await api(101, '/submissions/winners');
+  assert.equal(winners.body.code, 0);
+  assert.ok(winners.body.list.some(x => x.id === id && x.winnerLabel === '一等奖'));
+
+  // 非法等级
+  const badRank = await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
+    method: 'POST',
+    body: JSON.stringify({ rank: 'superstar' })
+  });
+  assert.equal(badRank.body.code, 1);
+
+  // 取消获奖后公示为空
+  await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
+    method: 'POST',
+    body: JSON.stringify({ rank: '' })
+  });
+  const winnersAfter = await api(101, '/submissions/winners');
+  assert.equal(winnersAfter.body.list.some(x => x.id === id), false);
 });
 
 test('handles corrupted storage without crashing', async () => {

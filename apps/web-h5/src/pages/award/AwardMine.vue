@@ -23,11 +23,13 @@
             <div class="row1">
               <b>{{ item.title }}</b>
               <span class="status" :class="item.status">{{ statusText(item.status) }}</span>
+              <span v-if="item.winnerRank" class="winner-badge">{{ item.winnerLabel }}</span>
             </div>
             <p class="desc">{{ item.description }}</p>
             <div class="meta">
               <span>{{ item.categoryName }}</span>
               <span>{{ item.locationName }}</span>
+              <span>♥ {{ item.likeCount || 0 }}</span>
               <span>{{ fmtTime(item.createdAt) }}</span>
             </div>
             <p v-if="item.reviewNote" class="note">审核意见：{{ item.reviewNote }}</p>
@@ -125,6 +127,7 @@ onMounted(() => {
 .status.pending { background: #fff7e6; color: #b45309; }
 .status.approved { background: #e6f7ef; color: #0a7a54; }
 .status.rejected { background: #fdeeee; color: #b42318; }
+.winner-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; background: #fdece8; color: #c2410c; }
 .desc { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; }
 .meta { display: flex; flex-wrap: wrap; gap: 8px; }
 .meta span { font-size: 11px; color: #8a958f; background: #f3f1ea; padding: 3px 9px; border-radius: 999px; }

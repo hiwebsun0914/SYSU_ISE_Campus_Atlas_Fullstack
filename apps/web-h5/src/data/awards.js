@@ -25,5 +25,11 @@ export const AWARD_CONFIG = {
       description: '用镜头记录校园最美瞬间，让更多人看到你眼中的风景。',
       requirements: ['作品须为本人拍摄', '围绕校园打卡点取景', '填写作品名称与拍摄说明']
     }
+  ],
+  winnerRanks: [
+    { id: 'first', label: '一等奖' },
+    { id: 'second', label: '二等奖' },
+    { id: 'third', label: '三等奖' },
+    { id: 'popular', label: '人气奖' }
   ]
 }

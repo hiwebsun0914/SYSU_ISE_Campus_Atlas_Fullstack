@@ -91,6 +91,7 @@
               @click="setGalleryFilter(f.value)"
             >{{ f.label }}</button>
           </div>
+          <button class="results-link" type="button" @click="goResults">🏆 获奖结果公示</button>
         </div>
 
         <div v-if="loading" class="empty">加载中…</div>
@@ -104,6 +105,7 @@
               <div class="work-title-row">
                 <b>{{ w.title }}</b>
                 <span v-if="w.featured" class="featured-badge">优秀</span>
+                <span v-if="w.winnerRank" class="winner-badge">{{ w.winnerLabel }}</span>
               </div>
               <p>{{ w.description }}</p>
               <div class="work-meta">
@@ -111,6 +113,15 @@
                 <span>{{ w.locationName }}</span>
                 <span>{{ w.username }}</span>
               </div>
+              <button
+                class="like-btn"
+                :class="{ liked: w.likedByMe }"
+                type="button"
+                @click.stop="toggleLike(w)"
+              >
+                <Heart :size="15" aria-hidden="true" />
+                <span>{{ w.likeCount || 0 }}</span>
+              </button>
             </div>
           </article>
         </div>
@@ -130,6 +141,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
 import { AWARD_CONFIG } from '@/data/awards'
+import { Heart } from '@lucide/vue'
 
 const router = useRouter()
 const meta = ref(null)
@@ -210,6 +222,30 @@ function goMine() {
   router.push('/award/my')
 }
 
+function goResults() {
+  router.push('/award/results')
+}
+
+async function toggleLike(work) {
+  if (!localStorage.getItem('token')) {
+    router.push({ path: '/signin', query: { redirect: '/award' } })
+    return
+  }
+  try {
+    const res = await request(`/submissions/${encodeURIComponent(work.id)}/like`, 'POST', {
+      action: work.likedByMe ? 'unlike' : 'like'
+    })
+    if (res?.data?.code === 0) {
+      work.likeCount = res.data.likeCount
+      work.likedByMe = res.data.likedByMe
+    } else {
+      alert(res?.data?.message || '操作失败')
+    }
+  } catch {
+    alert('操作失败，请重试')
+  }
+}
+
 function openImage(work) {
   const url = work.images?.[0]?.url
   if (url) previewUrl.value = url
@@ -276,9 +312,13 @@ onMounted(() => {
 .work-title-row { display: flex; align-items: center; gap: 8px; }
 .work-title-row b { font-size: 15px; color: #17231e; }
 .featured-badge { padding: 2px 8px; border-radius: 999px; background: #fff1d6; color: #a16207; font-size: 11px; }
+.winner-badge { padding: 2px 8px; border-radius: 999px; background: #fdece8; color: #c2410c; font-size: 11px; }
 .work-info p { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .work-meta { display: flex; flex-wrap: wrap; gap: 8px; }
 .work-meta span { font-size: 11px; color: #8a958f; background: #f3f1ea; padding: 3px 9px; border-radius: 999px; }
+.like-btn { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2d3d3; background: #fff; color: #7b6a6a; padding: 6px 13px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+.like-btn.liked { border-color: #ef6a6a; background: #fff1f1; color: #d43a3a; }
+.results-link { border: 1px solid #e2b36b; background: #fffaf2; color: #9a6200; padding: 8px 15px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 
 .empty { padding: 42px 0; text-align: center; color: #8a958f; font-size: 14px; }
 .preview-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.82); }

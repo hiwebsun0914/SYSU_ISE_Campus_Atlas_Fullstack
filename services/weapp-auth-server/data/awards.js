@@ -42,5 +42,13 @@ module.exports = {
         '填写作品名称与拍摄说明'
       ]
     }
+  ],
+
+  // 获奖等级（管理员在审核后台为作品设置）
+  winnerRanks: [
+    { id: 'first',   label: '一等奖' },
+    { id: 'second',  label: '二等奖' },
+    { id: 'third',   label: '三等奖' },
+    { id: 'popular', label: '人气奖' }
   ]
 };

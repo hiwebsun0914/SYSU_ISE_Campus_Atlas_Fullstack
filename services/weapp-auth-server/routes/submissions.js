@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const COS = require('cos-nodejs-sdk-v5');
 const auth = require('../middleware/auth');
+const { optionalAuth } = require('../middleware/auth');
 const awards = require('../data/awards');
 const locationsData = require('../data/locations');
 
@@ -106,6 +107,11 @@ function categoryById(id) {
   return (awards.categories || []).find(c => c.id === id) || null;
 }
 
+function winnerLabelOf(rank) {
+  if (!rank) return '';
+  return (awards.winnerRanks || []).find(r => r.id === rank)?.label || '';
+}
+
 function userPrefix(req) {
   const slug = safeSlug(req.user?.username || 'user');
   return `Award/${req.userId}__${slug}/`;
@@ -122,7 +128,8 @@ function findById(id) {
 }
 
 // 保留投稿记录中用户可读信息
-function publicView(s, withUser = false) {
+function publicView(s, withUser = false, viewerId = null) {
+  const likes = Array.isArray(s.likes) ? s.likes : [];
   const base = {
     id: s.id,
     category: s.category,
@@ -137,6 +144,10 @@ function publicView(s, withUser = false) {
     })) : [],
     status: s.status || 'pending',
     featured: !!s.featured,
+    winnerRank: s.winnerRank || '',
+    winnerLabel: winnerLabelOf(s.winnerRank),
+    likeCount: likes.length,
+    likedByMe: viewerId != null && likes.some(id => String(id) === String(viewerId)),
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     reviewedAt: s.reviewedAt || 0,
@@ -313,7 +324,7 @@ router.get('/mine', auth, (_req, res) => {
 
 // ====== 6. 公开作品展示（仅已通过） ======
 // GET /submissions?category=creative|photography&featured=1&limit=20
-router.get('/', (req, res) => {
+router.get('/', optionalAuth, (req, res) => {
   const q = req.query || {};
   let list = readSubmissions().filter(s => s.status === 'approved');
 
@@ -325,8 +336,50 @@ router.get('/', (req, res) => {
   list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
   const limit = Math.min(Number(q.limit) || 50, 200);
-  const page = list.slice(0, limit).map(s => publicView(s, true));
+  const page = list.slice(0, limit).map(s => publicView(s, true, req.userId));
   res.json({ code: 0, list: page, total: list.length });
+});
+
+// ====== 6b. 获奖结果公示（仅已通过且已设置获奖等级） ======
+// GET /submissions/winners
+router.get('/winners', optionalAuth, (_req, res) => {
+  const list = readSubmissions()
+    .filter(s => s.status === 'approved' && s.winnerRank)
+    .sort((a, b) => {
+      const orderA = (awards.winnerRanks || []).findIndex(r => r.id === a.winnerRank);
+      const orderB = (awards.winnerRanks || []).findIndex(r => r.id === b.winnerRank);
+      return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
+    })
+    .map(s => publicView(s, true, _req.userId));
+  res.json({ code: 0, list });
+});
+
+// ====== 6c. 点赞 / 取消点赞（仅已通过作品，登录用户） ======
+// POST /submissions/:id/like  { action: 'like' | 'unlike' }
+router.post('/:id/like', auth, (req, res) => {
+  const list = readSubmissions();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '作品不存在' });
+  if (item.status !== 'approved') {
+    return res.json({ code: 1, message: '作品通过审核后才能点赞' });
+  }
+
+  const action = String(req.body?.action || 'like');
+  let likes = Array.isArray(item.likes) ? item.likes : [];
+  const already = likes.some(id => String(id) === String(req.userId));
+
+  if (action === 'like' && !already) likes.push(req.userId);
+  if (action === 'unlike' && already) likes = likes.filter(id => String(id) !== String(req.userId));
+
+  item.likes = likes;
+  item.updatedAt = Date.now();
+  writeSubmissions(list);
+
+  res.json({
+    code: 0,
+    likeCount: likes.length,
+    likedByMe: likes.some(id => String(id) === String(req.userId))
+  });
 });
 
 // ====== 7. 撤销投稿（仅自己、仅待审核） ======
