@@ -110,16 +110,19 @@
         </button>
 
         <button class="feature-card award-card grid-item" type="button" @click="goProtected('/award')" aria-label="进入奖项投稿页面">
-          <span class="feature-top">
-            <span class="icon-tile"><Sparkles :size="22" aria-hidden="true" /></span>
-            <span class="coming-label">立即投稿</span>
+          <span class="award-banner">
+            <span class="icon-tile"><Sparkles :size="24" aria-hidden="true" /></span>
+            <span class="feature-copy">
+              <small>CHECK-IN GALLERY / 打卡作品投稿</small>
+              <strong>最佳创意奖 · 最佳摄影奖</strong>
+              <span>上传你的创意与摄影作品，赢取属于你的校园高光时刻</span>
+            </span>
+            <span class="award-chips" aria-hidden="true">
+              <span>💡 创意</span>
+              <span>📷 摄影</span>
+            </span>
+            <span class="award-cta">立即投稿 →</span>
           </span>
-          <span class="feature-copy">
-            <small>CHECK-IN GALLERY / 打卡作品投稿</small>
-            <strong>最佳创意奖 · 最佳摄影奖</strong>
-            <span>上传你的创意与摄影作品，赢取属于你的校园高光时刻</span>
-          </span>
-          <span class="award-spark" aria-hidden="true">✦</span>
         </button>
 
         <button class="feature-card test-card grid-item" type="button" aria-label="进入 PLACE 校园人格测试" @click="router.push('/place')">
@@ -423,7 +426,7 @@ onBeforeUnmount(() => {
 .coming-label-dark { border-color: rgba(255,255,255,.23); color: var(--accent); background: rgba(255,255,255,.07); }
 .profile-stats { display: flex; gap: 22px; margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }.profile-stats span { display: grid; }.profile-stats b { color: var(--ink); font-family: "DIN Alternate", sans-serif; font-size: 26px; }
 .future-card { background: #e8f4ef; }.future-year { position: absolute; right: -7px; bottom: -25px; font-family: "DIN Alternate", sans-serif; font-size: 76px; font-weight: 900; color: rgba(10,46,59,.06); letter-spacing: 0; transition: transform .24s ease, opacity .24s ease; }.future-card:hover .future-year { transform: translateY(-4px); opacity: .86; }
-.award-card { background: #f4f0fa; }.award-spark { position: absolute; right: 14px; top: 12px; color: rgba(109,40,217,.28); font-size: 34px; transition: transform .24s ease, opacity .24s ease; }.award-card:hover .award-spark { transform: rotate(18deg) scale(1.12); opacity: .9; }
+.award-card { grid-column: 1 / -1; min-height: 150px; display: block; padding: 20px 24px; background: linear-gradient(120deg, #f4f0fa, #eef4ff); }.award-banner { height: 100%; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; position: relative; z-index: 2; }.award-card .feature-copy { margin-top: 0; flex: 1; min-width: 220px; }.award-chips { display: flex; gap: 8px; }.award-chips span { padding: 7px 14px; border-radius: 999px; background: #fff; border: 1px solid #e2d7f5; color: #6d28d9; font-size: 13px; font-weight: 700; }.award-cta { min-height: 44px; display: inline-flex; align-items: center; padding: 0 20px; border-radius: 999px; background: #6d28d9; color: #fff; font-weight: 800; font-size: 14px; transition: background .2s ease, transform .2s ease; }.award-card:hover .award-cta { background: #5b21b6; transform: translateX(2px); }
 .test-card { color: #fff; background: var(--primary); border-color: var(--primary); }.test-card .feature-copy small { color: rgba(255,255,255,.66); }.test-card .feature-copy strong { color: #fff; }.test-card .feature-copy > span { color: rgba(255,255,255,.75); }.scan-line { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 1px; background: repeating-linear-gradient(90deg,var(--accent) 0 18px,transparent 18px 26px); opacity: .75; }
 .test-card:hover .scan-line { animation: scan-sweep 1.1s ease-in-out infinite; }
 .message-card { background: #f7f8dd; }.message-route { display: flex; gap: 6px; margin-top: auto; padding-top: 18px; }.message-route i { width: 8px; height: 8px; border: 2px solid var(--ink); border-radius: 50%; }.message-route i:nth-child(2) { width: 54px; border-radius: 999px; background: var(--accent); transform-origin: left; }.message-card:hover .message-route i:nth-child(2) { animation: message-pulse 1.2s ease-in-out infinite; }
@@ -456,7 +459,7 @@ onBeforeUnmount(() => {
 
 @media (min-width: 1024px) {
   .home-shell { padding-bottom: 0; }.site-header { min-height: 78px; padding: 12px 18px; }.brand-logo { width: 320px; height: 50px; }.desktop-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }.desktop-nav a,.desktop-nav button { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 700; }.desktop-nav a:hover,.desktop-nav button:hover,.desktop-nav a[aria-current="page"] { color: var(--ink); background: #e6efeb; }.mobile-nav { display: none; }
-.dashboard-grid { grid-template-columns: repeat(12,minmax(0,1fr)); grid-auto-rows: minmax(132px,auto); gap: 16px; }.explore-card { grid-column: span 7; grid-row: span 4; min-height: 596px; padding: 30px; }.profile-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.future-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.award-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.test-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.message-card { grid-column: span 7; grid-row: span 2; min-height: 290px; }.progress-content { margin-top: 82px; }.feature-card { padding: 24px; }.feature-copy { margin-top: 26px; }.message-card .feature-copy { max-width: 480px; }.coming-toast { bottom: 28px; }
+.dashboard-grid { grid-template-columns: repeat(12,minmax(0,1fr)); grid-auto-rows: minmax(132px,auto); gap: 16px; }.explore-card { grid-column: span 7; grid-row: span 4; min-height: 596px; padding: 30px; }.profile-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.future-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.test-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.message-card { grid-column: span 7; grid-row: span 2; min-height: 290px; }.progress-content { margin-top: 82px; }.feature-card { padding: 24px; }.feature-copy { margin-top: 26px; }.message-card .feature-copy { max-width: 480px; }.coming-toast { bottom: 28px; }
 }
 
 @media (hover:hover) {
