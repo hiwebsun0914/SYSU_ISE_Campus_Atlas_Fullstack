@@ -486,7 +486,6 @@ onMounted(() => {
 .modal-vote.closed { opacity: .6; cursor: pointer; }
 
 @media (min-width: 720px) {
-  .category-grid { grid-template-columns: repeat(2, 1fr); }
   .rules-grid { grid-template-columns: repeat(4, 1fr); }
   .work-grid { grid-template-columns: repeat(2, 1fr); }
   .modal-card { grid-template-columns: 1.1fr 1fr; }
@@ -494,6 +493,7 @@ onMounted(() => {
   .modal-thumbs { padding: 10px; }
 }
 @media (min-width: 1024px) {
+  .category-grid { grid-template-columns: repeat(2, 1fr); }
   .work-grid { grid-template-columns: repeat(3, 1fr); }
   .work-card img { height: 230px; }
 }
