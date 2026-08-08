@@ -14,16 +14,7 @@
         <button class="primary-btn" type="button" @click="goSignin">去登录</button>
       </div>
 
-      <div v-else-if="existingActive" class="notice-card">
-        <h3>你已经投过{{ existingActive.categoryName }}啦</h3>
-        <p>每人每项限投 {{ perUserPerCategory }} 份，你可以在“我的投稿”里查看审核进度。</p>
-        <div class="notice-actions">
-          <button class="primary-btn" type="button" @click="router.push('/award/my')">查看我的投稿</button>
-          <button class="ghost-btn" type="button" @click="switchCategory">换个奖项投稿</button>
-        </div>
-      </div>
-
-      <form v-else-if="!closed" class="submit-form" @submit.prevent="submit">
+      <form v-else-if="!closed" class="submit-form" @submit.prevent="onSubmitClick">
         <!-- 奖项 -->
         <section class="form-section">
           <h2>1. 选择奖项</h2>
@@ -117,6 +108,22 @@
       </div>
     </div>
 
+    <!-- 已提交同类别作品提示 -->
+    <div v-if="dupModalVisible" class="success-mask">
+      <div class="success-card">
+        <span class="success-icon warn">!</span>
+        <h2>已提交过{{ existingActive?.categoryName }}</h2>
+        <p>
+          你已提交过{{ existingActive?.categoryName }}（{{ existingStateText }}）。
+          每个奖项每人最多投稿 1 个作品，请确认是否选择了正确的类别，或前往删除原有作品后再提交。
+        </p>
+        <div class="success-actions">
+          <button class="primary-btn" type="button" @click="switchCategoryThenClose">换个奖项投稿</button>
+          <button class="ghost-btn" type="button" @click="router.push('/award/my')">去删除原有作品</button>
+        </div>
+      </div>
+    </div>
+
     <input
       ref="fileInput"
       type="file"
@@ -176,12 +183,23 @@ const uploading = ref(false)
 const submitting = ref(false)
 const error = ref('')
 const successVisible = ref(false)
+const dupModalVisible = ref(false)
 const fileInput = ref(null)
 let uidSeq = 1
 
 const existingActive = computed(() =>
-  mine.value.find(item => item.category === form.value.category && (item.status === 'pending' || item.status === 'approved'))
+  mine.value.find(item =>
+    item.category === form.value.category &&
+    (item.status === 'pending' || item.status === 'approved' || (item.status === 'rejected' && item.appealStatus === 'pending'))
+  )
 )
+
+const existingStateText = computed(() => {
+  if (!existingActive.value) return ''
+  if (existingActive.value.status === 'approved') return '已通过'
+  if (existingActive.value.status === 'pending') return '审核中'
+  return '申诉中'
+})
 
 function isAuthed() {
   return !!localStorage.getItem('token')
@@ -194,6 +212,9 @@ function goSignin() {
 function pickCategory(id) {
   form.value.category = id
   error.value = ''
+  if (existingActive.value) {
+    dupModalVisible.value = true
+  }
 }
 
 function switchCategory() {
@@ -267,6 +288,10 @@ async function uploadOne(file) {
 
 async function submit() {
   error.value = ''
+  if (existingActive.value) {
+    dupModalVisible.value = true
+    return
+  }
   if (!form.value.title.trim()) {
     error.value = '请填写作品名称'
     return
@@ -283,11 +308,6 @@ async function submit() {
     error.value = '请至少上传一张作品图片'
     return
   }
-  if (existingActive.value) {
-    error.value = '你已提交过该奖项，请勿重复提交'
-    return
-  }
-
   submitting.value = true
   uploading.value = true
   try {
@@ -318,6 +338,23 @@ async function submit() {
     submitting.value = false
     uploading.value = false
   }
+}
+
+function onSubmitClick() {
+  if (existingActive.value) {
+    dupModalVisible.value = true
+    return
+  }
+  submit()
+}
+
+function closeDupModal() {
+  dupModalVisible.value = false
+}
+
+function switchCategoryThenClose() {
+  closeDupModal()
+  switchCategory()
 }
 
 async function load() {
@@ -404,6 +441,7 @@ onMounted(() => {
 .success-mask { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.72); }
 .success-card { width: min(380px, 100%); padding: 34px 26px; border-radius: 20px; background: #fff; text-align: center; }
 .success-icon { width: 58px; height: 58px; display: grid; place-items: center; margin: 0 auto; border-radius: 50%; background: #e6f7ef; color: #0a7a54; font-size: 26px; font-weight: 800; }
+.success-icon.warn { background: #fff7e6; color: #b45309; }
 .success-card h2 { margin: 16px 0 8px; font-size: 22px; }
 .success-card p { margin: 0 0 22px; color: #5f6d66; font-size: 14px; }
 .success-actions { display: grid; gap: 10px; }

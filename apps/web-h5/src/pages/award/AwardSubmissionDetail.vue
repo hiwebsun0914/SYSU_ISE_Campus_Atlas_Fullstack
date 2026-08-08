@@ -3,6 +3,7 @@
     <header class="detail-header">
       <a class="back-link" href="#/award/my" @click.prevent="router.push('/award/my')">‹ 返回我的投稿</a>
       <h1>投稿详情</h1>
+      <button class="submit-btn" type="button" @click="router.push('/award/submit')">＋ 继续投稿</button>
     </header>
 
     <main class="detail-main">
@@ -29,26 +30,32 @@
           <p class="winner-sub">奖项：{{ item.categoryName }} · 公示见“获奖结果公示”页面</p>
         </section>
 
-        <!-- 作品信息 -->
+        <!-- 查看作品详情（可展开） -->
         <section class="card">
-          <h2>作品信息</h2>
-          <div class="images">
-            <img
-              v-for="(img, i) in item.images"
-              :key="i"
-              :src="img.url"
-              :alt="`${item.title} 图${i + 1}`"
-              @click="preview(img.url)"
-            />
+          <button class="toggle-btn" type="button" @click="showDetails = !showDetails">
+            <span>查看作品详情</span>
+            <span class="chev">{{ showDetails ? '▾' : '▸' }}</span>
+          </button>
+          <div v-if="showDetails" class="details-body">
+            <div class="images">
+              <img
+                v-for="(img, i) in item.images"
+                :key="i"
+                :src="img.url"
+                :alt="`${item.title} 图${i + 1}`"
+                @click="preview(img.url)"
+              />
+            </div>
+            <dl class="info-list">
+              <div><dt>作品名称</dt><dd>{{ item.title }}</dd></div>
+              <div><dt>作品介绍</dt><dd class="desc-text">{{ item.description }}</dd></div>
+              <div><dt>提交时间</dt><dd>{{ fmtTime(item.createdAt) }}</dd></div>
+              <div><dt>获得票数</dt><dd>♥ {{ item.likeCount || 0 }}</dd></div>
+              <div><dt>当前状态</dt><dd>{{ statusText }}{{ item.appealStatus === 'pending' ? '（申诉处理中）' : '' }}</dd></div>
+              <div><dt>奖项</dt><dd>{{ item.categoryName }}{{ item.winnerRank ? ' · ' + item.winnerLabel : '' }}</dd></div>
+              <div><dt>对应打卡点</dt><dd>{{ item.locationName }}</dd></div>
+            </dl>
           </div>
-          <dl class="info-list">
-            <div><dt>作品名称</dt><dd>{{ item.title }}</dd></div>
-            <div><dt>作品说明</dt><dd class="desc-text">{{ item.description }}</dd></div>
-            <div><dt>奖项</dt><dd>{{ item.categoryName }}</dd></div>
-            <div><dt>对应打卡点</dt><dd>{{ item.locationName }}</dd></div>
-            <div><dt>提交时间</dt><dd>{{ fmtTime(item.createdAt) }}</dd></div>
-            <div><dt>获得票数</dt><dd>♥ {{ item.likeCount || 0 }}</dd></div>
-          </dl>
         </section>
 
         <!-- 驳回理由 + 申诉 -->
@@ -91,8 +98,31 @@
             </button>
           </div>
         </section>
+
+        <!-- 操作区 -->
+        <section class="card actions-card">
+          <button class="primary-btn" type="button" @click="router.push('/award/submit')">＋ 继续投稿</button>
+          <button class="danger-btn" type="button" :disabled="deleting" @click="openDeleteModal">
+            {{ deleting ? '删除中…' : '删除作品' }}
+          </button>
+        </section>
       </template>
     </main>
+
+    <!-- 删除确认弹窗 -->
+    <div v-if="deleteModalVisible" class="modal-mask" @click.self="deleteModalVisible = false">
+      <div class="modal-card">
+        <h3>删除作品</h3>
+        <p class="modal-warn">确定要删除《{{ item?.title }}》吗？<b>一旦删除无法找回</b>，请谨慎操作。</p>
+        <p v-if="deleteError" class="form-error">{{ deleteError }}</p>
+        <div class="modal-actions">
+          <button class="ghost-btn" type="button" @click="deleteModalVisible = false">取消</button>
+          <button class="danger-btn" type="button" :disabled="deleting" @click="confirmDelete">
+            {{ deleting ? '删除中…' : '确定删除' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="previewUrl" class="preview-mask" @click.self="previewUrl = ''">
       <img :src="previewUrl" alt="作品大图" />
@@ -110,21 +140,26 @@ const route = useRoute()
 const router = useRouter()
 const item = ref(null)
 const loading = ref(true)
+const showDetails = ref(true)
 const appealReason = ref('')
 const appealing = ref(false)
 const appealError = ref('')
 const previewUrl = ref('')
+const deleteModalVisible = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
 
 const statusText = computed(() => {
   if (!item.value) return ''
   if (item.value.status === 'approved') return item.value.winnerRank ? '已获奖' : '已通过'
-  return { pending: '审核中', rejected: '被驳回' }[item.value.status] || item.value.status
+  return { pending: '审核中', rejected: '被驳回', down: '已下架' }[item.value.status] || item.value.status
 })
 
 const statusDesc = computed(() => {
   if (!item.value) return ''
   if (item.value.status === 'pending') return '你的作品正在审核中，请耐心等待，结果会第一时间更新。'
   if (item.value.status === 'rejected') return '很遗憾，你的作品未通过审核，可在下方查看驳回理由或提交申诉。'
+  if (item.value.status === 'down') return '该作品已被管理员下架，不再公开展示。'
   if (item.value.winnerRank) return '你的作品已获奖，感谢你的参与！'
   return '你的作品已通过审核，正在作品展示区展出。'
 })
@@ -167,8 +202,8 @@ async function submitAppeal() {
   try {
     const res = await request(`/submissions/${encodeURIComponent(route.params.id)}/appeal`, 'POST', { reason })
     if (res?.data?.code === 0) {
-      alert('申诉已提交，等待管理员复核')
-      load()
+      appealReason.value = ''
+      await load()
     } else {
       appealError.value = res?.data?.message || '提交失败，请重试'
     }
@@ -176,6 +211,29 @@ async function submitAppeal() {
     appealError.value = '提交失败，请重试'
   } finally {
     appealing.value = false
+  }
+}
+
+function openDeleteModal() {
+  deleteModalVisible.value = true
+  deleteError.value = ''
+}
+
+async function confirmDelete() {
+  if (deleting.value) return
+  deleting.value = true
+  try {
+    const res = await request(`/submissions/${encodeURIComponent(route.params.id)}`, 'DELETE')
+    if (res?.data?.code === 0) {
+      deleteModalVisible.value = false
+      router.replace('/award/my')
+    } else {
+      deleteError.value = res?.data?.message || '删除失败'
+    }
+  } catch {
+    deleteError.value = '删除失败，请重试'
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -194,6 +252,7 @@ onMounted(() => {
 .detail-header { display: flex; align-items: center; gap: 16px; padding: 24px clamp(16px, 4vw, 52px); background: #102a2e; color: #fff; }
 .back-link { color: rgba(255,255,255,.7); text-decoration: none; font-size: 13px; }
 .detail-header h1 { margin: 0; font-size: 22px; flex: 1; }
+.submit-btn { border: 1px solid rgba(199,242,74,.5); background: transparent; color: #c7f24a; padding: 10px 18px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 .detail-main { max-width: 760px; margin: 0 auto; padding: 26px clamp(16px, 4vw, 52px) 90px; display: grid; gap: 16px; }
 .card { padding: 22px; border-radius: 16px; background: #fff; border: 1px solid #e8e4da; }
 .card h2 { margin: 0 0 16px; font-size: 17px; }
@@ -204,6 +263,7 @@ onMounted(() => {
 .status-badge.pending { background: #fff7e6; color: #b45309; }
 .status-badge.approved { background: #e6f7ef; color: #0a7a54; }
 .status-badge.rejected { background: #fdeeee; color: #b42318; }
+.status-badge.down { background: #eef2f7; color: #475569; }
 .status-desc { margin: 12px 0 0; color: #5f6d66; font-size: 14px; line-height: 1.7; }
 .winner-badge { padding: 4px 12px; border-radius: 999px; font-size: 12px; background: #fdece8; color: #c2410c; }
 
@@ -212,6 +272,9 @@ onMounted(() => {
 .winner-line b { color: #9a6200; font-size: 18px; }
 .winner-sub { margin: 8px 0 0; color: #8a6a2f; font-size: 13px; }
 
+.toggle-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; border: 0; background: none; color: #17231e; font-size: 17px; font-weight: 700; cursor: pointer; padding: 0; }
+.chev { color: #8a958f; font-weight: 400; }
+.details-body { margin-top: 16px; border-top: 1px dashed #eeece4; padding-top: 14px; }
 .images { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .images img { width: 110px; height: 110px; border-radius: 10px; object-fit: cover; cursor: zoom-in; background: #f1efe8; }
 .info-list { margin: 0; }
@@ -238,13 +301,22 @@ onMounted(() => {
 .field textarea { width: 100%; box-sizing: border-box; border: 1px solid #d8d4c9; border-radius: 10px; background: #fff; padding: 12px 14px; font-size: 14px; color: #17231e; outline: none; resize: vertical; font-family: inherit; line-height: 1.7; }
 .field textarea:focus { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.12); }
 .form-error { margin: 10px 0 0; color: #b42318; font-size: 13px; }
-.primary-btn { margin-top: 14px; border: 0; background: #0d9488; color: #fff; padding: 11px 24px; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.primary-btn { border: 0; background: #0d9488; color: #fff; padding: 11px 24px; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .primary-btn:disabled { opacity: .6; cursor: wait; }
 .ghost-btn { border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 10px 20px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+.actions-card { display: flex; gap: 12px; flex-wrap: wrap; }
+.danger-btn { border: 1px solid #e2b6b1; background: transparent; color: #b42318; padding: 10px 20px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+.danger-btn:disabled { opacity: .6; cursor: wait; }
 
 .empty { padding: 60px 0; text-align: center; color: #8a958f; }
 .empty p { margin: 0 0 16px; }
 .preview-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.82); }
 .preview-mask img { max-width: 92vw; max-height: 84vh; border-radius: 12px; }
 .preview-mask button { position: fixed; top: 20px; right: 20px; border: 0; border-radius: 999px; background: rgba(255,255,255,.15); color: #fff; padding: 9px 16px; cursor: pointer; }
+.modal-mask { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.7); }
+.modal-card { width: min(420px, 100%); padding: 24px; border-radius: 16px; background: #fff; }
+.modal-card h3 { margin: 0 0 10px; font-size: 18px; }
+.modal-warn { margin: 0; color: #5f6d66; font-size: 14px; line-height: 1.7; }
+.modal-warn b { color: #b42318; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 </style>

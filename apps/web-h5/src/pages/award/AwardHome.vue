@@ -187,6 +187,11 @@
         </div>
       </div>
     </div>
+
+    <!-- 页面提示 -->
+    <Transition name="toast">
+      <div v-if="toast" class="page-toast" role="status">{{ toast }}</div>
+    </Transition>
   </div>
 </template>
 
@@ -206,6 +211,8 @@ const loading = ref(true)
 const quota = ref(null)
 const modalWork = ref(null)
 const modalImageIndex = ref(0)
+const toast = ref('')
+let toastTimer = 0
 
 const categories = computed(() => meta.value?.categories || AWARD_CONFIG.categories)
 const deadline = computed(() => meta.value?.deadline || AWARD_CONFIG.deadline)
@@ -243,6 +250,12 @@ function fmtTime(ts) {
   } catch {
     return String(ts)
   }
+}
+
+function showToast(msg) {
+  toast.value = msg
+  window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => { toast.value = '' }, 3200)
 }
 
 async function loadMeta() {
@@ -320,13 +333,13 @@ async function toggleVote(work) {
         quota.value.remaining = res.data.remaining
       }
     } else if (res?.data?.code === 3) {
-      alert(res.data.message)
+      showToast(res.data.message)
       await loadQuota()
     } else {
-      alert(res?.data?.message || '操作失败')
+      showToast(res?.data?.message || '操作失败')
     }
   } catch {
-    alert('操作失败，请重试')
+    showToast('操作失败，请重试')
   }
 }
 
@@ -428,6 +441,9 @@ onMounted(() => {
 .vote-btn:disabled { opacity: .55; cursor: not-allowed; }
 
 .empty { padding: 42px 0; text-align: center; color: #8a958f; font-size: 14px; }
+.page-toast { position: fixed; left: 50%; bottom: 30px; z-index: 120; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 11px 18px; border-radius: 999px; background: rgba(17,35,30,.92); color: #fff; font-size: 13px; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,.22); }
+.toast-enter-active, .toast-leave-active { transition: opacity .2s ease, transform .2s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translate(-50%, 10px); }
 
 .modal-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.78); }
 .modal-card { width: min(720px, 100%); max-height: 92vh; overflow: auto; position: relative; border-radius: 18px; background: #fff; display: grid; grid-template-columns: 1fr; }

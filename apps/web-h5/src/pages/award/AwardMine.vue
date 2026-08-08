@@ -7,6 +7,15 @@
     </header>
 
     <main class="mine-main">
+      <!-- 去投稿 -->
+      <div class="submit-bar">
+        <div>
+          <b>还想投稿？</b>
+          <span>每个奖项每人限投 1 个作品，已在同类别投稿时会提示你。</span>
+        </div>
+        <button class="primary-btn" type="button" @click="router.push('/award/submit')">去投稿</button>
+      </div>
+
       <div v-if="loading" class="empty">加载中…</div>
       <div v-else-if="!list.length" class="empty">
         <p>你还没有投稿记录</p>
@@ -34,14 +43,9 @@
               <span>{{ fmtTime(item.createdAt) }}</span>
             </div>
             <p v-if="item.reviewNote" class="note">审核意见：{{ item.reviewNote }}</p>
-            <div class="card-actions">
-              <button class="detail-btn" type="button" @click="router.push(`/award/submission/${encodeURIComponent(item.id)}`)">
-                查看详情
-              </button>
-              <button v-if="item.status === 'pending'" class="withdraw-btn" type="button" @click="withdraw(item)">
-                撤销投稿
-              </button>
-            </div>
+            <button class="detail-btn" type="button" @click="router.push(`/award/submission/${encodeURIComponent(item.id)}`)">
+              查看详情
+            </button>
           </div>
         </article>
       </div>
@@ -65,7 +69,7 @@ const loading = ref(true)
 const previewUrl = ref('')
 
 function statusText(status) {
-  return { pending: '待审核', approved: '已通过', rejected: '已驳回' }[status] || status
+  return { pending: '待审核', approved: '已通过', rejected: '已驳回', down: '已下架' }[status] || status
 }
 
 function fmtTime(ts) {
@@ -89,22 +93,6 @@ async function load() {
   }
 }
 
-async function withdraw(item) {
-  const ok = window.confirm(`确定撤销投稿《${item.title}》吗？`)
-  if (!ok) return
-  try {
-    const res = await request(`/submissions/${encodeURIComponent(item.id)}`, 'DELETE')
-    if (res?.data?.code === 0) {
-      list.value = list.value.filter(x => x.id !== item.id)
-      alert('已撤销投稿')
-    } else {
-      alert(res?.data?.message || '撤销失败')
-    }
-  } catch {
-    alert('撤销失败，请重试')
-  }
-}
-
 function preview(url) {
   if (url) previewUrl.value = url
 }
@@ -120,8 +108,11 @@ onMounted(() => {
 .mine-header { display: flex; align-items: center; gap: 16px; padding: 26px clamp(16px, 4vw, 52px); background: #102a2e; color: #fff; }
 .back-link { color: rgba(255,255,255,.7); text-decoration: none; font-size: 13px; }
 .mine-header h1 { margin: 0; font-size: 24px; flex: 1; }
-.new-btn { border: 1px solid rgba(199,242,74,.5); background: transparent; color: #c7f24a; padding: 9px 16px; border-radius: 999px; font-size: 13px; cursor: pointer; }
-.mine-main { max-width: 860px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 52px) 90px; }
+.new-btn { border: 1px solid rgba(199,242,74,.5); background: transparent; color: #c7f24a; padding: 10px 18px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+.mine-main { max-width: 860px; margin: 0 auto; padding: 26px clamp(16px, 4vw, 52px) 90px; }
+.submit-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; padding: 16px 18px; border-radius: 14px; background: #e8f4ef; border: 1px solid #cfe6dc; }
+.submit-bar b { display: block; color: #0d6e5f; font-size: 15px; }
+.submit-bar span { display: block; margin-top: 4px; color: #5f7d73; font-size: 12px; line-height: 1.6; }
 .card-list { display: grid; gap: 14px; }
 .mine-card { display: grid; grid-template-columns: 110px 1fr; gap: 14px; padding: 14px; border-radius: 16px; background: #fff; border: 1px solid #e8e4da; }
 .cover img { width: 110px; height: 110px; border-radius: 10px; object-fit: cover; cursor: zoom-in; }
@@ -133,15 +124,14 @@ onMounted(() => {
 .status.pending { background: #fff7e6; color: #b45309; }
 .status.approved { background: #e6f7ef; color: #0a7a54; }
 .status.rejected { background: #fdeeee; color: #b42318; }
+.status.down { background: #eef2f7; color: #475569; }
 .appeal-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; background: #fff7e6; color: #b45309; }
 .winner-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; background: #fdece8; color: #c2410c; }
 .desc { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; }
 .meta { display: flex; flex-wrap: wrap; gap: 8px; }
 .meta span { font-size: 11px; color: #8a958f; background: #f3f1ea; padding: 3px 9px; border-radius: 999px; }
 .note { margin: 8px 0 0; color: #b42318; font-size: 12px; }
-.card-actions { display: flex; gap: 8px; margin-top: 10px; }
-.detail-btn { border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 6px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
-.withdraw-btn { border: 1px solid #e2b6b1; background: transparent; color: #b42318; padding: 6px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
+.detail-btn { margin-top: 10px; border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 7px 16px; border-radius: 999px; font-size: 12px; cursor: pointer; }
 .empty { padding: 60px 0; text-align: center; color: #8a958f; }
 .empty p { margin: 0 0 16px; }
 .primary-btn { border: 0; background: #0d9488; color: #fff; padding: 11px 24px; border-radius: 999px; font-size: 14px; cursor: pointer; }

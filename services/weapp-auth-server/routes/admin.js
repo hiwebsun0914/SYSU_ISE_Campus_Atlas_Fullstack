@@ -340,11 +340,12 @@ function buildSubmissionStat(list) {
     pending: 0,
     approved: 0,
     rejected: 0,
+    down: 0,
     featured: 0,
     byCategory: {}
   };
   (AWARDS.categories || []).forEach(cat => {
-    stat.byCategory[cat.id] = { all: 0, pending: 0, approved: 0, rejected: 0, featured: 0 };
+    stat.byCategory[cat.id] = { all: 0, pending: 0, approved: 0, rejected: 0, down: 0, featured: 0 };
   });
   list.forEach(s => {
     const st = s.status || 'pending';
@@ -445,6 +446,34 @@ router.post('/submissions/:id/feature', auth, adminOnly, (req, res) => {
   res.json({ code: 0, message: featured ? '已标记为优秀作品' : '已取消优秀标记', featured });
 });
 
+// ====== 下架（已通过 → 已下架，不再公开展示） ======
+// POST /admin/submissions/:id/down
+router.post('/submissions/:id/down', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  if (item.status !== 'approved') return res.json({ code: 1, message: '只有已通过的作品可以下架' });
+
+  item.status = 'down';
+  item.updatedAt = Date.now();
+  writeSubmissionsArray(list);
+  res.json({ code: 0, message: '已下架，作品不再公开展示' });
+});
+
+// ====== 重新上架（已下架 → 已通过） ======
+// POST /admin/submissions/:id/restore
+router.post('/submissions/:id/restore', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  if (item.status !== 'down') return res.json({ code: 1, message: '只有已下架的作品可以重新上架' });
+
+  item.status = 'approved';
+  item.updatedAt = Date.now();
+  writeSubmissionsArray(list);
+  res.json({ code: 0, message: '已重新上架，作品恢复公开展示' });
+});
+
 // ====== 设置 / 取消获奖等级 ======
 // POST /admin/submissions/:id/winner  { rank: 'first'|'second'|'third'|'popular'|'' }
 router.post('/submissions/:id/winner', auth, adminOnly, (req, res) => {
@@ -505,7 +534,7 @@ router.get('/submissions/export', auth, adminOnly, (req, res) => {
     s.locationName || '',
     s.username || '',
     fmtTime(s.createdAt),
-    ({ pending: '待审核', approved: '已通过', rejected: '已驳回' })[s.status] || s.status,
+    ({ pending: '待审核', approved: '已通过', rejected: '已驳回', down: '已下架' })[s.status] || s.status,
     s.featured ? '是' : '否',
     (s.images || []).map(img => img.url || '').join('；')
   ]);

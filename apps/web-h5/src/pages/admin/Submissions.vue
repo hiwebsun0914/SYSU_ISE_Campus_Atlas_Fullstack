@@ -15,6 +15,7 @@
       <div class="stat-item pending"><b>{{ stat.pending }}</b><span>待审核</span></div>
       <div class="stat-item approved"><b>{{ stat.approved }}</b><span>已通过</span></div>
       <div class="stat-item rejected"><b>{{ stat.rejected }}</b><span>已驳回</span></div>
+      <div class="stat-item down"><b>{{ stat.down }}</b><span>已下架</span></div>
       <div class="stat-item featured"><b>{{ stat.featured }}</b><span>优秀作品</span></div>
     </div>
 
@@ -99,6 +100,12 @@
             :disabled="busy[item.id]"
             @click="toggleFeature(item)"
           >{{ item.featured ? '取消优秀' : '标记优秀' }}</button>
+          <button v-if="item.status === 'approved'" class="btn down" type="button" :disabled="busy[item.id]" @click="down(item)">
+            下架
+          </button>
+          <button v-if="item.status === 'down'" class="btn restore" type="button" :disabled="busy[item.id]" @click="restore(item)">
+            重新上架
+          </button>
           <div v-if="item.status === 'approved'" class="winner-row">
             <select v-model="winnerDrafts[item.id]" :disabled="busy[item.id]">
               <option value="">未获奖</option>
@@ -110,6 +117,27 @@
           </div>
         </div>
       </article>
+    </div>
+
+    <!-- 驳回理由弹窗 -->
+    <div v-if="rejectModal.open" class="modal-mask" @click.self="closeRejectModal">
+      <div class="modal-card">
+        <h3>驳回《{{ rejectModal.item?.title }}》</h3>
+        <p class="modal-hint">请填写驳回理由，用户会在投稿详情里看到。</p>
+        <textarea
+          v-model="rejectModal.note"
+          rows="4"
+          maxlength="200"
+          placeholder="例如：作品与活动主题不符，请按投稿要求重新提交"
+        />
+        <p v-if="rejectError" class="modal-error">{{ rejectError }}</p>
+        <div class="modal-actions">
+          <button class="btn cancel" type="button" @click="closeRejectModal">取消</button>
+          <button class="btn reject" type="button" :disabled="busy[rejectModal.item?.id]" @click="confirmReject">
+            {{ busy[rejectModal.item?.id] ? '处理中…' : '确认驳回' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 大图预览 -->
@@ -137,12 +165,15 @@ const busy = ref({})
 const previewUrl = ref('')
 const winnerDrafts = ref({})
 const winnerRanks = AWARD_CONFIG.winnerRanks || []
+const rejectModal = ref({ open: false, item: null, note: '' })
+const rejectError = ref('')
 
 const statusTabs = [
   { value: 'all', label: '全部' },
   { value: 'pending', label: '待审核' },
   { value: 'approved', label: '已通过' },
   { value: 'rejected', label: '已驳回' },
+  { value: 'down', label: '已下架' },
   { value: 'featured', label: '优秀' }
 ]
 const categories = ref([
@@ -155,7 +186,7 @@ function catName(id) {
 }
 
 function statusText(s) {
-  return { pending: '待审核', approved: '已通过', rejected: '已驳回' }[s] || s
+  return { pending: '待审核', approved: '已通过', rejected: '已驳回', down: '已下架' }[s] || s
 }
 
 function fmtTime(ts) {
@@ -218,18 +249,63 @@ async function approve(item) {
   }
 }
 
-async function reject(item) {
-  if (busy.value[item.id]) return
-  let note = window.prompt(`驳回《${item.title}》，请填写驳回理由：`, '')
-  if (note === null) return
-  while (!String(note).trim()) {
-    alert('请填写驳回理由，用户需要看到原因')
-    note = window.prompt(`驳回《${item.title}》，请填写驳回理由：`, '')
-    if (note === null) return
+function openRejectModal(item) {
+  rejectModal.value = { open: true, item, note: '' }
+  rejectError.value = ''
+}
+
+function closeRejectModal() {
+  rejectModal.value = { open: false, item: null, note: '' }
+  rejectError.value = ''
+}
+
+function reject(item) {
+  openRejectModal(item)
+}
+
+async function confirmReject() {
+  const item = rejectModal.value.item
+  if (!item || busy.value[item.id]) return
+  const note = String(rejectModal.value.note || '').trim()
+  if (!note) {
+    rejectError.value = '请填写驳回理由，用户需要看到原因'
+    return
   }
   markBusy(item.id, true)
   try {
     const res = await request(`/admin/submissions/${encodeURIComponent(item.id)}/reject`, 'POST', { note })
+    if (isOk(res)) {
+      closeRejectModal()
+      fetchList()
+    } else {
+      rejectError.value = res?.data?.message || '操作失败'
+    }
+  } catch {
+    rejectError.value = '操作失败，请重试'
+  } finally {
+    markBusy(item.id, false)
+  }
+}
+
+async function down(item) {
+  if (busy.value[item.id]) return
+  markBusy(item.id, true)
+  try {
+    const res = await request(`/admin/submissions/${encodeURIComponent(item.id)}/down`, 'POST', {})
+    if (isOk(res)) fetchList()
+    else alert(res?.data?.message || '操作失败')
+  } catch {
+    alert('操作失败，请重试')
+  } finally {
+    markBusy(item.id, false)
+  }
+}
+
+async function restore(item) {
+  if (busy.value[item.id]) return
+  markBusy(item.id, true)
+  try {
+    const res = await request(`/admin/submissions/${encodeURIComponent(item.id)}/restore`, 'POST', {})
     if (isOk(res)) fetchList()
     else alert(res?.data?.message || '操作失败')
   } catch {
@@ -311,13 +387,14 @@ onMounted(() => {
 .export-btn { border: 0; background: #0d9488; color: #fff; padding: 9px 16px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 .export-btn:disabled { opacity: .6; cursor: wait; }
 
-.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
 .stat-item { display: grid; gap: 2px; padding: 12px 10px; border-radius: 12px; background: #fff; border: 1px solid #e8e4da; text-align: center; }
 .stat-item b { font-size: 22px; color: #17231e; }
 .stat-item span { font-size: 11px; color: #8a958f; }
 .stat-item.pending b { color: #b45309; }
 .stat-item.approved b { color: #0a7a54; }
 .stat-item.rejected b { color: #b42318; }
+.stat-item.down b { color: #64748b; }
 .stat-item.featured b { color: #a16207; }
 
 .category-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
@@ -346,6 +423,7 @@ onMounted(() => {
 .tag.featured { background: #fff1d6; color: #a16207; }
 .tag.winner { background: #fdece8; color: #c2410c; }
 .tag.appeal { background: #eef2ff; color: #3730a3; }
+.tag.down { background: #eef2f7; color: #475569; }
 .appeal-reason { margin: 8px 0 0; color: #3730a3; font-size: 12px; background: #eef2ff; padding: 8px 10px; border-radius: 8px; }
 .desc { margin: 8px 0; color: #5f6d66; font-size: 13px; line-height: 1.65; }
 .meta { display: flex; flex-wrap: wrap; gap: 10px; color: #8a958f; font-size: 11px; }
@@ -356,6 +434,9 @@ onMounted(() => {
 .btn.approve { background: #0d9488; color: #fff; }
 .btn.reject { background: #b42318; color: #fff; }
 .btn.feature { background: #f2c14e; color: #5c3a00; }
+.btn.down { background: #64748b; color: #fff; }
+.btn.restore { background: #0d9488; color: #fff; }
+.btn.cancel { background: #eef2f7; color: #475569; }
 .winner-row { display: flex; align-items: center; gap: 8px; }
 .winner-row select { padding: 7px 9px; border: 1px solid #d8d4c9; border-radius: 10px; background: #fff; font-size: 12px; color: #17231e; }
 
@@ -363,9 +444,18 @@ onMounted(() => {
 .preview-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.82); }
 .preview-mask img { max-width: 92vw; max-height: 84vh; border-radius: 12px; }
 .preview-mask button { position: fixed; top: 20px; right: 20px; border: 0; border-radius: 999px; background: rgba(255,255,255,.15); color: #fff; padding: 9px 16px; cursor: pointer; }
+.modal-mask { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.7); }
+.modal-card { width: min(440px, 100%); padding: 22px; border-radius: 16px; background: #fff; }
+.modal-card h3 { margin: 0 0 8px; font-size: 17px; }
+.modal-hint { margin: 0 0 12px; color: #5f6d66; font-size: 13px; }
+.modal-card textarea { width: 100%; box-sizing: border-box; border: 1px solid #d8d4c9; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-family: inherit; outline: none; resize: vertical; }
+.modal-card textarea:focus { border-color: #b42318; box-shadow: 0 0 0 3px rgba(180,35,24,.1); }
+.modal-error { margin: 8px 0 0; color: #b42318; font-size: 13px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 
 @media (min-width: 720px) {
   .card { grid-template-columns: auto 1fr; }
   .ops { flex-direction: column; align-items: flex-end; }
+  .stats { grid-template-columns: repeat(6, 1fr); }
 }
 </style>

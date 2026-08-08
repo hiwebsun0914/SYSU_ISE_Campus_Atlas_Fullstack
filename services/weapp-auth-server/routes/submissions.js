@@ -120,6 +120,14 @@ function voteKey(v, usersById) {
   return u ? realNameOfUser(u) : String((v && v.userId) || '');
 }
 
+// 一份投稿的“归属键”：按作者真实姓名归属（防止同名账号绕过限投）
+function ownerKey(s, usersById) {
+  if (s && s.realName) return String(s.realName).trim();
+  const u = usersById && usersById[String(s && s.userId)];
+  if (u) return realNameOfUser(u);
+  return String((s && s.username) || '').trim();
+}
+
 // 统计某“真实姓名”在某天总共投出的票数（跨所有账号与作品）
 function countUserVotesToday(list, myKey, day, usersById) {
   let n = 0;
@@ -316,17 +324,24 @@ router.post('/', auth, (req, res) => {
   const users = readUsers();
   const me = users.find(u => u.id === req.userId);
   if (!me) return res.status(401).json({ code: 1, message: '用户不存在' });
+  const usersById = users.reduce((m, u) => { m[String(u.id)] = u; return m; }, {});
+  const myKey = realNameOfUser(me);
 
-  // 防止重复提交：同一用户同一奖项已有待审核/已通过的作品
+  // 防止重复提交：同一真实姓名同一奖项已有 已通过 / 审核中 / 申诉中 的作品
   const active = readSubmissions().find(s =>
-    String(s.userId) === String(req.userId) &&
+    ownerKey(s, usersById) === myKey &&
     s.category === category &&
-    (s.status === 'pending' || s.status === 'approved')
+    (s.status === 'pending' || s.status === 'approved' || (s.status === 'rejected' && s.appealStatus === 'pending'))
   );
   if (active) {
+    const stateText = active.status === 'approved'
+      ? '已通过'
+      : active.status === 'pending'
+        ? '审核中'
+        : '申诉中';
     return res.json({
       code: 2,
-      message: `你已提交过${cat.name}，每人限投 ${awards.perUserPerCategory} 份`,
+      message: `你已提交过${cat.name}（${stateText}）。每个奖项每人最多投稿 1 个作品，请确认是否选择了正确的类别，或前往删除原有作品后再提交。`,
       data: { existingId: active.id }
     });
   }
@@ -344,6 +359,7 @@ router.post('/', auth, (req, res) => {
     images,
     userId: req.userId,
     username: me.username || '匿名用户',
+    realName: realNameOfUser(me),
     avatar: me.avatar || '',
     status: 'pending',
     featured: false,
@@ -519,7 +535,7 @@ router.post('/:id/appeal', auth, (req, res) => {
   res.json({ code: 0, message: '申诉已提交，等待管理员复核', data: { submission: publicView(item, true, buildViewerContext(req.userId)) } });
 });
 
-// ====== 7. 撤销投稿（仅自己、仅待审核） ======
+// ====== 7. 删除投稿（仅自己；任何状态都可删除，删除后无法找回） ======
 // DELETE /submissions/:id
 router.delete('/:id', auth, (req, res) => {
   const list = readSubmissions();
@@ -528,13 +544,21 @@ router.delete('/:id', auth, (req, res) => {
   if (String(list[idx].userId) !== String(req.userId)) {
     return res.status(403).json({ code: 1, message: '只能操作自己的投稿' });
   }
-  if (list[idx].status !== 'pending') {
-    return res.json({ code: 1, message: '已审核的投稿不能撤销' });
+
+  // 尽力删除云端图片（失败不影响记录删除）
+  const item = list[idx];
+  if (cos && Array.isArray(item.images)) {
+    item.images.forEach(img => {
+      if (img && img.key) {
+        cos.deleteObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: img.key }, () => {});
+      }
+    });
   }
+
   list.splice(idx, 1);
   writeSubmissions(list);
-  res.json({ code: 0, message: '已撤销投稿' });
+  res.json({ code: 0, message: '已删除，删除后无法找回' });
 });
 
 module.exports = router;
-module.exports._test = { beijingDay, countUserVotesToday, realNameOfUser, voteKey };
+module.exports._test = { beijingDay, countUserVotesToday, realNameOfUser, voteKey, ownerKey };

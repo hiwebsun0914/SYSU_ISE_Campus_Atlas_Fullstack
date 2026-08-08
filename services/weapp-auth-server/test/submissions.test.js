@@ -101,6 +101,36 @@ function addApprovedRecord(id, userId, username, title) {
   fs.writeFileSync(submissionsFile, JSON.stringify(list, null, 2), 'utf8');
 }
 
+function addRejectedAppealingRecord(id, userId, username, title) {
+  const list = JSON.parse(fs.readFileSync(submissionsFile, 'utf8'));
+  list.push({
+    id,
+    category: 'photography',
+    categoryName: '最佳摄影奖',
+    title,
+    description: '测试作品说明',
+    locationId: 1,
+    locationName: '何尔达屋',
+    images: [{ key: 'sample/sample_x.jpg', url: '' }],
+    userId,
+    username,
+    avatar: '',
+    status: 'rejected',
+    featured: false,
+    winnerRank: '',
+    votes: [],
+    appealReason: '原图清晰，请复核',
+    appealTime: Date.now(),
+    appealStatus: 'pending',
+    appealResult: '',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    reviewedAt: Date.now(),
+    reviewNote: '内容不符合要求'
+  });
+  fs.writeFileSync(submissionsFile, JSON.stringify(list, null, 2), 'utf8');
+}
+
 test.before(async () => {
   if (!server.listening) await once(server, 'listening');
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -410,6 +440,92 @@ test('admin can set and unset winner; public winners list reflects it', async ()
   });
   const winnersAfter = await api(101, '/submissions/winners');
   assert.equal(winnersAfter.body.list.some(x => x.id === id), false);
+});
+
+test('admin can take down and restore an approved work', async () => {
+  addApprovedRecord('down1', 303, 'carol', '待下架作品');
+
+  // 公开列表包含
+  let pub = await api(101, '/submissions');
+  assert.ok(pub.body.list.some(x => x.id === 'down1'));
+
+  // 下架
+  const down = await api(202, '/admin/submissions/down1/down', { method: 'POST', body: JSON.stringify({}) });
+  assert.equal(down.body.code, 0);
+
+  // 公开列表不再包含
+  pub = await api(101, '/submissions');
+  assert.equal(pub.body.list.some(x => x.id === 'down1'), false);
+
+  // 已下架不能投票
+  const vote = await api(303, '/submissions/down1/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(vote.body.code, 1);
+
+  // 作者在我的投稿里仍能看到“已下架”
+  const mine = await api(303, '/submissions/mine');
+  const mineItem = mine.body.list.find(x => x.id === 'down1');
+  assert.equal(mineItem.status, 'down');
+
+  // 重新上架
+  const restore = await api(202, '/admin/submissions/down1/restore', { method: 'POST', body: JSON.stringify({}) });
+  assert.equal(restore.body.code, 0);
+  pub = await api(101, '/submissions');
+  assert.ok(pub.body.list.some(x => x.id === 'down1'));
+});
+
+test('duplicate submission is blocked by real name and appeal-pending status', async () => {
+  // dave 投稿摄影类（创意类已有“王五”的配额测试记录）
+  const created = await api(404, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      title: 'dave的摄影',
+      images: [{ key: 'Award/404__dave/1700000000000_a.jpg' }]
+    }))
+  });
+  assert.equal(created.body.code, 0);
+
+  // carol 与 dave 真实姓名相同（王五）→ 同样被拦截
+  const carolDup = await api(303, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      title: 'carol的摄影',
+      images: [{ key: 'Award/303__carol/1700000000000_a.jpg' }]
+    }))
+  });
+  assert.equal(carolDup.body.code, 2);
+
+  // 申诉中的作品也算“已提交”，不能再投同一类别
+  addRejectedAppealingRecord('appeal1', 202, 'bob', '摄影申诉中');
+  const bobDup = await api(202, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      title: '重复摄影',
+      images: [{ key: 'Award/202__bob/1700000000002_a.jpg' }]
+    }))
+  });
+  assert.equal(bobDup.body.code, 2);
+});
+
+test('author can delete own work in any status; others cannot', async () => {
+  // dave 删除刚才创建的待审核作品
+  const mineD = await api(404, '/submissions/mine');
+  const pending = mineD.body.list.find(x => x.title === 'dave的摄影');
+  assert.ok(pending);
+  const del = await api(404, `/submissions/${encodeURIComponent(pending.id)}`, { method: 'DELETE' });
+  assert.equal(del.body.code, 0);
+
+  // 已通过的自己作品也可删除
+  addApprovedRecord('del1', 404, 'dave', '可删除的已通过作品');
+  const del2 = await api(404, '/submissions/del1', { method: 'DELETE' });
+  assert.equal(del2.body.code, 0);
+
+  // 他人不能删除
+  addApprovedRecord('del2', 404, 'dave', '他人不可删');
+  const del3 = await api(101, '/submissions/del2', { method: 'DELETE' });
+  assert.equal(del3.response.status, 403);
 });
 
 test('rejection reason, appeal and re-review flow', async () => {
