@@ -69,6 +69,9 @@
         <div class="vote-rule">
           🗳️ 每人每天最多投 <b>{{ maxVotesPerDay }}</b> 票，同一作品每天限 1 票，次日可重新投票。
         </div>
+        <p class="winner-rule">
+          🏅 获奖规则：活动截止后按票数自动评选——最佳创意奖前 <b>{{ winnerCounts.creative }}</b> 名、最佳摄影奖前 <b>{{ winnerCounts.photography }}</b> 名获奖。
+        </p>
         <p class="rules-note">
           投稿作品经管理员审核通过后将在下方展示；优秀作品将被选在首行特别展出。
         </p>
@@ -228,6 +231,7 @@ const perUserPerCategory = computed(() => meta.value?.perUserPerCategory ?? AWAR
 const maxImagesPerWork = computed(() => meta.value?.maxImagesPerWork ?? AWARD_CONFIG.maxImagesPerWork)
 const maxImageMB = computed(() => meta.value?.maxImageMB ?? AWARD_CONFIG.maxImageMB)
 const maxVotesPerDay = computed(() => meta.value?.maxVotesPerDay ?? AWARD_CONFIG.maxVotesPerDay)
+const winnerCounts = computed(() => meta.value?.winnerCounts || AWARD_CONFIG.winnerCounts || { creative: 5, photography: 2 })
 const closed = computed(() => {
   if (!deadline.value) return false
   return Date.now() > new Date(deadline.value).getTime()
@@ -420,6 +424,8 @@ onMounted(() => {
 .rule-item span { color: #5f6d66; font-size: 12px; }
 .vote-rule { margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; background: #fff7e6; color: #7a5200; font-size: 13px; }
 .vote-rule b { color: #b45309; }
+.winner-rule { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: #f4f0fa; color: #5b3a8f; font-size: 13px; }
+.winner-rule b { color: #6d28d9; }
 .rules-note { margin: 0 0 14px; color: #7b857f; font-size: 12px; line-height: 1.7; }
 .ceremony-line { margin: 0 0 14px; color: #9a6200; font-size: 13px; font-weight: 700; }
 .ghost-btn { border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 9px 16px; border-radius: 999px; font-size: 13px; cursor: pointer; }

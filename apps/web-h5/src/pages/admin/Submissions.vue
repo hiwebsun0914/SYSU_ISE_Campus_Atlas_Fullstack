@@ -7,6 +7,9 @@
       <button class="export-btn" type="button" :disabled="exporting" @click="exportCsv">
         {{ exporting ? '导出中…' : '导出投稿名单' }}
       </button>
+      <button class="export-btn" type="button" :disabled="computing" @click="computeWinners">
+        {{ computing ? '统计中…' : '按票数刷新获奖' }}
+      </button>
     </div>
 
     <!-- 统计 -->
@@ -106,15 +109,6 @@
           <button v-if="item.status === 'down'" class="btn restore" type="button" :disabled="busy[item.id]" @click="restore(item)">
             重新上架
           </button>
-          <div v-if="item.status === 'approved'" class="winner-row">
-            <select v-model="winnerDrafts[item.id]" :disabled="busy[item.id]">
-              <option value="">未获奖</option>
-              <option v-for="r in winnerRanks" :key="r.id" :value="r.id">{{ r.label }}</option>
-            </select>
-            <button class="btn feature" type="button" :disabled="busy[item.id]" @click="saveWinner(item)">
-              保存获奖
-            </button>
-          </div>
         </div>
       </article>
     </div>
@@ -145,6 +139,10 @@
       <img :src="previewUrl" alt="作品大图" />
       <button type="button" @click="previewUrl = ''">关闭</button>
     </div>
+
+    <Transition name="toast">
+      <div v-if="msg" class="page-toast" role="status">{{ msg }}</div>
+    </Transition>
   </div>
 </template>
 
@@ -152,21 +150,27 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
-import { AWARD_CONFIG } from '@/data/awards'
 
 const router = useRouter()
 const loading = ref(false)
 const exporting = ref(false)
+const computing = ref(false)
 const list = ref([])
 const stat = ref(null)
 const status = ref('all')
 const category = ref('all')
 const busy = ref({})
 const previewUrl = ref('')
-const winnerDrafts = ref({})
-const winnerRanks = AWARD_CONFIG.winnerRanks || []
 const rejectModal = ref({ open: false, item: null, note: '' })
 const rejectError = ref('')
+const msg = ref('')
+let msgTimer = 0
+
+function showMsg(text) {
+  msg.value = text
+  window.clearTimeout(msgTimer)
+  msgTimer = window.setTimeout(() => { msg.value = '' }, 3200)
+}
 
 const statusTabs = [
   { value: 'all', label: '全部' },
@@ -212,9 +216,6 @@ async function fetchList() {
     if (isOk(res)) {
       list.value = res.data.list || []
       stat.value = res.data.stat || null
-      const drafts = {}
-      list.value.forEach(item => { drafts[item.id] = item.winnerRank || '' })
-      winnerDrafts.value = drafts
     }
   } catch {
     list.value = []
@@ -331,19 +332,24 @@ async function toggleFeature(item) {
   }
 }
 
-async function saveWinner(item) {
-  if (busy.value[item.id]) return
-  markBusy(item.id, true)
+async function computeWinners() {
+  if (computing.value) return
+  computing.value = true
   try {
-    const res = await request(`/admin/submissions/${encodeURIComponent(item.id)}/winner`, 'POST', {
-      rank: winnerDrafts.value[item.id] || ''
-    })
-    if (isOk(res)) fetchList()
-    else alert(res?.data?.message || '操作失败')
+    const res = await request('/admin/submissions/compute-winners', 'POST', {})
+    if (isOk(res)) {
+      const sum = res.data.summary || {}
+      const photo = (sum.photography || []).length
+      const creative = (sum.creative || []).length
+      showMsg(`已按当前票数刷新：最佳摄影奖 ${photo} 名、最佳创意奖 ${creative} 名获奖`)
+      fetchList()
+    } else {
+      showMsg(res?.data?.message || '操作失败')
+    }
   } catch {
-    alert('操作失败，请重试')
+    showMsg('操作失败，请重试')
   } finally {
-    markBusy(item.id, false)
+    computing.value = false
   }
 }
 
@@ -437,13 +443,13 @@ onMounted(() => {
 .btn.down { background: #64748b; color: #fff; }
 .btn.restore { background: #0d9488; color: #fff; }
 .btn.cancel { background: #eef2f7; color: #475569; }
-.winner-row { display: flex; align-items: center; gap: 8px; }
-.winner-row select { padding: 7px 9px; border: 1px solid #d8d4c9; border-radius: 10px; background: #fff; font-size: 12px; color: #17231e; }
-
 .empty { padding: 40px 0; text-align: center; color: #8a958f; font-size: 14px; }
 .preview-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.82); }
 .preview-mask img { max-width: 92vw; max-height: 84vh; border-radius: 12px; }
 .preview-mask button { position: fixed; top: 20px; right: 20px; border: 0; border-radius: 999px; background: rgba(255,255,255,.15); color: #fff; padding: 9px 16px; cursor: pointer; }
+.page-toast { position: fixed; left: 50%; bottom: 30px; z-index: 120; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 11px 18px; border-radius: 999px; background: rgba(17,35,30,.92); color: #fff; font-size: 13px; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,.22); }
+.toast-enter-active, .toast-leave-active { transition: opacity .2s ease, transform .2s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translate(-50%, 10px); }
 .modal-mask { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.7); }
 .modal-card { width: min(440px, 100%); padding: 22px; border-radius: 16px; background: #fff; }
 .modal-card h3 { margin: 0 0 8px; font-size: 17px; }

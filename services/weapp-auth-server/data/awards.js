@@ -52,11 +52,9 @@ module.exports = {
     }
   ],
 
-  // 获奖等级（管理员在审核后台为作品设置）
-  winnerRanks: [
-    { id: 'first',   label: '一等奖' },
-    { id: 'second',  label: '二等奖' },
-    { id: 'third',   label: '三等奖' },
-    { id: 'popular', label: '人气奖' }
-  ]
+  // 获奖规则：活动截止后按票数自动评选，每个奖项取前 N 名
+  winnerCounts: {
+    creative: 5,
+    photography: 2
+  }
 };

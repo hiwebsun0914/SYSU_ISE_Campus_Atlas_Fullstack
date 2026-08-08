@@ -15,7 +15,7 @@
 
       <template v-else>
         <section v-for="cat in grouped" :key="cat.id" class="result-section">
-          <h2>{{ cat.name }}</h2>
+          <h2>{{ cat.name }} <small>按票数自动评选</small></h2>
           <div class="result-grid">
             <article v-for="w in cat.items" :key="w.id" class="result-card" @click="preview(w)">
               <img :src="w.images[0]?.url" :alt="w.title" loading="lazy" />
@@ -97,6 +97,7 @@ onMounted(() => {
 .results-main { max-width: 960px; margin: 0 auto; padding: 32px clamp(16px, 4vw, 52px) 90px; }
 .result-section { margin-bottom: 34px; }
 .result-section h2 { margin: 0 0 16px; font-size: 20px; color: #17231e; border-left: 4px solid #0d9488; padding-left: 12px; }
+.result-section h2 small { font-size: 12px; color: #8a958f; font-weight: 400; margin-left: 8px; }
 .result-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .result-card { display: grid; grid-template-columns: 1fr; overflow: hidden; border-radius: 16px; background: #fff; border: 1px solid #e8e4da; cursor: zoom-in; }
 .result-card img { width: 100%; height: 210px; object-fit: cover; display: block; }

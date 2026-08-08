@@ -26,7 +26,7 @@
         <!-- 获奖详情 -->
         <section v-if="item.status === 'approved' && item.winnerRank" class="card winner-card">
           <h2>🏆 获奖详情</h2>
-          <p class="winner-line">恭喜！你的作品获得 <b>{{ item.winnerLabel }}</b></p>
+          <p class="winner-line">恭喜！你的作品获得 <b>{{ item.categoryName }}：{{ item.winnerLabel }}</b></p>
           <p class="winner-sub">奖项：{{ item.categoryName }} · 公示见“获奖结果公示”页面</p>
         </section>
 

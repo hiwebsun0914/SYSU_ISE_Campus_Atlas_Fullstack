@@ -71,12 +71,12 @@ const validPayload = (overrides = {}) => ({
 });
 
 // 直接向测试数据文件追加一条“已通过”的作品（用于配额等测试）
-function addApprovedRecord(id, userId, username, title) {
+function addApprovedRecord(id, userId, username, title, category = 'creative', votes = []) {
   const list = JSON.parse(fs.readFileSync(submissionsFile, 'utf8'));
   list.push({
     id,
-    category: 'creative',
-    categoryName: '最佳创意奖',
+    category,
+    categoryName: category === 'photography' ? '最佳摄影奖' : '最佳创意奖',
     title,
     description: '测试作品说明',
     locationId: 1,
@@ -88,7 +88,7 @@ function addApprovedRecord(id, userId, username, title) {
     status: 'approved',
     featured: false,
     winnerRank: '',
-    votes: [],
+    votes,
     appealReason: '',
     appealTime: 0,
     appealStatus: '',
@@ -154,6 +154,8 @@ test('meta returns categories, deadline and limits', async () => {
   assert.ok(body.data.awardCeremony);
   assert.ok(body.data.maxImagesPerWork > 0);
   assert.ok(body.data.maxVotesPerDay > 0);
+  assert.ok(body.data.winnerCounts.creative > 0);
+  assert.ok(body.data.winnerCounts.photography > 0);
 });
 
 test('creates a pending submission', async () => {
@@ -394,53 +396,65 @@ test('beijingDay helper uses UTC+8 date', () => {
   assert.equal(beijingDay(Date.UTC(2026, 7, 9, 15, 59)), '2026-08-09');
 });
 
-test('admin can set and unset winner; public winners list reflects it', async () => {
-  const created = await api(202, '/submissions', {
-    method: 'POST',
-    body: JSON.stringify(validPayload({
-      category: 'photography',
-      title: '获奖作品',
-      images: [{ key: 'Award/202__bob/1700000000001_xyz.jpg' }]
-    }))
-  });
-  assert.equal(created.body.code, 0);
-  const id = created.body.data.submission.id;
+test('auto-computes winners by votes after deadline', async () => {
+  const awards = require('../data/awards');
+  const originalDeadline = awards.deadline;
 
-  // 未通过前不能设置获奖
-  const tooEarly = await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
-    method: 'POST',
-    body: JSON.stringify({ rank: 'first' })
-  });
-  assert.equal(tooEarly.body.code, 1);
+  // 截止前不评奖
+  let before = await api(101, '/submissions/winners');
+  assert.equal(before.body.code, 0);
+  assert.equal(before.body.list.length, 0);
 
-  // 通过后设置一等奖
-  await api(202, `/admin/submissions/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify({}) });
-  const setWinner = await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
-    method: 'POST',
-    body: JSON.stringify({ rank: 'first' })
-  });
-  assert.equal(setWinner.body.code, 0);
-  assert.equal(setWinner.body.winnerLabel, '一等奖');
+  const vote = (n) => Array.from({ length: n }, (_, i) => ({ userId: 500 + i, day: '2026-08-01', ts: i + 1 }));
 
-  // 公开公示列表包含该作品
-  const winners = await api(101, '/submissions/winners');
-  assert.equal(winners.body.code, 0);
-  assert.ok(winners.body.list.some(x => x.id === id && x.winnerLabel === '一等奖'));
+  try {
+    awards.deadline = '2020-01-01T00:00:00+08:00';
 
-  // 非法等级
-  const badRank = await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
-    method: 'POST',
-    body: JSON.stringify({ rank: 'superstar' })
-  });
-  assert.equal(badRank.body.code, 1);
+    // 摄影奖：5 票 / 3 票 / 1 票 → 前 2 名获奖
+    addApprovedRecord('p1', 999, 'winner_owner', '摄影一', 'photography', vote(6));
+    addApprovedRecord('p2', 999, 'winner_owner', '摄影二', 'photography', vote(4));
+    addApprovedRecord('p3', 999, 'winner_owner', '摄影三', 'photography', vote(2));
 
-  // 取消获奖后公示为空
-  await api(202, `/admin/submissions/${encodeURIComponent(id)}/winner`, {
-    method: 'POST',
-    body: JSON.stringify({ rank: '' })
-  });
-  const winnersAfter = await api(101, '/submissions/winners');
-  assert.equal(winnersAfter.body.list.some(x => x.id === id), false);
+    // 创意奖：5/4/3/2/1/0 票 → 前 5 名获奖
+    addApprovedRecord('c1', 999, 'winner_owner', '创意一', 'creative', vote(6));
+    addApprovedRecord('c2', 999, 'winner_owner', '创意二', 'creative', vote(5));
+    addApprovedRecord('c3', 999, 'winner_owner', '创意三', 'creative', vote(4));
+    addApprovedRecord('c4', 999, 'winner_owner', '创意四', 'creative', vote(3));
+    addApprovedRecord('c5', 999, 'winner_owner', '创意五', 'creative', vote(2));
+    addApprovedRecord('c6', 999, 'winner_owner', '创意六', 'creative', vote(1));
+
+    const winners = await api(101, '/submissions/winners');
+    assert.equal(winners.body.code, 0);
+
+    const photo = winners.body.list.filter(w => w.category === 'photography');
+    const creative = winners.body.list.filter(w => w.category === 'creative');
+
+    assert.equal(photo.length, 2);
+    assert.equal(photo[0].id, 'p1');
+    assert.equal(photo[0].winnerLabel, '第一名');
+    assert.equal(photo[1].id, 'p2');
+    assert.equal(photo[1].winnerLabel, '第二名');
+    assert.equal(photo.some(w => w.id === 'p3'), false);
+
+    assert.equal(creative.length, 5);
+    assert.equal(creative[0].winnerLabel, '第一名');
+    assert.equal(creative[4].id, 'c5');
+    assert.equal(creative[4].winnerLabel, '第五名');
+    assert.equal(creative.some(w => w.id === 'c6'), false);
+
+    // 公开作品区也带获奖标注
+    const pub = await api(101, '/submissions');
+    const p1 = pub.body.list.find(w => w.id === 'p1');
+    assert.equal(p1.winnerLabel, '第一名');
+
+    // 管理员“刷新获奖名单”接口
+    const compute = await api(202, '/admin/submissions/compute-winners', { method: 'POST', body: JSON.stringify({}) });
+    assert.equal(compute.body.code, 0);
+    assert.equal(compute.body.summary.photography.length, 2);
+    assert.equal(compute.body.summary.creative.length, 5);
+  } finally {
+    awards.deadline = originalDeadline;
+  }
 });
 
 test('admin can take down and restore an approved work', async () => {

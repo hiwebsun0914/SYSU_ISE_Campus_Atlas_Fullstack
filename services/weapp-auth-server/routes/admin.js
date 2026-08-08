@@ -307,11 +307,7 @@ const SUBMISSIONS_FILE = path.resolve(
   process.env.SUBMISSIONS_FILE || path.join(__dirname, '..', 'submissions.json')
 );
 const AWARDS = require('../data/awards');
-
-function winnerLabelOf(rank) {
-  if (!rank) return '';
-  return (AWARDS.winnerRanks || []).find(r => r.id === rank)?.label || '';
-}
+const { isActivityEnded, computeWinners } = require('../winner');
 
 function readSubmissionsArray() {
   ensureFile(SUBMISSIONS_FILE, '[]');
@@ -367,7 +363,12 @@ router.get('/submissions', auth, adminOnly, (req, res) => {
   const statusQ = String(req.query.status || 'all').toLowerCase();
   const categoryQ = String(req.query.category || 'all').toLowerCase();
 
-  let list = readSubmissionsArray().slice();
+  // 截止后自动按票数统计获奖名单
+  const all = readSubmissionsArray();
+  const { list: computedList, changed } = computeWinners(all, false);
+  if (changed) writeSubmissionsArray(computedList);
+
+  let list = computedList.slice();
   if (statusQ !== 'all') {
     list = list.filter(s => statusQ === 'featured' ? !!s.featured : (s.status || 'pending') === statusQ);
   }
@@ -474,29 +475,17 @@ router.post('/submissions/:id/restore', auth, adminOnly, (req, res) => {
   res.json({ code: 0, message: '已重新上架，作品恢复公开展示' });
 });
 
-// ====== 设置 / 取消获奖等级 ======
-// POST /admin/submissions/:id/winner  { rank: 'first'|'second'|'third'|'popular'|'' }
-router.post('/submissions/:id/winner', auth, adminOnly, (req, res) => {
+// ====== 按当前票数刷新获奖名单（截止后自动执行；这里供管理员预览） ======
+// POST /admin/submissions/compute-winners
+router.post('/submissions/compute-winners', auth, adminOnly, (_req, res) => {
   const list = readSubmissionsArray();
-  const item = list.find(s => String(s.id) === String(req.params.id));
-  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
-
-  const rank = String(req.body?.rank || '').trim();
-  if (rank && !(AWARDS.winnerRanks || []).some(r => r.id === rank)) {
-    return res.json({ code: 1, message: '获奖等级不正确' });
-  }
-  if (rank && item.status !== 'approved') {
-    return res.json({ code: 1, message: '作品通过审核后才能设置获奖' });
-  }
-
-  item.winnerRank = rank;
-  item.updatedAt = Date.now();
-  writeSubmissionsArray(list);
+  const { list: updated, changed, summary } = computeWinners(list, true);
+  if (changed) writeSubmissionsArray(updated);
   res.json({
     code: 0,
-    message: rank ? `已设置：${winnerLabelOf(rank)}` : '已取消获奖设置',
-    winnerRank: rank,
-    winnerLabel: winnerLabelOf(rank)
+    message: changed ? '已按当前票数刷新获奖名单' : '获奖名单未变化',
+    changed,
+    summary
   });
 });
 

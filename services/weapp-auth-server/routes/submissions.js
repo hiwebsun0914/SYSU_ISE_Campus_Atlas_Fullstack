@@ -11,6 +11,7 @@ const auth = require('../middleware/auth');
 const { optionalAuth } = require('../middleware/auth');
 const awards = require('../data/awards');
 const locationsData = require('../data/locations');
+const { isActivityEnded, winnerLabelOf, computeWinners } = require('../winner');
 
 // ====== 环境配置 ======
 const {
@@ -103,12 +104,6 @@ const validLocationIds = () => {
   return ids;
 };
 
-// 活动是否已截止（截止后普通用户不能再投稿、申诉、删除、投票）
-function isActivityEnded() {
-  if (!awards.deadline) return false;
-  return Date.now() > new Date(awards.deadline).getTime();
-}
-
 const ACTIVITY_ENDED_MSG = '活动已截止，无法进行操作，请耐心期待最终结果公布';
 
 // 北京时间（UTC+8）的日期，格式 YYYY-MM-DD，用于“每天”的投票与限额
@@ -161,13 +156,17 @@ function buildViewerContext(userId) {
   };
 }
 
-function categoryById(id) {
-  return (awards.categories || []).find(c => c.id === id) || null;
+// 截止后自动按票数统计获奖名单（读取时触发，保证展示最新结果）
+function ensureWinnersComputed(force = false) {
+  if (!force && !isActivityEnded()) return null;
+  const list = readSubmissions();
+  const { list: updated, changed } = computeWinners(list, force);
+  if (changed) writeSubmissions(updated);
+  return readSubmissions();
 }
 
-function winnerLabelOf(rank) {
-  if (!rank) return '';
-  return (awards.winnerRanks || []).find(r => r.id === rank)?.label || '';
+function categoryById(id) {
+  return (awards.categories || []).find(c => c.id === id) || null;
 }
 
 function userPrefix(req) {
@@ -204,7 +203,7 @@ function publicView(s, withUser = false, viewer = null) {
     status: s.status || 'pending',
     featured: !!s.featured,
     winnerRank: s.winnerRank || '',
-    winnerLabel: winnerLabelOf(s.winnerRank),
+    winnerLabel: s.winnerLabel || winnerLabelOf(s.winnerRank),
     likeCount: votes.length,
     votedToday: viewer != null && votes.some(v => voteKey(v, viewer.usersById) === viewer.myKey && v.day === today),
     appealReason: s.appealReason || '',
@@ -236,6 +235,7 @@ router.get('/meta', (_req, res) => {
       maxImagesPerWork: awards.maxImagesPerWork,
       maxImageMB: awards.maxImageMB,
       maxVotesPerDay: awards.maxVotesPerDay,
+      winnerCounts: awards.winnerCounts || {},
       allowedImageTypes: awards.allowedImageTypes,
       categories: awards.categories
     }
@@ -390,6 +390,7 @@ router.post('/', auth, (req, res) => {
 // ====== 5. 我的投稿 ======
 // GET /submissions/mine
 router.get('/mine', auth, (_req, res) => {
+  ensureWinnersComputed();
   const list = readSubmissions()
     .filter(s => String(s.userId) === String(_req.userId))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
@@ -400,6 +401,7 @@ router.get('/mine', auth, (_req, res) => {
 // ====== 6. 公开作品展示（仅已通过） ======
 // GET /submissions?category=creative|photography&featured=1&limit=20
 router.get('/', optionalAuth, (req, res) => {
+  ensureWinnersComputed();
   const q = req.query || {};
   let list = readSubmissions().filter(s => s.status === 'approved');
 
@@ -419,14 +421,12 @@ router.get('/', optionalAuth, (req, res) => {
 // ====== 6b. 获奖结果公示（仅已通过且已设置获奖等级） ======
 // GET /submissions/winners
 router.get('/winners', optionalAuth, (_req, res) => {
+  ensureWinnersComputed();
+  const viewer = buildViewerContext(_req.userId);
   const list = readSubmissions()
-    .filter(s => s.status === 'approved' && s.winnerRank)
-    .sort((a, b) => {
-      const orderA = (awards.winnerRanks || []).findIndex(r => r.id === a.winnerRank);
-      const orderB = (awards.winnerRanks || []).findIndex(r => r.id === b.winnerRank);
-      return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
-    })
-    .map(s => publicView(s, true, buildViewerContext(_req.userId)));
+    .filter(s => s.status === 'approved' && Number(s.winnerRank) > 0)
+    .sort((a, b) => Number(a.winnerRank) - Number(b.winnerRank))
+    .map(s => publicView(s, true, viewer));
   res.json({ code: 0, list });
 });
 
@@ -508,6 +508,7 @@ router.get('/votes/quota', auth, (_req, res) => {
 // ====== 6e. 投稿详情（仅本人） ======
 // GET /submissions/:id
 router.get('/:id', auth, (req, res) => {
+  ensureWinnersComputed();
   const item = readSubmissions().find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
   if (String(item.userId) !== String(req.userId)) {

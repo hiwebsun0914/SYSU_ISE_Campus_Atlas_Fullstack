@@ -7,6 +7,10 @@ export const AWARD_CONFIG = {
   maxImagesPerWork: 1,
   maxImageMB: 10,
   maxVotesPerDay: 3,
+  winnerCounts: {
+    creative: 5,
+    photography: 2
+  },
   allowedImageTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   categories: [
     {
@@ -29,11 +33,5 @@ export const AWARD_CONFIG = {
       welcome: '如果你想留下学校古朴建筑的美丽瞬间，发挥你的才能，抓拍学校不一样的风景，投稿至最佳摄影奖。',
       requirements: ['作品须为本人拍摄', '围绕校园打卡点取景', '填写作品名称与拍摄说明']
     }
-  ],
-  winnerRanks: [
-    { id: 'first', label: '一等奖' },
-    { id: 'second', label: '二等奖' },
-    { id: 'third', label: '三等奖' },
-    { id: 'popular', label: '人气奖' }
   ]
 }
