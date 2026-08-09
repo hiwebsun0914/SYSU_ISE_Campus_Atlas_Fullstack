@@ -30,7 +30,9 @@ const {
   PUBLIC_ASSET_DOMAIN,
   // 新增
   COS_SECRET_ID,
-  COS_SECRET_KEY
+  COS_SECRET_KEY,
+  DEV_BYPASS_AUTH,
+  DEV_USER_ID = '1723017600000'
 } = process.env;
 
 // 若未配置将不会影响其他功能，但 /checkin/photo* 接口将不可用
@@ -182,7 +184,7 @@ function writeBottles(list) {
 }
 
 function findUserById(id) {
-  return readUsers().find(u => u.id === id);
+  return readUsers().find(u => String(u.id) === String(id));
 }
 function toAvatarUrl(key) {
   if (!key) return null;
@@ -193,7 +195,7 @@ function toAvatarUrl(key) {
 function issueTokenAndPersist(user) {
   const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
   const users = readUsers();
-  const idx = users.findIndex(u => u.id === user.id);
+  const idx = users.findIndex(u => String(u.id) === String(user.id));
   if (idx !== -1) {
     users[idx].lastToken = token;
     users[idx].updatedAt = Date.now();
@@ -236,6 +238,9 @@ function createUser({ username, passwordPlain, phone }) {
     role: DEFAULT_ROLE,
     unlockedLocations: [],
     lockingLocations: [],
+    completedRoutes: [],
+    checkinRecords: [],
+    points: 0,
     bottlesThrow: [],
     bottlesReceived: [],
     lastToken: '',
@@ -246,7 +251,7 @@ function createUser({ username, passwordPlain, phone }) {
 
 /* ========= 新增：COS 辅助函数 ========= */
 
-// 生成公开直链（桶或 CDN 是“公有读”时建议设置 PUBLIC_ASSET_DOMAIN）
+// 生成公开直链（桶或 CDN 是"公有读"时建议设置 PUBLIC_ASSET_DOMAIN）
 function toPublicUrlByKey(key) {
   if (!key) return null;
   const base = PUBLIC_ASSET_DOMAIN ||
@@ -268,7 +273,7 @@ function signedUrlByKey(key, expiresSec = 600) {
   });
 }
 
-// 统一返回“可访问”的 URL：优先走 PUBLIC 域名；否则回落到临时签名
+// 统一返回"可访问"的 URL：优先走 PUBLIC 域名；否则回落到临时签名
 async function toAccessibleUrl(key) {
   if (!key) return null;
   if (PUBLIC_ASSET_DOMAIN) return toPublicUrlByKey(key);
@@ -300,7 +305,7 @@ async function listAllKeys(prefix) {
   return keys;
 }
 
-// 根据路径规则寻找“当前用户在指定地点的最新一张图”
+// 根据路径规则寻找"当前用户在指定地点的最新一张图"
 // 规则：checkin/{userId}__{username}/{locationId}/{timestamp_random.ext}
 async function findLatestCheckinKey(user, locationId) {
   if (!user || !locationId) return null;
@@ -308,7 +313,7 @@ async function findLatestCheckinKey(user, locationId) {
   const name = (user.username || '').trim();
   const exts = /\.(png|jpe?g|webp|gif|bmp)$/i;
 
-  // A. 先尝试“精确用户名”的前缀
+  // A. 先尝试"精确用户名"的前缀
   const prefixA = `checkin/${id}__${name}/${locationId}/`;
   let keys = await listAllKeys(prefixA);
   keys = keys.filter(k => exts.test(k))
@@ -449,7 +454,7 @@ app.post('/login_or_register', (req, res) => {
   const users  = readUsers();
   const exists = users.find(u => u.username === username);
 
-  // —— 明确“登录” —— 不存在就明确报错
+  // —— 明确"登录" —— 不存在就明确报错
   if (isLoginExplicit) {
     if (!exists) {
       return res.json({ code: ERR_USER_NOT_FOUND, message: '账号不存在' });
@@ -461,7 +466,7 @@ app.post('/login_or_register', (req, res) => {
     return respondSuccess(res, exists);
   }
 
-  // —— 明确“注册” —— 重名就报错
+  // —— 明确"注册" —— 重名就报错
   if (isRegisterExplicit) {
     if (exists) {
       return res.json({ code: ERR_USERNAME_TAKEN, message: '用户名已存在' });
@@ -472,7 +477,7 @@ app.post('/login_or_register', (req, res) => {
     return respondSuccess(res, newUser);
   }
 
-  // —— 旧端兼容：不带任何控制参数 => 维持“自动注册”的旧行为 —— 
+  // —— 旧端兼容：不带任何控制参数 => 维持"自动注册"的旧行为 —— 
   if (!exists) {
     const newUser = createUser({ username, passwordPlain: password, phone });
     users.push(newUser);
@@ -499,8 +504,11 @@ app.get('/auth/me', auth, (req, res) => {
       avatar: effectiveAvatar,
       phone: u.phone || '',
       role: u.role || DEFAULT_ROLE,
+      points: u.points || 0,
       unlockedLocations: u.unlockedLocations || [],
       lockingLocations: u.lockingLocations || [],
+      completedRoutes: u.completedRoutes || [],
+      checkinRecords: u.checkinRecords || [],
       bottlesThrow: u.bottlesThrow || [],
       bottlesReceived: u.bottlesReceived || [],
       createdAt: u.createdAt,
@@ -509,11 +517,22 @@ app.get('/auth/me', auth, (req, res) => {
   });
 });
 
+/* ========= 当前用户打卡状态（/atlas 首页/我的打卡/首页用） ========= */
+app.get('/checkin/status', auth, (req, res) => {
+  const u = findUserById(req.userId);
+  if (!u) return res.status(401).json({ code: 1, message: '用户不存在或已被删除' });
+  res.json({
+    code: 0,
+    unlockedLocations: u.unlockedLocations || [],
+    lockingLocations: u.lockingLocations || []
+  });
+});
+
 /* ========= 个人资料更新 ========= */
 app.put('/user/profile', auth, (req, res) => {
   const { phone, username } = req.body || {};
   const users = readUsers();
-  const idx = users.findIndex(u => u.id === req.userId);
+  const idx = users.findIndex(u => String(u.id) === String(req.userId));
   if (idx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
 
   if (typeof phone === 'string') users[idx].phone = phone.trim();
@@ -532,7 +551,7 @@ app.post('/user/unlock', auth, (req, res) => {
   }
 
   const users = readUsers();
-  const idx = users.findIndex(u => u.id === req.userId);
+  const idx = users.findIndex(u => String(u.id) === String(req.userId));
   if (idx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
 
   const u = users[idx];
@@ -555,7 +574,7 @@ app.post('/user/unlock', auth, (req, res) => {
   });
 });
 
-/* ========= 新增：查询“我在某地点最新打卡图片” ========= */
+/* ========= 新增：查询"我在某地点最新打卡图片" ========= */
 /**
  * 兼容两个地址：
  *  GET /checkin/photo          ?locationId=7
@@ -601,7 +620,7 @@ app.post('/bottle/throw', auth, (req, res) => {
   }
 
   const users = readUsers();
-  const meIdx = users.findIndex(u => u.id === req.userId);
+  const meIdx = users.findIndex(u => String(u.id) === String(req.userId));
   if (meIdx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
 
   const bottles = readBottles();
@@ -687,7 +706,7 @@ app.get('/bottle/my-picked', auth, (req, res) => {
     const meId = String(req.userId);
     const all = (typeof readBottles === 'function' ? readBottles() : []) || [];
 
-    // 汇总“我捡过的”，对同一瓶子取我最新的一次 pickTime
+    // 汇总"我捡过的"，对同一瓶子取我最新的一次 pickTime
     const mineAll = all
       .map(b => {
         let myLatestPickTime = null;
@@ -815,7 +834,49 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ code: 1, message: '服务器错误' });
 });
 
+/* ========= 开发模式：自动创建默认测试用户 ========= */
+function ensureDevUser() {
+  if (String(DEV_BYPASS_AUTH || '').toLowerCase() !== 'true') return;
+
+  let users = readUsers();
+
+  // 优先读取 users.json 中已有的第一个用户作为默认开发用户
+  if (users.length > 0) {
+    const firstUser = users[0];
+    process.env.DEV_USER_ID = String(firstUser.id);
+    console.log(`[dev] 使用 users.json 中第一个用户作为测试用户 (id=${firstUser.id})`);
+    return;
+  }
+
+  // users.json 为空时才自动创建
+  const devId = Number(DEV_USER_ID);
+  const now = Date.now();
+  const devUser = {
+    id: devId,
+    openId: `dev_openid_${devId}`,
+    nickName: '开发测试用户',
+    avatarUrl: '',
+    role: 'visitor',
+    points: 0,
+    unlockedLocations: [],
+    lockingLocations: [],
+    completedRoutes: [],
+    checkinRecords: [],
+    bottlesThrow: [],
+    bottlesReceived: [],
+    lastToken: '',
+    lastLogin: now,
+    createdAt: now,
+    updatedAt: now
+  };
+  users.push(devUser);
+  writeUsers(users);
+  process.env.DEV_USER_ID = String(devId);
+  console.log(`[dev] users.json 为空，已自动创建测试用户 (id=${devId})`);
+}
+
 /* ========= 启动 ========= */
+ensureDevUser();
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running at http://0.0.0.0:${PORT}`);
 });

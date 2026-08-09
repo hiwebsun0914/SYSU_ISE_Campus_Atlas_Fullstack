@@ -21,6 +21,7 @@ export const campusLocations = [
   {
     id: "he-er-da-house",
     name: "何尔达屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_001_he_er_da_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -35,6 +36,7 @@ export const campusLocations = [
   {
     id: "gao-li-shi-house",
     name: "高利士屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_002_gao_lishi_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -49,6 +51,7 @@ export const campusLocations = [
   {
     id: "pennsylvania-school-house",
     name: "宾省校屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_003_pennsylvania_school_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -63,6 +66,7 @@ export const campusLocations = [
   {
     id: "duanmu-zheng-statue",
     name: "端木正教授像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_004_prof_duanmu_zheng_statue.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -77,6 +81,7 @@ export const campusLocations = [
   {
     id: "wei-ye-xiao-shi-house",
     name: "韦耶孝实屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_005_wei_yexiaoshi_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -91,6 +96,7 @@ export const campusLocations = [
   {
     id: "london-missionary-house",
     name: "伦敦会屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_006_london_missionary_society_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -105,6 +111,7 @@ export const campusLocations = [
   {
     id: "meichen-house-1",
     name: "美臣屋一号",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_007_meichen_house_no1.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -119,6 +126,7 @@ export const campusLocations = [
   {
     id: "bai-de-li-house",
     name: "白德理屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_008_bai_deli_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -133,6 +141,7 @@ export const campusLocations = [
   {
     id: "qu-lin-bin-house",
     name: "屈林宾屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_009_qu_linbin_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -147,6 +156,7 @@ export const campusLocations = [
   {
     id: "hui-shi-li-house",
     name: "惠师礼屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_010_hui_shili_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -161,6 +171,7 @@ export const campusLocations = [
   {
     id: "ma-gang-hall",
     name: "马岗堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_011_magang_hall.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -175,6 +186,7 @@ export const campusLocations = [
   {
     id: "south-library-main",
     name: "图书馆",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_012_library.jpg",
     lnglat: [113.300065,23.097802],
     isHidden: 0,
     category: "library",
@@ -189,6 +201,7 @@ export const campusLocations = [
   {
     id: "huang-huan-qiu-statue",
     name: "黄焕秋校长像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_013_zou_lu_president_statue.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -203,6 +216,7 @@ export const campusLocations = [
   {
     id: "gran-hall",
     name: "格兰堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_014_gelan_hall.jpg",
     lnglat: [113.299631,23.097032],
     isHidden: 0,
     category: "landmark",
@@ -217,6 +231,7 @@ export const campusLocations = [
   {
     id: "liao-cheng-zhi-statue",
     name: "廖承志像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_015_liao_chengzhi_statue.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -231,6 +246,7 @@ export const campusLocations = [
   {
     id: "martin-hall",
     name: "马丁堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_016_martin_hall.jpg",
     lnglat: [113.298799,23.097101],
     isHidden: 0,
     category: "landmark",
@@ -245,6 +261,7 @@ export const campusLocations = [
   {
     id: "primary-school-complex",
     name: "附属小学建筑群",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_017_affiliated_primary_school_complex.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "teaching",
@@ -259,6 +276,7 @@ export const campusLocations = [
   {
     id: "south-lawn-dining",
     name: "南草坪餐厅",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_018_south_lawn_dining_hall.jpg",
     lnglat: [113.2993,23.099018],
     isHidden: 0,
     category: "canteen",
@@ -273,6 +291,7 @@ export const campusLocations = [
   {
     id: "teaching-bldg-1",
     name: "第一教学楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_019_teaching_building_1.jpg",
     lnglat: [113.299514,23.099305],
     isHidden: 0,
     category: "teaching",
@@ -287,6 +306,7 @@ export const campusLocations = [
   {
     id: "primary-school-pavilion",
     name: "附属小学方亭",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_020_affiliated_primary_school_pavilion.jpg",
     lnglat: [113.290511,23.094417],
     isHidden: 0,
     category: "landmark",
@@ -301,6 +321,7 @@ export const campusLocations = [
   {
     id: "rong-guang-hall",
     name: "荣光堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_021_rongguang_hall.jpg",
     lnglat: [113.29933,23.099652],
     isHidden: 0,
     category: "landmark",
@@ -315,6 +336,7 @@ export const campusLocations = [
   {
     id: "south-gate",
     name: "中山大学南门",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_022_sysu_south_gate.jpg",
     lnglat: [113.297053,23.091143],
     isHidden: 0,
     category: "service",
@@ -329,6 +351,7 @@ export const campusLocations = [
   {
     id: "life-sciences-bldg",
     name: "生命科学楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_023_life_sciences_building.jpg",
     lnglat: [113.296123,23.092676],
     isHidden: 0,
     category: "teaching",
@@ -343,6 +366,7 @@ export const campusLocations = [
   {
     id: "sericulture-breeding-room",
     name: "蚕丝学院制种室",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_024_sericulture_institute_breeding_room.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "teaching",
@@ -357,6 +381,7 @@ export const campusLocations = [
   {
     id: "biology-bldg",
     name: "生物楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_025_biology_building.jpg",
     lnglat: [113.295642,23.092523],
     isHidden: 0,
     category: "teaching",
@@ -371,6 +396,7 @@ export const campusLocations = [
   {
     id: "darwin-sculpture",
     name: "达尔文雕塑",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_026_charles_darwin_sculpture.jpg",
     lnglat: [113.296065,23.092694],
     isHidden: 0,
     category: "landscape",
@@ -385,6 +411,7 @@ export const campusLocations = [
   {
     id: "zeng-xian-zi-hall",
     name: "曾宪梓堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_027_zeng_xianzhi_hall.jpg",
     lnglat: [113.295771,23.093017],
     isHidden: 0,
     category: "landmark",
@@ -399,6 +426,7 @@ export const campusLocations = [
   {
     id: "pu-zhe-long-sculpture",
     name: "蒲蛰龙雕塑",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_028_pu_zhelong_sculpture.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -413,6 +441,7 @@ export const campusLocations = [
   {
     id: "ma-wen-hui-hall",
     name: "马文辉堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_029_ma_wenhui_hall.jpg",
     lnglat: [113.296311,23.093431],
     isHidden: 0,
     category: "landmark",
@@ -427,6 +456,7 @@ export const campusLocations = [
   {
     id: "he-dan-qing-hall",
     name: "贺丹青堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_030_he_danqing_hall.jpg",
     lnglat: [113.296412,23.093766],
     isHidden: 0,
     category: "landmark",
@@ -441,6 +471,7 @@ export const campusLocations = [
   {
     id: "test-bldg",
     name: "测试大楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_031_test_building.jpg",
     lnglat: [113.297191,23.09347],
     isHidden: 0,
     category: "teaching",
@@ -455,6 +486,7 @@ export const campusLocations = [
   {
     id: "bamboo-garden",
     name: "竹种标本园",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_032_bamboo_grove.jpg",
     lnglat: [113.295861,23.094018],
     isHidden: 0,
     category: "landscape",
@@ -469,6 +501,7 @@ export const campusLocations = [
   {
     id: "zhong-shan-bldg",
     name: "中山楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_033_zhongshan_building.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -483,6 +516,7 @@ export const campusLocations = [
   {
     id: "liang-qiu-ju-hall",
     name: "梁銶琚堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_034_liang_xiju_hall.jpg",
     lnglat: [113.297225,23.095115],
     isHidden: 0,
     category: "teaching",
@@ -497,6 +531,7 @@ export const campusLocations = [
   {
     id: "grad-school",
     name: "研究生院",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_035_yanjiushengyuan.jpg",
     lnglat: [113.297173,23.095674],
     isHidden: 0,
     category: "dormitory",
@@ -511,6 +546,7 @@ export const campusLocations = [
   {
     id: "zhang-bi-shi-hall",
     name: "张弼士堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_036_zhang_bishi_hall.jpg",
     lnglat: [113.29664,23.094973],
     isHidden: 0,
     category: "landmark",
@@ -525,6 +561,7 @@ export const campusLocations = [
   {
     id: "yifu-bldg",
     name: "逸夫楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_037_yifu_building.jpg",
     lnglat: [113.296393,23.095685],
     isHidden: 0,
     category: "teaching",
@@ -539,6 +576,7 @@ export const campusLocations = [
   {
     id: "west-field",
     name: "西大操场",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_038_west_field.jpg",
     lnglat: [113.295287,23.095282],
     isHidden: 0,
     category: "sports",
@@ -553,6 +591,7 @@ export const campusLocations = [
   {
     id: "xian-wei-jian-hall",
     name: "冼为坚堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_039_xi_weijian_hall.jpg",
     lnglat: [113.298067,23.092955],
     isHidden: 0,
     category: "landmark",
@@ -567,6 +606,7 @@ export const campusLocations = [
   {
     id: "bauhinia-dining",
     name: "紫荆园餐厅",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_040_bauhinia_garden_dining_hall.jpg",
     lnglat: [113.2987,23.092829],
     isHidden: 0,
     category: "canteen",
@@ -581,6 +621,7 @@ export const campusLocations = [
   {
     id: "union-theological-complex",
     name: "协和神学院建筑群",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_041_union_theological_seminary_complex.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -595,6 +636,7 @@ export const campusLocations = [
   {
     id: "fu-lan-hall",
     name: "芙兰堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_042_teaching_building_3.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -609,6 +651,7 @@ export const campusLocations = [
   {
     id: "xi-chang-hall",
     name: "锡昌堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_043_xichang_hall.jpg",
     lnglat: [113.299332,23.093951],
     isHidden: 0,
     category: "landmark",
@@ -623,6 +666,7 @@ export const campusLocations = [
   {
     id: "si-dun-bldg",
     name: "四墩楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_044_sidun_building.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -637,6 +681,7 @@ export const campusLocations = [
   {
     id: "residence-8",
     name: "8号住宅",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_045_residence_no8.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "dormitory",
@@ -651,6 +696,7 @@ export const campusLocations = [
   {
     id: "twin-house-2",
     name: "孖屋二",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_046_twin_house_no2.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "dormitory",
@@ -665,6 +711,7 @@ export const campusLocations = [
   {
     id: "tan-li-ting-house",
     name: "谭礼庭屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_047_tan_liting_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -679,6 +726,7 @@ export const campusLocations = [
   {
     id: "ma-ying-biao-convalescent",
     name: "马应彪夫人护养院",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_048_madam_ma_yingbiao_convalescent_home.jpg",
     lnglat: [113.299172,23.095521],
     isHidden: 0,
     category: "service",
@@ -693,6 +741,7 @@ export const campusLocations = [
   {
     id: "ma-jin-mo-house-2",
     name: "麻金墨屋二号",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_049_ma_jinmo_house_no2.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "dormitory",
@@ -707,6 +756,7 @@ export const campusLocations = [
   {
     id: "swasey-hall",
     name: "怀士堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_050_huaishi_hall.jpg",
     lnglat: [113.298076,23.095542],
     isHidden: 0,
     category: "landmark",
@@ -721,6 +771,7 @@ export const campusLocations = [
   {
     id: "lu-xun-statue",
     name: "鲁迅先生像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_051_lu_xun_statue.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -735,6 +786,7 @@ export const campusLocations = [
   {
     id: "motto-statue",
     name: "校训雕像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_052_school_motto_stone_carving.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -749,6 +801,7 @@ export const campusLocations = [
   {
     id: "xi-lun-gao-house",
     name: "希伦高屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_053_xi_lungao_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -763,6 +816,7 @@ export const campusLocations = [
   {
     id: "blackstone-house",
     name: "黑石屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_054_blackstone_house.jpg",
     lnglat: [113.298742,23.096131],
     isHidden: 0,
     category: "landmark",
@@ -777,6 +831,7 @@ export const campusLocations = [
   {
     id: "ma-jin-mo-house-1",
     name: "麻金墨屋一号",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_055_ma_jinmo_house_no1.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "dormitory",
@@ -791,6 +846,7 @@ export const campusLocations = [
   {
     id: "meichen-house-2",
     name: "美臣屋二号",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_056_meichen_house_no2.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "dormitory",
@@ -805,6 +861,7 @@ export const campusLocations = [
   {
     id: "priest-house",
     name: "神甫屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_057_priest_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -819,6 +876,7 @@ export const campusLocations = [
   {
     id: "ji-chen-house",
     name: "积臣屋",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_058_jichen_house.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -833,6 +891,7 @@ export const campusLocations = [
   {
     id: "ying-dong-stadium",
     name: "英东体育馆",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_059_yingdong_stadium.jpg",
     lnglat: [113.301008,23.096314],
     isHidden: 0,
     category: "sports",
@@ -847,6 +906,7 @@ export const campusLocations = [
   {
     id: "new-womens-school",
     name: "新女学",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_060_new_womens_school.jpg",
     lnglat: [113.302728,23.094903],
     isHidden: 0,
     category: "dormitory",
@@ -861,6 +921,7 @@ export const campusLocations = [
   {
     id: "loc-------",
     name: "“摇篮”铜像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_061_cradle_bronze_statue.jpg",
     lnglat: [113.30267,23.095664],
     isHidden: 0,
     category: "landscape",
@@ -875,6 +936,7 @@ export const campusLocations = [
   {
     id: "xian-xing-hai-bust",
     name: "冼星海半身铜像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_062_xian_xinghai_bust.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -889,6 +951,7 @@ export const campusLocations = [
   {
     id: "qiao-shen-wen-hu-hall",
     name: "翘燊堂、文虎堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_063_qiaoshen_hall_and_wenhu_hall.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -903,6 +966,7 @@ export const campusLocations = [
   {
     id: "song-tao-garden",
     name: "松涛园",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_064_songtao_garden.jpg",
     lnglat: [113.30191,23.099879],
     isHidden: 0,
     category: "canteen",
@@ -917,6 +981,7 @@ export const campusLocations = [
   {
     id: "new-gym",
     name: "新体育馆",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_065_new_gymnasium.jpg",
     lnglat: [113.302117,23.100898],
     isHidden: 0,
     category: "sports",
@@ -931,6 +996,7 @@ export const campusLocations = [
   {
     id: "song-yuan-lake",
     name: "松园湖",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_066_songyuan_lake.jpg",
     lnglat: [113.300637,23.100115],
     isHidden: 0,
     category: "landscape",
@@ -945,6 +1011,7 @@ export const campusLocations = [
   {
     id: "loc------",
     name: "第二教学楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_067_teaching_building_2.jpg",
     lnglat: [113.300065,23.10109],
     isHidden: 0,
     category: "teaching",
@@ -959,8 +1026,9 @@ export const campusLocations = [
   {
     id: "carpenter-bldg",
     name: "卡彭特楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_068_carpenter_building.jpg",
     lnglat: [113.293999,23.095719],
-    isHidden: 0,
+    isHidden: 1,
     category: "landmark",
     position: "南校园378号",
     tags: ["宿舍区","医疗","活动"],
@@ -973,6 +1041,7 @@ export const campusLocations = [
   {
     id: "lin-hu-hall-complex",
     name: "林护堂、黄铭衍堂、黄传经堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_069_linhu_hall_huang_mingyan_hall_huang_chuanjing_hall.jpg",
     lnglat: [113.300167,23.101816],
     isHidden: 0,
     category: "landmark",
@@ -987,6 +1056,7 @@ export const campusLocations = [
   {
     id: "ye-bao-ding-hall",
     name: "叶葆定堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_070_ye_baoding_hall.jpg",
     lnglat: [113.300379,23.102318],
     isHidden: 0,
     category: "landmark",
@@ -1001,6 +1071,7 @@ export const campusLocations = [
   {
     id: "north-gate-arch",
     name: "中山大学北门牌坊",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_071_north_gate_archway.jpg",
     lnglat: [113.29986,23.103362],
     isHidden: 0,
     category: "landscape",
@@ -1015,6 +1086,7 @@ export const campusLocations = [
   {
     id: "wu-zhan-de-hall",
     name: "伍沾德堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_072_wu_zhande_hall.jpg",
     lnglat: [113.29875,23.101143],
     isHidden: 0,
     category: "landmark",
@@ -1029,6 +1101,7 @@ export const campusLocations = [
   {
     id: "feng-sheng-hall",
     name: "丰盛堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_073_fengsheng_hall.jpg",
     lnglat: [113.298004,23.100864],
     isHidden: 0,
     category: "teaching",
@@ -1043,6 +1116,7 @@ export const campusLocations = [
   {
     id: "northwest-gate",
     name: "中山大学西北门",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_074_northwest_gate.jpg",
     lnglat: [113.297403,23.100661],
     isHidden: 0,
     category: "service",
@@ -1057,6 +1131,7 @@ export const campusLocations = [
   {
     id: "wu-shun-de-library",
     name: "伍舜德图书馆",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_075_wu_shunde_library.jpg",
     lnglat: [113.298571,23.100238],
     isHidden: 0,
     category: "library",
@@ -1071,6 +1146,7 @@ export const campusLocations = [
   {
     id: "ling-nan-hall",
     name: "岭南堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_076_lingnan_hall.jpg",
     lnglat: [113.299152,23.100493],
     isHidden: 0,
     category: "teaching",
@@ -1085,6 +1161,7 @@ export const campusLocations = [
   {
     id: "ma-ying-biao-reception",
     name: "马应彪招待室",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_077_ma_yingbiao_reception_room.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "dormitory",
@@ -1099,6 +1176,7 @@ export const campusLocations = [
   {
     id: "zhe-sheng-hall",
     name: "哲生堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_078_zhesheng_hall.jpg",
     lnglat: [113.2985,23.099801],
     isHidden: 0,
     category: "landmark",
@@ -1113,6 +1191,7 @@ export const campusLocations = [
   {
     id: "lu-you-hall",
     name: "陆佑堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_079_lu_you_hall.jpg",
     lnglat: [113.297836,23.099299],
     isHidden: 0,
     category: "landmark",
@@ -1127,6 +1206,7 @@ export const campusLocations = [
   {
     id: "java-hall",
     name: "爪哇堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_080_java_hall.jpg",
     lnglat: [113.297671,23.098753],
     isHidden: 0,
     category: "landmark",
@@ -1141,6 +1221,7 @@ export const campusLocations = [
   {
     id: "museum",
     name: "博物馆",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_081_museum.jpg",
     lnglat: [113.296421,23.097711],
     isHidden: 0,
     category: "teaching",
@@ -1155,6 +1236,7 @@ export const campusLocations = [
   {
     id: "loc----",
     name: "八角亭",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_082_octagonal_pavilion.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landscape",
@@ -1169,6 +1251,7 @@ export const campusLocations = [
   {
     id: "yi-chou-jin-shi-arch",
     name: "乙丑进士牌坊",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_083_yichou_jinshi_archway.jpg",
     lnglat: [113.297868,23.097855],
     isHidden: 0,
     category: "landscape",
@@ -1183,6 +1266,7 @@ export const campusLocations = [
   {
     id: "xing-pavilion",
     name: "惺亭",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_084_xing_pavilion.jpg",
     lnglat: [113.298498,23.097577],
     isHidden: 0,
     category: "landscape",
@@ -1197,6 +1281,7 @@ export const campusLocations = [
   {
     id: "sun-yat-sen-bronze-statue",
     name: "孙中山先生铜像",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_085_sun_yat_sen_bronze_statue.jpg",
     lnglat: [113.298396,23.096886],
     isHidden: 0,
     category: "landscape",
@@ -1211,6 +1296,7 @@ export const campusLocations = [
   {
     id: "shi-da-li-hall",
     name: "史达理堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_086_shidali_hall.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",
@@ -1225,6 +1311,7 @@ export const campusLocations = [
   {
     id: "laser-optics-bldg",
     name: "激光光学大楼",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_087_long_kanghou_sculpture.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "teaching",
@@ -1239,6 +1326,7 @@ export const campusLocations = [
   {
     id: "shi-you-hall",
     name: "十友堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_088_shiyou_hall.jpg",
     lnglat: [113.297204,23.097465],
     isHidden: 0,
     category: "landmark",
@@ -1253,6 +1341,7 @@ export const campusLocations = [
   {
     id: "model-village",
     name: "模范村",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_089_model_village.jpg",
     lnglat: [113.295981,23.097106],
     isHidden: 0,
     category: "landmark",
@@ -1267,6 +1356,7 @@ export const campusLocations = [
   {
     id: "law-school",
     name: "法学院",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_090_law_college.jpg",
     lnglat: [113.296932,23.096685],
     isHidden: 0,
     category: "dormitory",
@@ -1281,6 +1371,7 @@ export const campusLocations = [
   {
     id: "yong-fang-hall",
     name: "永芳堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_091_yongfang_hall.jpg",
     lnglat: [113.296571,23.096386],
     isHidden: 0,
     category: "landmark",
@@ -1295,6 +1386,7 @@ export const campusLocations = [
   {
     id: "population-research",
     name: "人口研究所",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_092_people_research_academic.jpg",
     lnglat: [113.296814,23.096003],
     isHidden: 0,
     category: "dormitory",
@@ -1309,6 +1401,7 @@ export const campusLocations = [
   {
     id: "scholar-bookstore",
     name: "学人书境",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_093_SYSU_publishinghouse.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "service",
@@ -1323,6 +1416,7 @@ export const campusLocations = [
   {
     id: "humanities-institute",
     name: "中山大学人文高等研究院",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_094_deng_shichang_navy_statue.jpg",
     lnglat: [113.297428,23.096827],
     isHidden: 0,
     category: "dormitory",
@@ -1337,6 +1431,7 @@ export const campusLocations = [
   {
     id: "kang-le-dining",
     name: "康乐园餐厅",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_095_kangle_garden_dining_hall.jpg",
     lnglat: [113.293495,23.093266],
     isHidden: 0,
     category: "canteen",
@@ -1351,6 +1446,7 @@ export const campusLocations = [
   {
     id: "yuan-xi-lake",
     name: "园西湖",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_096_yuanxi_lake.jpg",
     lnglat: [113.293461,23.093855],
     isHidden: 0,
     category: "landscape",
@@ -1365,6 +1461,7 @@ export const campusLocations = [
   {
     id: "pu-yuan-canteen",
     name: "蒲园食堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_097_puyuan_canteen.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "canteen",
@@ -1379,6 +1476,7 @@ export const campusLocations = [
   {
     id: "west-gate",
     name: "中山大学西门",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_098_west_gate.jpg",
     lnglat: [113.29145,23.093171],
     isHidden: 0,
     category: "service",
@@ -1393,6 +1491,7 @@ export const campusLocations = [
   {
     id: "small-west-gate",
     name: "中山大学小西门",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_099_small_west_gate.jpg",
     lnglat: [113.293917,23.097404],
     isHidden: 0,
     category: "service",
@@ -1407,8 +1506,9 @@ export const campusLocations = [
   {
     id: "zhen-huan-hall",
     name: "震寰堂",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_100_zhenhuan_hall.jpg",
     lnglat: [113.292433,23.093194],
-    isHidden: 0,
+    isHidden: 1,
     category: "landmark",
     position: "南校园629号",
     tags: ["老建筑","历史","上课","活动"],
@@ -1421,6 +1521,7 @@ export const campusLocations = [
   {
     id: "your-observations",
     name: "你的见闻",
+    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_101_your_observations.jpg",
     lnglat: [113.303943,23.094742],
     isHidden: 1,
     category: "landmark",

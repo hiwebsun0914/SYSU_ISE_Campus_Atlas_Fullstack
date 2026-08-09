@@ -348,10 +348,10 @@ onMounted(async () => {
     // 写入会话缓存
     sessionStorage.setItem(SS_USER, JSON.stringify(userInfo.value))
 
-    // 解锁集合
+    // 解锁集合：优先使用 /checkin/status，兼容 /auth/me
     let unlockedSet = new Set(serverUser.unlockedLocations || [])
     if (stResp.status === 'fulfilled' && stResp.value?.data?.code === 0) {
-      // 如后端另有补充，这里可以合并；当前以 userInfo 为准
+      unlockedSet = new Set(stResp.value.data.unlockedLocations || [])
     }
     sessionStorage.setItem(SS_UNLOCK, JSON.stringify(Array.from(unlockedSet)))
 

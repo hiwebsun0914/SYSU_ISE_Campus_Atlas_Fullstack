@@ -1,12 +1,13 @@
 <template>
   <div class="point-display">
     <span class="point-icon">⭐</span>
+    <span v-if="nickName" class="user-name">{{ nickName }}</span>
     <span class="point-count">{{ points }}积分</span>
   </div>
 </template>
 
 <script setup>
-import { points } from '@/stores/userProgress'
+import { points, nickName } from '@/stores/userProgress'
 </script>
 
 <style scoped>
@@ -29,6 +30,15 @@ import { points } from '@/stores/userProgress'
 
 .point-icon {
   font-size: 16px;
+}
+
+.user-name {
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 6px;
+  border-right: 1px solid rgba(10, 46, 59, 0.12);
 }
 
 .point-count {

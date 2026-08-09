@@ -122,19 +122,26 @@ function buildMarkerHTML(place) {
   const size = selected ? 44 : 36
   const fontSize = selected ? 18 : 14
 
-  let bg, border, text
+  let bg, border
   if (checked) {
-    bg = '#16a34a'; border = '#15803d'; text = '#fff'
+    bg = '#16a34a'; border = '#15803d'
   } else if (selected) {
-    bg = '#0d9488'; border = '#0b7a72'; text = '#fff'
+    bg = '#0d9488'; border = '#0b7a72'
   } else {
-    bg = '#fff'; border = '#9ca3af'; text = '#0a2e3b'
+    bg = '#fff'; border = '#9ca3af'
   }
 
   const shadow = selected
     ? '0 4px 20px rgba(13,148,136,.5)'
     : '0 2px 8px rgba(10,46,59,.18)'
-  const labelBg = selected ? 'rgba(13,148,136,.92)' : 'rgba(255,255,255,.9)'
+  let labelBg, labelText
+  if (checked) {
+    labelBg = 'rgba(22,163,74,.92)'; labelText = '#fff'
+  } else if (selected) {
+    labelBg = 'rgba(13,148,136,.92)'; labelText = '#fff'
+  } else {
+    labelBg = 'rgba(255,255,255,.9)'; labelText = '#0a2e3b'
+  }
 
   return `
 <div style="display:flex;flex-direction:column;align-items:center;
@@ -148,7 +155,7 @@ function buildMarkerHTML(place) {
     ${checked ? '<div style="position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;background:#16a34a;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">✓</div>' : ''}
   </div>
   <div style="margin-top:4px;padding:2px 9px;border-radius:5px;font-size:11px;
-    font-weight:600;color:${selected ? '#fff' : text};background:${labelBg};
+    font-weight:600;color:${labelText};background:${labelBg};
     white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;
     box-shadow:0 1px 4px rgba(10,46,59,.1);pointer-events:none;">${escapeHTML(place.name)}</div>
 </div>`
@@ -462,7 +469,7 @@ watch(() => props.selectedId, (newId, oldId) => {
   if (newId != null) refreshMarker(newId)
 })
 
-watch(() => checkedPlaces.value, () => {
+watch(checkedPlaces, () => {
   if (!mapInstance || !AMapNS) return
   rebuildMarkers()
   if (props.selectedId) refreshMarker(props.selectedId)

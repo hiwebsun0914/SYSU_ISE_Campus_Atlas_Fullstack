@@ -118,6 +118,7 @@ import PointDisplay from '@/components/PointDisplay.vue'
 import CheckinCard from '@/components/CheckinCard.vue'
 import { campusLocations, CATEGORY_MAP, MAP_CONFIG, searchPlaces, getPlaceById } from '@/data/campusPlaces'
 import routes from '@/data/routes'
+
 import {
   currentRoute as exploringRoute,
   isExploring,
@@ -126,7 +127,7 @@ import {
   advanceRoute,
   resetRouteCheckin,
 } from '@/stores/routeCheckin'
-import { checkinPlace as checkinUserPlace } from '@/stores/userProgress'
+import { checkinPlace as checkinUserPlace, fetchUserProgress } from '@/stores/userProgress'
 import { CHECKIN_RADIUS } from '@/utils/geoCheckin'
 
 const router = useRouter()
@@ -144,6 +145,8 @@ const mapLoading = ref(false)
 const mapError = ref('')
 const toastMessage = ref('')
 let toastTimer = null
+
+
 
 // 定位打卡状态
 const geoStatus = ref('idle') // 'idle' | 'locating' | 'too_far' | 'success' | 'error'
@@ -314,47 +317,71 @@ async function onGeoCheckin() {
 }
 
 /** 执行实际打卡，统一处理积分、路线完成、探索进度 */
-function executeCheckin(distance) {
+async function executeCheckin(distance) {
   const placeId = selectedPlace.value.id
   const record = { distance, method: 'geo' }
-  const { newlyChecked, routeCompleted } = checkinUserPlace(placeId, record)
 
-  if (!newlyChecked) {
-    showToast('该地点已打卡，无需重复打卡')
-    geoStatus.value = 'idle'
-    return
-  }
+  try {
+    const result = await checkinUserPlace(placeId, record)
 
-  showToast('打卡成功！积分 +1（附近打卡）')
-
-  if (routeCompleted.length > 0) {
-    routeCompleted.forEach(routeId => {
-      const route = routes.find(r => r.id === routeId)
-      if (route) showToast(`🎉 完成路线「${route.name}」，积分 +5`)
-    })
-  }
-
-  // 路线探索模式：自动进入下一站
-  if (isExploring.value && currentPlace.value?.id === placeId) {
-    const hasNext = advanceRoute()
-    if (hasNext && currentPlace.value) {
-      selectedPlace.value = currentPlace.value
-      nextTick(() => {
-        campusMapRef.value?.flyTo(currentPlace.value.lnglat)
-      })
-    } else {
-      showToast(`🎉 ${exploringRoute.value?.name} 探索完成！`)
-      selectedPlace.value = null
-      resetRouteCheckin()
+    if (!result.newlyUnlocked) {
+      showToast('该地点已打卡，无需重复打卡')
+      geoStatus.value = 'idle'
+      return
     }
-  }
 
-  // 重置打卡状态
-  geoStatus.value = 'idle'
+    showToast('打卡成功！积分 +1（附近打卡）')
+
+    if (result.newlyCompletedRoutes?.length > 0) {
+      result.newlyCompletedRoutes.forEach(routeId => {
+        const routeName = getRouteName(routeId)
+        if (routeName) showToast(`🎉 完成路线「${routeName}」，积分 +5`)
+      })
+    }
+
+    // 路线探索模式：自动进入下一站
+    if (isExploring.value && currentPlace.value?.id === placeId) {
+      const hasNext = advanceRoute()
+      if (hasNext && currentPlace.value) {
+        selectedPlace.value = currentPlace.value
+        nextTick(() => {
+          campusMapRef.value?.flyTo(currentPlace.value.lnglat)
+        })
+      } else {
+        showToast(`🎉 ${exploringRoute.value?.name} 探索完成！`)
+        selectedPlace.value = null
+        resetRouteCheckin()
+      }
+    }
+
+    // 重置打卡状态
+    geoStatus.value = 'idle'
+  } catch (err) {
+    console.error('[executeCheckin] error:', err)
+    showToast(err?.message || '打卡失败，请重试')
+    geoStatus.value = 'error'
+    geoError.value = err?.message || '打卡失败'
+  }
 }
+
+/** 根据 routeId 获取路线名称（用于 Toast 提示） */
+function getRouteName(routeId) {
+  const route = routes.find(r => r.id === routeId)
+  return route?.name || routeId
+}
+
+
 
 onMounted(() => {
   document.title = '校园地图｜中山大学智能工程学院'
+  // 页面加载时从后端同步一次用户进度
+  fetchUserProgress().catch(err => {
+    console.warn('[Map] fetchUserProgress failed:', err)
+    // 只在未登录/未授权时提示登录；网络或后端异常静默处理
+    if (err.type === 'unauthorized' || err.message?.includes('未登录') || err.message?.includes('登录')) {
+      showToast('请先登录，打卡数据将同步到云端')
+    }
+  })
 })
 
 onBeforeUnmount(() => {
@@ -504,7 +531,7 @@ onBeforeUnmount(() => {
   z-index: 25;
   background: var(--surface);
   height: 85%;
-  padding: 70px 16px 16px;
+  padding: 44px 16px 16px;
   display: flex;
   flex-direction: column;
 }

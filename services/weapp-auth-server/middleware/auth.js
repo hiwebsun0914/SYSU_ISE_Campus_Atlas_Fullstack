@@ -34,8 +34,8 @@ function readUsers() {
   }
 }
 function getUserById(id) {
-  const numId = typeof id === 'string' ? Number(id) : id;
-  return readUsers().find(u => u.id === numId);
+  const users = readUsers();
+  return users.find(u => String(u.id) === String(id));
 }
 
 /* ========== Token 提取 ========== */
@@ -76,6 +76,10 @@ function getTokenFromReq(req) {
 const VERIFY_LAST_TOKEN = String(process.env.VERIFY_LAST_TOKEN || '').toLowerCase() === 'true';
 const CLOCK_SKEW = parseInt(process.env.JWT_CLOCK_SKEW || '5', 10); // 秒
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const DEV_BYPASS_AUTH = String(process.env.DEV_BYPASS_AUTH || '').toLowerCase() === 'true';
+const DEV_USER_ID = Number.isFinite(Number(process.env.DEV_USER_ID))
+  ? Number(process.env.DEV_USER_ID)
+  : 1723017600000;
 
 /* ========== 响应工具 ========== */
 function send401(res, msg) {
@@ -102,6 +106,20 @@ function auth(req, res, next) {
   if (req.method === 'OPTIONS') return next();
 
   const token = getTokenFromReq(req);
+
+  // 开发模式：无 token 时自动使用默认测试用户
+  if (DEV_BYPASS_AUTH && !token) {
+    const user = getUserById(DEV_USER_ID);
+    if (user) {
+      req.userId = user.id;
+      req.user = user;
+      req.role = user.role || 'visitor';
+      return next();
+    }
+    // 测试用户不存在时继续走 401，由 app.js 自动创建
+    return send401(res, '开发模式：默认测试用户不存在，请重启服务');
+  }
+
   if (!token) return send401(res, '未登录');
 
   try {
