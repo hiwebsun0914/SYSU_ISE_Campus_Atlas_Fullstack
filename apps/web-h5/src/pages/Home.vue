@@ -480,7 +480,7 @@ onBeforeUnmount(() => {
 @media (min-width: 700px) {
   .site-header { padding-inline: 20px; gap: 16px; }
   .brand-logo { width: 300px; height: 48px; }
-  .home-main { width: min(100% - 48px,1240px); }.intro-row { grid-template-columns: 1.35fr .65fr; align-items: end; padding: 64px 0 38px; }.dashboard-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.explore-card { grid-column: span 2; }.map-card { grid-column: span 2; }.feature-card { min-height: 270px; }.next-stop { grid-template-columns: 24px minmax(0,1fr) auto; }.next-stop em { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.utility-row { grid-template-columns: .95fr 1.05fr; align-items: center; }.site-footer { flex-direction: row; align-items: center; justify-content: space-between; }
+  .home-main { width: min(100% - 48px,1240px); }.intro-row { grid-template-columns: 1.35fr .65fr; align-items: end; padding: 64px 0 38px; }.dashboard-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.explore-card { grid-column: span 2; }.map-card { grid-column: span 2; }.profile-card { grid-column: span 2; }.award-card { grid-column: span 1; }.feature-card { min-height: 270px; }.next-stop { grid-template-columns: 24px minmax(0,1fr) auto; }.next-stop em { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.utility-row { grid-template-columns: .95fr 1.05fr; align-items: center; }.site-footer { flex-direction: row; align-items: center; justify-content: space-between; }
   .coming-toast { width: min(520px,calc(100% - 32px)); left: 50%; right: auto; transform: translateX(-50%); }.toast-enter-from,.toast-leave-to { transform: translate(-50%,10px); }
 }
 
