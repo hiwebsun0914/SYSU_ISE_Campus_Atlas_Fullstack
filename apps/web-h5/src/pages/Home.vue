@@ -403,7 +403,9 @@ onBeforeUnmount(() => {
 .coordinate-top { right: 22px; top: 19px; }.coordinate-side { right: -25px; bottom: 100px; transform: rotate(90deg); }
 .explore-head, .explore-actions, .progress-content, .progress-skeleton, .load-error { position: relative; z-index: 2; }
 .explore-head { display: flex; align-items: flex-start; gap: 13px; padding-right: 35px; }
-.icon-tile { width: 46px; height: 46px; flex: 0 0 46px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 14px 5px 14px 5px; background: #eef5f2; color: var(--ink); }
+.icon-tile { width: clamp(38px, 5.5vw, 46px); height: clamp(38px, 5.5vw, 46px); flex: 0 0 clamp(38px, 5.5vw, 46px); display: grid; place-items: center; border: 1px solid var(--border); border-radius: 14px 5px 14px 5px; background: #eef5f2; color: var(--ink); }
+.icon-tile svg, .feature-card svg, .desktop-nav svg, .utility-links svg, .explore-actions svg { width: 1.35em; height: 1.35em; }
+.mobile-nav svg { width: clamp(19px, 5vw, 22px); height: clamp(19px, 5vw, 22px); }
 .icon-tile-accent { background: var(--accent); border-color: var(--accent); }.icon-tile-dark { background: var(--ink); color: var(--accent); border-color: var(--ink); }
 .card-kicker { font-size: 10px; color: rgba(255,255,255,.58); }
 .explore-head h2 { max-width: 460px; margin: 6px 0 0; font-size: clamp(24px, 6vw, 39px); line-height: 1.1; letter-spacing: 0; }
@@ -485,6 +487,12 @@ onBeforeUnmount(() => {
 @media (min-width: 1024px) {
   .home-shell { padding-bottom: 0; }.site-header { min-height: 78px; padding: 12px 18px; }.brand-logo { width: 320px; height: 50px; }.desktop-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }.desktop-nav a,.desktop-nav button { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 700; }.desktop-nav a:hover,.desktop-nav button:hover,.desktop-nav a[aria-current="page"] { color: var(--ink); background: #e6efeb; }.mobile-nav { display: none; }
   .dashboard-grid { grid-template-columns: repeat(12,minmax(0,1fr)); grid-auto-rows: minmax(132px,auto); gap: 16px; }.explore-card { grid-column: span 7; grid-row: span 4; min-height: 596px; padding: 30px; }.map-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.profile-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.future-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.test-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.message-card { grid-column: span 7; grid-row: span 2; min-height: 290px; }.progress-content { margin-top: 82px; }.feature-card { padding: 24px; }.feature-copy { margin-top: 26px; }.message-card .feature-copy { max-width: 480px; }.coming-toast { bottom: 28px; }
+}
+
+@media (max-width: 480px) {
+  .site-header { padding: 9px 12px; }.brand-logo { width: min(220px, 68vw); height: 40px; }.home-main { width: min(100% - 24px, 1240px); }.intro-row { padding: 30px 0 22px; }.intro-row h1 { font-size: clamp(30px, 10vw, 44px); }.intro-copy { font-size: 14px; }
+  .feature-card { padding: 16px; }.feature-copy { margin-top: 18px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips span { font-size: 11px; padding: 6px 11px; }
+  .utility-row { margin: 38px auto 20px; }.site-footer { padding: 0 4px; }
 }
 
 @media (hover:hover) {
