@@ -95,6 +95,11 @@ const toUrl = (key) => {
   return base ? `${base}/${encodeURI(key)}` : '';
 };
 
+// 桶默认域名（上传/校验必须走桶域名，不能用 CDN 域名）
+const bucketBaseUrl = (COS_BUCKET && COS_REGION)
+  ? `https://${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com`
+  : '';
+
 const validLocationIds = () => {
   const ids = new Set();
   (locationsData.locations || []).forEach(l => {
@@ -246,11 +251,20 @@ router.get('/meta', (_req, res) => {
 // POST /submissions/presign  { ext }
 // 图片将上传到 COS 的 Award/<uid>__<username>/ 目录下
 router.post('/presign', auth, (req, res) => {
+  const ext = String(req.body?.ext || 'jpg').replace('.', '').toLowerCase();
+  const key = buildKey(req, ext);
+
+  // 无密钥但桶为公有读写：直接返回可匿名 PUT 的地址
+  if (!cos && bucketBaseUrl) {
+    return res.json({
+      code: 0,
+      data: { key, putUrl: `${bucketBaseUrl}/${encodeURI(key)}`, contentType: contentTypeOf(ext) }
+    });
+  }
+
   if (!cos) {
     return res.status(500).json({ code: 1, message: 'COS 未配置，无法上传图片' });
   }
-  const ext = String(req.body?.ext || 'jpg').replace('.', '').toLowerCase();
-  const key = buildKey(req, ext);
 
   cos.getObjectUrl(
     { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300 },
@@ -267,12 +281,24 @@ router.post('/presign', auth, (req, res) => {
 // ====== 3. 确认上传（校验文件存在并设置公开读） ======
 // POST /submissions/commit  { key, size }
 router.post('/commit', auth, async (req, res) => {
-  if (!cos) {
-    return res.status(500).json({ code: 1, message: 'COS 未配置，无法确认上传' });
-  }
   const { key, size } = req.body || {};
   if (!key || !String(key).startsWith(userPrefix(req))) {
     return res.status(400).json({ code: 1, message: '非法的图片地址' });
+  }
+
+  // 无密钥且桶为公有读写：直接用匿名 HEAD 校验对象是否存在
+  if (!cos && bucketBaseUrl) {
+    try {
+      const head = await fetch(`${bucketBaseUrl}/${encodeURI(key)}`, { method: 'HEAD' });
+      if (!head.ok) return res.status(400).json({ code: 1, message: '图片尚未上传成功' });
+      return res.json({ code: 0, data: { key, url: toUrl(key) } });
+    } catch {
+      return res.status(400).json({ code: 1, message: '图片尚未上传成功' });
+    }
+  }
+
+  if (!cos) {
+    return res.status(500).json({ code: 1, message: 'COS 未配置，无法确认上传' });
   }
 
   const head = await cos.headObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }).catch(() => null);
