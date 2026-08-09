@@ -1,55 +1,101 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, nextTick as vueNextTick } from 'vue'
 import routes from '@/data/routes'
-
-const STORAGE_KEY = 'userProgress'
+import { request } from '@/utils/request'
+import { backendToPlaceId, placeIdToBackend } from '@/data/locationMap'
 
 export const points = ref(0)
 export const checkedPlaces = ref([])
 export const completedRoutes = ref([])
-/**
- * 打卡记录列表
- * [{ placeId, distance, time, method: 'geo'|'manual'|'force' }]
- */
 export const checkinRecords = ref([])
+export const nickName = ref('')
 
 export const checkedSet = computed(() => new Set(checkedPlaces.value))
 export const completedSet = computed(() => new Set(completedRoutes.value))
 
 /**
- * 加载本地保存的进度
+ * 等待下一个微任务
  */
-function loadProgress() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-    const data = JSON.parse(raw)
-    points.value = Number.isFinite(data.points) ? data.points : 0
-    checkedPlaces.value = Array.isArray(data.checkedPlaces) ? data.checkedPlaces : []
-    completedRoutes.value = Array.isArray(data.completedRoutes) ? data.completedRoutes : []
-    checkinRecords.value = Array.isArray(data.checkinRecords) ? data.checkinRecords : []
-  } catch (err) {
-    console.warn('[userProgress] load failed:', err)
-  }
+function nextTick() {
+  return vueNextTick()
 }
 
 /**
- * 保存进度到本地
+ * 将后端返回的 unlockedLocations（数字ID）转换为前端字符串ID数组
  */
-function saveProgress() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      points: points.value,
-      checkedPlaces: checkedPlaces.value,
-      completedRoutes: completedRoutes.value,
-      checkinRecords: checkinRecords.value,
-    }))
-  } catch (err) {
-    console.warn('[userProgress] save failed:', err)
-  }
+function normalizeCheckedPlaces(backendIds = []) {
+  return backendIds
+    .map(id => backendToPlaceId[id])
+    .filter(Boolean)
 }
 
-// 自动持久化
-watch([points, checkedPlaces, completedRoutes, checkinRecords], saveProgress, { deep: true })
+/**
+ * 将后端打卡记录转换为前端格式
+ */
+function normalizeCheckinRecords(records = []) {
+  return records.map(r => ({
+    placeId: backendToPlaceId[r.locationId] || String(r.locationId),
+    distance: r.distance,
+    time: r.time,
+    method: r.method,
+  }))
+}
+
+/**
+ * 清空前端状态（后端无数据或请求失败时调用）
+ */
+function clearProgress() {
+  points.value = 0
+  checkedPlaces.value = []
+  completedRoutes.value = []
+  checkinRecords.value = []
+  nickName.value = ''
+}
+
+/**
+ * 从后端 /auth/me 拉取用户完整进度
+ * 后端是唯一数据源
+ */
+export async function fetchUserProgress() {
+  const res = await request('/auth/me', 'GET', null, { cacheBust: true })
+  if (!res.ok) {
+    clearProgress()
+    const err = new Error(res.data?.message || '获取用户进度失败')
+    err.type = res.status === 401 ? 'unauthorized' : 'network'
+    throw err
+  }
+  if (res.data?.code !== 0) {
+    clearProgress()
+    const err = new Error(res.data?.message || '获取用户进度失败')
+    err.type = 'backend'
+    throw err
+  }
+
+  const info = res.data.userInfo || {}
+  const newPoints = Number.isFinite(info.points) ? info.points : 0
+  const newCheckedPlaces = normalizeCheckedPlaces(info.unlockedLocations)
+  const newCompletedRoutes = Array.isArray(info.completedRoutes) ? info.completedRoutes : []
+  const newCheckinRecords = normalizeCheckinRecords(info.checkinRecords)
+
+  // 先清空再赋值，确保 Vue 能检测到数组引用变化，触发 CampusMap 的 watch
+  checkedPlaces.value = []
+  await nextTick()
+  checkinRecords.value = []
+
+  points.value = newPoints
+  checkedPlaces.value = newCheckedPlaces
+  completedRoutes.value = newCompletedRoutes
+  checkinRecords.value = newCheckinRecords
+  nickName.value = info.nickName || ''
+
+  await nextTick()
+
+  return {
+    points: points.value,
+    checkedPlaces: checkedPlaces.value,
+    completedRoutes: completedRoutes.value,
+    checkinRecords: checkinRecords.value,
+  }
+}
 
 /**
  * 地点是否已打卡
@@ -80,41 +126,54 @@ export function getRouteCheckedCount(routeId) {
 
 /**
  * 打卡一个地点
- * @param {string} placeId
+ * @param {string} placeId - 前端字符串地点ID
  * @param {{ distance?: number, method?: string }} [record] - 打卡记录信息
- * @returns {{ newlyChecked: boolean, routeCompleted: string[] }}
+ * @returns {Promise<{ success: boolean, newlyCompletedRoutes: string[], points: number }>}
  */
-export function checkinPlace(placeId, record = {}) {
-  if (isPlaceChecked(placeId)) {
-    return { newlyChecked: false, routeCompleted: [] }
+export async function checkinPlace(placeId, record = {}) {
+  const backendId = placeIdToBackend[placeId]
+  if (!backendId) {
+    throw new Error(`未知地点ID: ${placeId}`)
   }
 
-  checkedPlaces.value.push(placeId)
-  points.value += 1
-
-  // 保存打卡记录
-  checkinRecords.value.push({
-    placeId,
-    distance: Number.isFinite(record.distance) ? Math.round(record.distance * 10) / 10 : null,
-    time: new Date().toISOString(),
-    method: record.method || 'manual',
+  const res = await request('/checkin/map', 'POST', {
+    locationId: backendId,
+    distance: record.distance,
+    method: record.method || 'geo',
   })
 
-  // 检查是否有路线因此首次完成
-  const routeCompleted = []
-  for (const route of routes) {
-    if (completedSet.value.has(route.id)) continue
-    if (!route.points?.length) continue
-
-    const allChecked = route.points.every(id => checkedSet.value.has(id))
-    if (allChecked) {
-      completedRoutes.value.push(route.id)
-      points.value += 5
-      routeCompleted.push(route.id)
-    }
+  if (!res.ok) {
+    throw new Error(res.data?.message || '打卡请求失败')
+  }
+  if (res.data?.code !== 0) {
+    throw new Error(res.data?.message || '打卡失败')
   }
 
-  return { newlyChecked: true, routeCompleted }
+  const result = res.data.data || {}
+
+  // 用响应数据直接更新本地状态（响应已包含完整进度信息）
+  if (Array.isArray(result.unlockedLocations)) {
+    checkedPlaces.value = normalizeCheckedPlaces(result.unlockedLocations)
+  }
+  if (Array.isArray(result.completedRoutes)) {
+    completedRoutes.value = result.completedRoutes
+  }
+  if (Number.isFinite(result.points)) {
+    points.value = result.points
+  }
+  if (Array.isArray(result.checkinRecords)) {
+    checkinRecords.value = normalizeCheckinRecords(result.checkinRecords)
+  }
+
+  // 后台静默拉取一次完整进度，确保 nickName 等额外字段同步；失败不阻塞
+  fetchUserProgress().catch(() => {})
+
+  return {
+    success: result.newlyUnlocked !== false,
+    newlyUnlocked: result.newlyUnlocked !== false,
+    newlyCompletedRoutes: Array.isArray(result.newlyCompletedRoutes) ? result.newlyCompletedRoutes : [],
+    points: points.value,
+  }
 }
 
 /**
@@ -126,6 +185,3 @@ export function resetProgress() {
   completedRoutes.value = []
   checkinRecords.value = []
 }
-
-// 初始化加载
-loadProgress()

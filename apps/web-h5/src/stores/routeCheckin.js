@@ -83,13 +83,13 @@ export function startExplore(route) {
 
 /**
  * 完成当前地点打卡，并进入下一地点
- * @returns {boolean} 是否还有下一站
+ * @returns {Promise<boolean>} 是否还有下一站
  */
-export function checkinCurrentPlace() {
+export async function checkinCurrentPlace() {
   if (!currentRoute.value || !currentPlace.value) return false
 
   const id = currentPlace.value.id
-  checkinUserPlace(id)
+  await checkinUserPlace(id)
 
   return advanceRoute()
 }

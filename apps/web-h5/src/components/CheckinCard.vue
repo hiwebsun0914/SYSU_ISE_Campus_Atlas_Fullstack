@@ -10,13 +10,16 @@
     >
       <div class="checkin-cover-overlay" />
       <img
-        v-if="place.cover"
-        :src="place.cover"
+        v-if="place.image && !imageError"
+        :key="place.id"
+        :src="place.image"
         :alt="place.name"
         class="checkin-cover-img"
-        @error="onCoverError"
+        @error="imageError = true"
       >
-      <div v-else class="checkin-cover-placeholder">{{ place.name?.[0] ?? '地' }}</div>
+      <div v-else class="checkin-cover-placeholder">
+        <span class="checkin-cover-placeholder__text">{{ place.name?.[0] ?? '地' }}</span>
+      </div>
     </div>
 
     <div class="checkin-body">
@@ -111,7 +114,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Camera, Check, X } from '@lucide/vue'
 import { isPlaceChecked } from '@/stores/userProgress'
 
@@ -127,6 +130,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['geo-checkin', 'close'])
+
+const imageError = ref(false)
+
+watch(() => props.place?.id, () => {
+  imageError.value = false
+})
 
 const checked = computed(() => props.place ? isPlaceChecked(props.place.id) : false)
 
@@ -145,13 +154,9 @@ const categoryLabel = computed(() => {
 })
 
 const coverStyle = computed(() => {
-  if (props.place?.cover) return {}
+  if (props.place?.image && !imageError.value) return {}
   return { background: '#e8f5e9' }
 })
-
-function onCoverError(e) {
-  e.target.style.display = 'none'
-}
 </script>
 
 <style scoped>
@@ -187,7 +192,7 @@ function onCoverError(e) {
 .checkin-cover {
   position: relative;
   width: 100%;
-  height: 160px;
+  aspect-ratio: 16 / 10;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -210,10 +215,20 @@ function onCoverError(e) {
 }
 
 .checkin-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   font-size: 64px;
   font-weight: 700;
   color: #388e6e;
+  background: #e8f5e9;
   z-index: 2;
+}
+
+.checkin-cover-placeholder__text {
+  line-height: 1;
 }
 
 .checkin-body {
@@ -221,7 +236,7 @@ function onCoverError(e) {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 12px 16px 16px;
   overflow-y: auto;
 }
 
@@ -230,7 +245,7 @@ function onCoverError(e) {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .checkin-category,
@@ -266,7 +281,7 @@ function onCoverError(e) {
   font-size: 20px;
   font-weight: 700;
   color: #0a2e3b;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
 }
 
 .checkin-description {

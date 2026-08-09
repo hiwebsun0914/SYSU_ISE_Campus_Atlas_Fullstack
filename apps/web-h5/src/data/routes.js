@@ -4,7 +4,7 @@ export default [
     name: '新生入门路线',
     icon: '🌱',
     type: 'freshman',
-    description: '南校初体验~感受百年校园底蕴',
+    description: '南校初体验~\n冷知识:来中大要在鹭江下车',
     points: [
       "loc-------",
       "ying-dong-stadium",
