@@ -396,6 +396,26 @@ test('beijingDay helper uses UTC+8 date', () => {
   assert.equal(beijingDay(Date.UTC(2026, 7, 9, 15, 59)), '2026-08-09');
 });
 
+test('votes are keyed by Beijing calendar day (00:00-24:00), not 24h intervals', () => {
+  const { beijingDay, countUserVotesToday } = submissionsRouter._test;
+  // 北京时间 08-09 23:59 与 08-10 00:01 属于两个不同日期
+  const day1 = beijingDay(Date.UTC(2026, 7, 9, 15, 59));
+  const day2 = beijingDay(Date.UTC(2026, 7, 9, 16, 1));
+  assert.equal(day1, '2026-08-09');
+  assert.equal(day2, '2026-08-10');
+  assert.notEqual(day1, day2);
+
+  // 同一自然日的两条投票算 2 票；跨天不互相占用额度
+  const votes = [
+    { userId: 101, name: '张三', day: day1, ts: 1 },
+    { userId: 101, name: '张三', day: day1, ts: 2 },
+    { userId: 101, name: '张三', day: day2, ts: 3 }
+  ];
+  const usersById = { '101': { realName: '张三' } };
+  assert.equal(countUserVotesToday([{ votes }], '张三', day1, usersById), 2);
+  assert.equal(countUserVotesToday([{ votes }], '张三', day2, usersById), 1);
+});
+
 test('auto-computes winners by votes after deadline', async () => {
   const awards = require('../data/awards');
   const originalDeadline = awards.deadline;

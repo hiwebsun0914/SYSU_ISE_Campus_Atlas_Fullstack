@@ -124,18 +124,18 @@
         </button>
 
         <button class="feature-card award-card grid-item" type="button" @click="goProtected('/award')" aria-label="进入奖项投稿页面">
-          <span class="award-banner">
-            <span class="icon-tile"><Sparkles :size="24" aria-hidden="true" /></span>
-            <span class="feature-copy">
-              <small>CHECK-IN GALLERY / 打卡作品投稿</small>
-              <strong>最佳创意奖 · 最佳摄影奖</strong>
-              <span>上传你的创意与摄影作品，赢取属于你的校园高光时刻</span>
-            </span>
-            <span class="award-chips" aria-hidden="true">
-              <span>💡 创意</span>
-              <span>📷 摄影</span>
-            </span>
-            <span class="award-cta">立即投稿 →</span>
+          <span class="feature-top">
+            <span class="icon-tile"><Sparkles :size="22" aria-hidden="true" /></span>
+            <span class="coming-label">立即投稿</span>
+          </span>
+          <span class="feature-copy">
+            <small>CHECK-IN GALLERY / 打卡作品投稿</small>
+            <strong>最佳创意奖 · 最佳摄影奖</strong>
+            <span>上传你的创意与摄影作品，赢取属于你的校园高光时刻</span>
+          </span>
+          <span class="award-chips" aria-hidden="true">
+            <span>💡 创意</span>
+            <span>📷 摄影</span>
           </span>
         </button>
 
@@ -441,7 +441,7 @@ onBeforeUnmount(() => {
 .coming-label-dark { border-color: rgba(255,255,255,.23); color: var(--accent); background: rgba(255,255,255,.07); }
 .profile-stats { display: flex; gap: 22px; margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }.profile-stats span { display: grid; }.profile-stats b { color: var(--ink); font-family: "DIN Alternate", sans-serif; font-size: 26px; }
 .future-card { background: #e8f4ef; }.future-year { position: absolute; right: -7px; bottom: -25px; font-family: "DIN Alternate", sans-serif; font-size: 76px; font-weight: 900; color: rgba(10,46,59,.06); letter-spacing: 0; transition: transform .24s ease, opacity .24s ease; }.future-card:hover .future-year { transform: translateY(-4px); opacity: .86; }
-.award-card { grid-column: 1 / -1; min-height: 150px; display: block; padding: 20px 24px; background: linear-gradient(120deg, #f4f0fa, #eef4ff); }.award-banner { height: 100%; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; position: relative; z-index: 2; }.award-card .feature-copy { margin-top: 0; flex: 1; min-width: 220px; }.award-chips { display: flex; gap: 8px; }.award-chips span { padding: 7px 14px; border-radius: 999px; background: #fff; border: 1px solid #e2d7f5; color: #6d28d9; font-size: 13px; font-weight: 700; }.award-cta { min-height: 44px; display: inline-flex; align-items: center; padding: 0 20px; border-radius: 999px; background: #6d28d9; color: #fff; font-weight: 800; font-size: 14px; transition: background .2s ease, transform .2s ease; }.award-card:hover .award-cta { background: #5b21b6; transform: translateX(2px); }
+.award-card { grid-column: span 7; grid-row: span 2; min-height: 290px; background: linear-gradient(135deg, #f4f0fa, #eef4ff); }.award-chips { display: flex; gap: 8px; margin-top: auto; padding-top: 18px; }.award-chips span { padding: 7px 14px; border-radius: 999px; background: #fff; border: 1px solid #e2d7f5; color: #6d28d9; font-size: 13px; font-weight: 700; }
 .test-card { color: #fff; background: var(--primary); border-color: var(--primary); }.test-card .feature-copy small { color: rgba(255,255,255,.66); }.test-card .feature-copy strong { color: #fff; }.test-card .feature-copy > span { color: rgba(255,255,255,.75); }.scan-line { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 1px; background: repeating-linear-gradient(90deg,var(--accent) 0 18px,transparent 18px 26px); opacity: .75; }
 .test-card:hover .scan-line { animation: scan-sweep 1.1s ease-in-out infinite; }
 .map-card { background: linear-gradient(135deg, #e8f4ef 0%, #f3f7f5 100%); }
