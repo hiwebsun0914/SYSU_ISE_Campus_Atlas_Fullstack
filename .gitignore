@@ -54,6 +54,7 @@ services/weapp-auth-server/checkins.json
 services/weapp-auth-server/bottles.json
 services/weapp-auth-server/resp.json
 services/weapp-auth-server/submissions.json
+services/weapp-auth-server/future_cards.json
 
 # Keep the intentionally archived production deployment snapshot
 !deploy/web-h5-dist/
