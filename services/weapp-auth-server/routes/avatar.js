@@ -135,7 +135,7 @@ router.post('/commit', auth, async (req, res) => {
 
   // 落库
   const users = readUsers();
-  const idx = users.findIndex(u => u.id === req.userId);
+  const idx = users.findIndex(u => String(u.id) === String(req.userId));
   if (idx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
 
   users[idx].avatarKey = key;

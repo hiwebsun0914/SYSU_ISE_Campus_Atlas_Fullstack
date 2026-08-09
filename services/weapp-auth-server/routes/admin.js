@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const COS = require('cos-nodejs-sdk-v5');
 const auth = require('../middleware/auth');
+const routes = require('../data/routes');
 
 // ====== 常量 / 配置 ======
 const USERS_FILE   = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
@@ -91,7 +92,7 @@ function readBottlesArray() {
 // ====== 权限：管理员 ======
 function adminOnly(req, res, next) {
   const users = readUsers();
-  const me = users.find(u => u.id === req.userId);
+  const me = users.find(u => String(u.id) === String(req.userId));
   if (!me) return res.status(401).json({ code: 1, message: '未登录' });
   if ((me.role || DEFAULT_ROLE) !== 'admin') {
     return res.status(403).json({ code: 1, message: '无管理员权限' });
@@ -210,23 +211,66 @@ router.get('/checkins', auth, adminOnly, async (req, res) => {
 router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
   const raw = String(req.params.id || '');
   const [uidStr, locStr] = raw.includes(':') ? raw.split(':') : raw.split('_');
-  const userId = Number(uidStr);
+  const userId = uidStr;
   const locationId = Number(locStr);
   if (!userId || !locationId) return res.status(400).json({ code: 1, message: '参数不正确' });
 
   const users = readUsers();
-  const u = users.find(x => x.id === userId);
+  const u = users.find(x => String(x.id) === String(userId));
   if (!u) return res.status(404).json({ code: 1, message: '用户不存在' });
 
-  // 从 locking 中移除，再安全加入 unlocked（避免重复）
+  // 从 locking 中移除
   u.lockingLocations  = (u.lockingLocations  || []).filter(x => Number(x) !== locationId);
   u.unlockedLocations = Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [];
-  if (!u.unlockedLocations.includes(locationId)) u.unlockedLocations.push(locationId);
+  u.completedRoutes   = Array.isArray(u.completedRoutes)   ? u.completedRoutes   : [];
+  u.checkinRecords    = Array.isArray(u.checkinRecords)    ? u.checkinRecords    : [];
+  u.points = Number.isFinite(u.points) ? u.points : 0;
+
+  const alreadyUnlocked = u.unlockedLocations.includes(locationId);
+  const newlyCompletedRoutes = [];
+
+  // 未解锁时才追加积分与打卡记录
+  if (!alreadyUnlocked) {
+    u.unlockedLocations.push(locationId);
+    u.points += 1;
+
+    u.checkinRecords.push({
+      locationId,
+      distance: null,
+      method: 'photo',
+      time: new Date().toISOString()
+    });
+
+    // 与 /checkin/map 相同的路线完成判定
+    for (const route of routes) {
+      if (u.completedRoutes.includes(route.id)) continue;
+      if (!route.points || route.points.length === 0) continue;
+
+      const allUnlocked = route.points.every(id => u.unlockedLocations.includes(id));
+      if (allUnlocked) {
+        u.completedRoutes.push(route.id);
+        u.points += route.bonus || 5;
+        newlyCompletedRoutes.push(route.id);
+      }
+    }
+  }
 
   u.updatedAt = Date.now();
   writeUsers(users);
 
-  res.json({ code: 0, message: '已通过' });
+  res.json({
+    code: 0,
+    message: '已通过',
+    data: {
+      locationId,
+      newlyUnlocked: !alreadyUnlocked,
+      newlyCompletedRoutes,
+      points: u.points,
+      unlockedLocations: u.unlockedLocations,
+      completedRoutes: u.completedRoutes,
+      checkinRecords: u.checkinRecords.slice(-20)
+    }
+  });
 });
 
 // ====== 审核驳回：从 locking 移除，不加入 unlocked ======
