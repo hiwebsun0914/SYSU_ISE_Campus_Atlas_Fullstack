@@ -1,0 +1,678 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { once } = require('node:events');
+const test = require('node:test');
+const express = require('express');
+const jwt = require('jsonwebtoken');
+
+const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'submissions-test-'));
+const usersFile = path.join(testDir, 'users.json');
+const submissionsFile = path.join(testDir, 'submissions.json');
+const jwtSecret = 'test-only-secret-with-sufficient-length';
+const users = [
+  { id: 101, username: 'alice', role: 'visitor', phone: '张三', realName: '张三' },
+  { id: 202, username: 'bob', role: 'admin', phone: '李四', realName: '李四' },
+  { id: 303, username: 'carol', role: 'visitor', phone: '王五', realName: '王五' },
+  { id: 404, username: 'dave', role: 'visitor', phone: '王五', realName: '王五' }
+];
+
+fs.writeFileSync(usersFile, JSON.stringify(users), 'utf8');
+process.env.USERS_FILE = usersFile;
+process.env.SUBMISSIONS_FILE = submissionsFile;
+process.env.JWT_SECRET = jwtSecret;
+
+const submissionsRouter = require('../routes/submissions');
+const adminRouter = require('../routes/admin');
+const authMw = require('../middleware/auth');
+const app = express();
+app.use(express.json({ limit: '64kb' }));
+app.use('/submissions', submissionsRouter);
+
+// 管理员权限（与 app.js 挂载方式一致）
+function adminOnly(req, res, next) {
+  const list = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+  const me = list.find(u => u.id === req.userId);
+  if (!me) return res.status(401).json({ code: 1, message: '未登录' });
+  if (me.role !== 'admin') return res.status(403).json({ code: 1, message: '无管理员权限' });
+  next();
+}
+app.use('/admin', authMw, adminOnly, adminRouter);
+
+const server = app.listen(0, '127.0.0.1');
+let baseUrl = '';
+const tokens = Object.fromEntries(users.map(user => [
+  user.id,
+  jwt.sign({ sub: user.id, username: user.username, role: user.role }, jwtSecret, { expiresIn: '5m' })
+]));
+
+async function api(userId, url, options = {}) {
+  const response = await fetch(`${baseUrl}${url}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${tokens[userId]}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  let body = null;
+  try { body = await response.json(); } catch {}
+  return { response, body };
+}
+
+const validPayload = (overrides = {}) => ({
+  category: 'creative',
+  title: '我的创意作品',
+  description: '这是作品的说明。',
+  locationId: 1,
+  images: [{ key: 'Award/101__alice/1700000000000_abc123.jpg' }],
+  ...overrides
+});
+
+// 直接向测试数据文件追加一条“已通过”的作品（用于配额等测试）
+function addApprovedRecord(id, userId, username, title, category = 'creative', votes = []) {
+  const list = JSON.parse(fs.readFileSync(submissionsFile, 'utf8'));
+  list.push({
+    id,
+    category,
+    categoryName: category === 'photography' ? '最佳摄影奖' : '最佳创意奖',
+    title,
+    description: '测试作品说明',
+    locationId: 1,
+    locationName: '何尔达屋',
+    images: [{ key: 'sample/sample_x.jpg', url: '' }],
+    userId,
+    username,
+    avatar: '',
+    status: 'approved',
+    featured: false,
+    winnerRank: '',
+    votes,
+    appealReason: '',
+    appealTime: 0,
+    appealStatus: '',
+    appealResult: '',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    reviewedAt: Date.now(),
+    reviewNote: ''
+  });
+  fs.writeFileSync(submissionsFile, JSON.stringify(list, null, 2), 'utf8');
+}
+
+function addRejectedAppealingRecord(id, userId, username, title) {
+  const list = JSON.parse(fs.readFileSync(submissionsFile, 'utf8'));
+  list.push({
+    id,
+    category: 'photography',
+    categoryName: '最佳摄影奖',
+    title,
+    description: '测试作品说明',
+    locationId: 1,
+    locationName: '何尔达屋',
+    images: [{ key: 'sample/sample_x.jpg', url: '' }],
+    userId,
+    username,
+    avatar: '',
+    status: 'rejected',
+    featured: false,
+    winnerRank: '',
+    votes: [],
+    appealReason: '原图清晰，请复核',
+    appealTime: Date.now(),
+    appealStatus: 'pending',
+    appealResult: '',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    reviewedAt: Date.now(),
+    reviewNote: '内容不符合要求'
+  });
+  fs.writeFileSync(submissionsFile, JSON.stringify(list, null, 2), 'utf8');
+}
+
+test.before(async () => {
+  if (!server.listening) await once(server, 'listening');
+  baseUrl = `http://127.0.0.1:${server.address().port}`;
+});
+
+test.after(async () => {
+  if (server.listening) {
+    server.close();
+    await once(server, 'close');
+  }
+  const resolved = path.resolve(testDir);
+  if (resolved.startsWith(path.resolve(os.tmpdir()))) fs.rmSync(resolved, { recursive: true, force: true });
+});
+
+test('meta returns categories, deadline and limits', async () => {
+  const { response, body } = await api(101, '/submissions/meta');
+  assert.equal(response.status, 200);
+  assert.equal(body.code, 0);
+  assert.equal(body.data.categories.length, 2);
+  assert.ok(body.data.deadline);
+  assert.ok(body.data.awardCeremony);
+  assert.ok(body.data.maxImagesPerWork > 0);
+  assert.ok(body.data.maxVotesPerDay > 0);
+  assert.ok(body.data.winnerCounts.creative > 0);
+  assert.ok(body.data.winnerCounts.photography > 0);
+});
+
+test('creates a pending submission', async () => {
+  const { response, body } = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload())
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.code, 0);
+  assert.equal(body.data.submission.status, 'pending');
+  assert.equal(body.data.submission.categoryName, '最佳创意奖');
+});
+
+test('presign works without COS credentials via public bucket defaults', async () => {
+  const res = await api(101, '/submissions/presign', {
+    method: 'POST',
+    body: JSON.stringify({ ext: 'png' })
+  });
+  assert.equal(res.body.code, 0);
+  assert.ok(res.body.data.putUrl.includes('sysuzngcxy-1322240898'));
+  assert.ok(res.body.data.key.startsWith('Award/101__alice/'));
+});
+
+test('prevents duplicate submission in the same category', async () => {
+  const { response, body } = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({ title: '重复提交' }))
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.code, 2);
+});
+
+test('allows a submission in a different category', async () => {
+  const { response, body } = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({ category: 'photography', title: '我的摄影作品' }))
+  });
+  assert.equal(response.status, 200);
+  assert.equal(body.code, 0);
+  assert.equal(body.data.submission.categoryName, '最佳摄影奖');
+});
+
+test('validates category, location, title and image count', async () => {
+  const badCategory = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({ category: 'music' }))
+  });
+  assert.equal(badCategory.body.code, 1);
+
+  const badLocation = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({ locationId: 99999 }))
+  });
+  assert.equal(badLocation.body.code, 1);
+
+  const badTitle = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({ title: '  ' }))
+  });
+  assert.equal(badTitle.body.code, 1);
+
+  const tooManyImages = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      images: [1, 2, 3, 4].map(n => ({ key: `Award/101__alice/img${n}.jpg` }))
+    }))
+  });
+  assert.equal(tooManyImages.body.code, 1);
+});
+
+test('rejects images that do not belong to the user', async () => {
+  const { response, body } = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      images: [{ key: 'Award/202__bob/1700000000000_x.jpg' }]
+    }))
+  });
+  assert.equal(response.status, 400);
+  assert.equal(body.code, 1);
+});
+
+test('mine returns only my submissions and public list hides pending', async () => {
+  const mine = await api(101, '/submissions/mine');
+  assert.equal(mine.body.code, 0);
+  assert.equal(mine.body.list.length, 2);
+
+  const otherMine = await api(202, '/submissions/mine');
+  assert.equal(otherMine.body.list.length, 0);
+
+  const publicList = await api(101, '/submissions');
+  assert.equal(publicList.body.list.length, 0); // nothing approved yet
+});
+
+test('user can withdraw own pending submission only', async () => {
+  const mine = await api(101, '/submissions/mine');
+  const targetId = mine.body.list[0].id;
+
+  const forbidden = await api(202, `/submissions/${targetId}`, { method: 'DELETE' });
+  assert.equal(forbidden.response.status, 403);
+
+  const removed = await api(101, `/submissions/${targetId}`, { method: 'DELETE' });
+  assert.equal(removed.body.code, 0);
+
+  const after = await api(101, '/submissions/mine');
+  assert.equal(after.body.list.length, 1);
+});
+
+test('supports same-day vote toggle on approved works', async () => {
+  // 101 投摄影奖（其创意类已有待审核作品，摄影类可投）
+  const created = await api(101, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({ category: 'photography', title: '可投票的作品' }))
+  });
+  assert.equal(created.body.code, 0);
+  const id = created.body.data.submission.id;
+
+  const approved = await api(202, `/admin/submissions/${encodeURIComponent(id)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  assert.equal(approved.body.code, 0);
+
+  // 101 投票
+  const vote1 = await api(101, `/submissions/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'vote' })
+  });
+  assert.equal(vote1.body.code, 0);
+  assert.equal(vote1.body.likeCount, 1);
+  assert.equal(vote1.body.votedToday, true);
+
+  // 202 投票 → 2
+  const vote2 = await api(202, `/submissions/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'vote' })
+  });
+  assert.equal(vote2.body.likeCount, 2);
+
+  // 101 再次点击 = 取消当天投票 → 1
+  const cancel = await api(101, `/submissions/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'vote' })
+  });
+  assert.equal(cancel.body.likeCount, 1);
+  assert.equal(cancel.body.votedToday, false);
+
+  // 101 重新投票 → 2
+  const revote = await api(101, `/submissions/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'vote' })
+  });
+  assert.equal(revote.body.likeCount, 2);
+  assert.equal(revote.body.votedToday, true);
+
+  // 公开列表：202 视角 votedToday=true
+  const publicList = await api(202, '/submissions?category=photography');
+  const target = publicList.body.list.find(x => x.id === id);
+  assert.equal(target.likeCount, 2);
+  assert.equal(target.votedToday, true);
+});
+
+test('cannot vote a pending work', async () => {
+  const created = await api(202, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'creative',
+      title: '待审核作品',
+      images: [{ key: 'Award/202__bob/1700000000000_xyz.jpg' }]
+    }))
+  });
+  assert.equal(created.body.code, 0);
+  const id = created.body.data.submission.id;
+
+  const vote = await api(101, `/submissions/${encodeURIComponent(id)}/vote`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'vote' })
+  });
+  assert.equal(vote.body.code, 1);
+});
+
+test('limits votes to 3 per user per day', async () => {
+  addApprovedRecord('q1', 303, 'carol', '作品一');
+  addApprovedRecord('q2', 303, 'carol', '作品二');
+  addApprovedRecord('q3', 303, 'carol', '作品三');
+  addApprovedRecord('q4', 303, 'carol', '作品四');
+
+  const v1 = await api(303, '/submissions/q1/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(v1.body.code, 0);
+  assert.equal(v1.body.remaining, 2);
+
+  const v2 = await api(303, '/submissions/q2/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(v2.body.remaining, 1);
+
+  const v3 = await api(303, '/submissions/q3/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(v3.body.remaining, 0);
+
+  // 第 4 票被拦截
+  const v4 = await api(303, '/submissions/q4/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(v4.body.code, 3);
+
+  // 同一真实姓名的另一个账号（dave）共享每日额度 → 也被拦截
+  const daveVote = await api(404, '/submissions/q4/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(daveVote.body.code, 3);
+
+  // 取消 q3 当天投票 → 剩 1 票
+  const cancel = await api(303, '/submissions/q3/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(cancel.body.code, 0);
+  assert.equal(cancel.body.votedToday, false);
+  assert.equal(cancel.body.remaining, 1);
+
+  // dave 用同一真实姓名投 q4 → 成功，剩余 0
+  const daveVote2 = await api(404, '/submissions/q4/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(daveVote2.body.code, 0);
+  assert.equal(daveVote2.body.votedToday, true);
+  assert.equal(daveVote2.body.remaining, 0);
+
+  // carol 再点 q4 = 同一真实姓名 → 取消当天的这 1 票（每真名每作品每天 1 票）
+  const carolToggle = await api(303, '/submissions/q4/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(carolToggle.body.code, 0);
+  assert.equal(carolToggle.body.votedToday, false);
+  assert.equal(carolToggle.body.remaining, 1);
+
+  // 配额接口
+  const quota = await api(303, '/submissions/votes/quota');
+  assert.equal(quota.body.code, 0);
+  assert.equal(quota.body.data.usedToday, 2);
+  assert.equal(quota.body.data.remaining, 1);
+  assert.equal(quota.body.data.maxVotesPerDay, 3);
+});
+
+test('realName is used as vote identity', () => {
+  const { realNameOfUser, voteKey } = submissionsRouter._test;
+  assert.equal(realNameOfUser({ realName: '张三' }), '张三');
+  assert.equal(realNameOfUser({ phone: '李四' }), '李四');
+  assert.equal(realNameOfUser({ username: 'alice' }), 'alice');
+  const byName = voteKey({ name: '王五', userId: 303 }, {});
+  assert.equal(byName, '王五');
+  const byUser = voteKey({ userId: 303 }, { '303': { realName: '王五' } });
+  assert.equal(byUser, '王五');
+});
+
+test('beijingDay helper uses UTC+8 date', () => {
+  const { beijingDay } = submissionsRouter._test;
+  // 2026-08-09T16:30:00Z = 北京时间 2026-08-10 00:30
+  assert.equal(beijingDay(Date.UTC(2026, 7, 9, 16, 30)), '2026-08-10');
+  // 2026-08-09T15:59:00Z = 北京时间 2026-08-09 23:59
+  assert.equal(beijingDay(Date.UTC(2026, 7, 9, 15, 59)), '2026-08-09');
+});
+
+test('votes are keyed by Beijing calendar day (00:00-24:00), not 24h intervals', () => {
+  const { beijingDay, countUserVotesToday } = submissionsRouter._test;
+  // 北京时间 08-09 23:59 与 08-10 00:01 属于两个不同日期
+  const day1 = beijingDay(Date.UTC(2026, 7, 9, 15, 59));
+  const day2 = beijingDay(Date.UTC(2026, 7, 9, 16, 1));
+  assert.equal(day1, '2026-08-09');
+  assert.equal(day2, '2026-08-10');
+  assert.notEqual(day1, day2);
+
+  // 同一自然日的两条投票算 2 票；跨天不互相占用额度
+  const votes = [
+    { userId: 101, name: '张三', day: day1, ts: 1 },
+    { userId: 101, name: '张三', day: day1, ts: 2 },
+    { userId: 101, name: '张三', day: day2, ts: 3 }
+  ];
+  const usersById = { '101': { realName: '张三' } };
+  assert.equal(countUserVotesToday([{ votes }], '张三', day1, usersById), 2);
+  assert.equal(countUserVotesToday([{ votes }], '张三', day2, usersById), 1);
+});
+
+test('auto-computes winners by votes after deadline', async () => {
+  const awards = require('../data/awards');
+  const originalDeadline = awards.deadline;
+
+  // 截止前不评奖
+  let before = await api(101, '/submissions/winners');
+  assert.equal(before.body.code, 0);
+  assert.equal(before.body.list.length, 0);
+
+  const vote = (n) => Array.from({ length: n }, (_, i) => ({ userId: 500 + i, day: '2026-08-01', ts: i + 1 }));
+
+  try {
+    awards.deadline = '2020-01-01T00:00:00+08:00';
+
+    // 摄影奖：5 票 / 3 票 / 1 票 → 前 2 名获奖
+    addApprovedRecord('p1', 999, 'winner_owner', '摄影一', 'photography', vote(6));
+    addApprovedRecord('p2', 999, 'winner_owner', '摄影二', 'photography', vote(4));
+    addApprovedRecord('p3', 999, 'winner_owner', '摄影三', 'photography', vote(2));
+
+    // 创意奖：5/4/3/2/1/0 票 → 前 5 名获奖
+    addApprovedRecord('c1', 999, 'winner_owner', '创意一', 'creative', vote(6));
+    addApprovedRecord('c2', 999, 'winner_owner', '创意二', 'creative', vote(5));
+    addApprovedRecord('c3', 999, 'winner_owner', '创意三', 'creative', vote(4));
+    addApprovedRecord('c4', 999, 'winner_owner', '创意四', 'creative', vote(3));
+    addApprovedRecord('c5', 999, 'winner_owner', '创意五', 'creative', vote(2));
+    addApprovedRecord('c6', 999, 'winner_owner', '创意六', 'creative', vote(1));
+
+    const winners = await api(101, '/submissions/winners');
+    assert.equal(winners.body.code, 0);
+
+    const photo = winners.body.list.filter(w => w.category === 'photography');
+    const creative = winners.body.list.filter(w => w.category === 'creative');
+
+    assert.equal(photo.length, 2);
+    assert.equal(photo[0].id, 'p1');
+    assert.equal(photo[0].winnerLabel, '第一名');
+    assert.equal(photo[1].id, 'p2');
+    assert.equal(photo[1].winnerLabel, '第二名');
+    assert.equal(photo.some(w => w.id === 'p3'), false);
+
+    assert.equal(creative.length, 5);
+    assert.equal(creative[0].winnerLabel, '第一名');
+    assert.equal(creative[4].id, 'c5');
+    assert.equal(creative[4].winnerLabel, '第五名');
+    assert.equal(creative.some(w => w.id === 'c6'), false);
+
+    // 公开作品区也带获奖标注
+    const pub = await api(101, '/submissions');
+    const p1 = pub.body.list.find(w => w.id === 'p1');
+    assert.equal(p1.winnerLabel, '第一名');
+
+    // 管理员“刷新获奖名单”接口
+    const compute = await api(202, '/admin/submissions/compute-winners', { method: 'POST', body: JSON.stringify({}) });
+    assert.equal(compute.body.code, 0);
+    assert.equal(compute.body.summary.photography.length, 2);
+    assert.equal(compute.body.summary.creative.length, 5);
+  } finally {
+    awards.deadline = originalDeadline;
+  }
+});
+
+test('admin can take down and restore an approved work', async () => {
+  addApprovedRecord('down1', 303, 'carol', '待下架作品');
+
+  // 公开列表包含
+  let pub = await api(101, '/submissions');
+  assert.ok(pub.body.list.some(x => x.id === 'down1'));
+
+  // 下架
+  const down = await api(202, '/admin/submissions/down1/down', { method: 'POST', body: JSON.stringify({}) });
+  assert.equal(down.body.code, 0);
+
+  // 公开列表不再包含
+  pub = await api(101, '/submissions');
+  assert.equal(pub.body.list.some(x => x.id === 'down1'), false);
+
+  // 已下架不能投票
+  const vote = await api(303, '/submissions/down1/vote', { method: 'POST', body: JSON.stringify({ action: 'vote' }) });
+  assert.equal(vote.body.code, 1);
+
+  // 作者在我的投稿里仍能看到“已下架”
+  const mine = await api(303, '/submissions/mine');
+  const mineItem = mine.body.list.find(x => x.id === 'down1');
+  assert.equal(mineItem.status, 'down');
+
+  // 重新上架
+  const restore = await api(202, '/admin/submissions/down1/restore', { method: 'POST', body: JSON.stringify({}) });
+  assert.equal(restore.body.code, 0);
+  pub = await api(101, '/submissions');
+  assert.ok(pub.body.list.some(x => x.id === 'down1'));
+});
+
+test('duplicate submission is blocked by real name and appeal-pending status', async () => {
+  // dave 投稿摄影类（创意类已有“王五”的配额测试记录）
+  const created = await api(404, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      title: 'dave的摄影',
+      images: [{ key: 'Award/404__dave/1700000000000_a.jpg' }]
+    }))
+  });
+  assert.equal(created.body.code, 0);
+
+  // carol 与 dave 真实姓名相同（王五）→ 同样被拦截
+  const carolDup = await api(303, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      title: 'carol的摄影',
+      images: [{ key: 'Award/303__carol/1700000000000_a.jpg' }]
+    }))
+  });
+  assert.equal(carolDup.body.code, 2);
+
+  // 申诉中的作品也算“已提交”，不能再投同一类别
+  addRejectedAppealingRecord('appeal1', 202, 'bob', '摄影申诉中');
+  const bobDup = await api(202, '/submissions', {
+    method: 'POST',
+    body: JSON.stringify(validPayload({
+      category: 'photography',
+      title: '重复摄影',
+      images: [{ key: 'Award/202__bob/1700000000002_a.jpg' }]
+    }))
+  });
+  assert.equal(bobDup.body.code, 2);
+});
+
+test('author can delete own work in any status; others cannot', async () => {
+  // dave 删除刚才创建的待审核作品
+  const mineD = await api(404, '/submissions/mine');
+  const pending = mineD.body.list.find(x => x.title === 'dave的摄影');
+  assert.ok(pending);
+  const del = await api(404, `/submissions/${encodeURIComponent(pending.id)}`, { method: 'DELETE' });
+  assert.equal(del.body.code, 0);
+
+  // 已通过的自己作品也可删除
+  addApprovedRecord('del1', 404, 'dave', '可删除的已通过作品');
+  const del2 = await api(404, '/submissions/del1', { method: 'DELETE' });
+  assert.equal(del2.body.code, 0);
+
+  // 他人不能删除
+  addApprovedRecord('del2', 404, 'dave', '他人不可删');
+  const del3 = await api(101, '/submissions/del2', { method: 'DELETE' });
+  assert.equal(del3.response.status, 403);
+});
+
+test('rejection reason, appeal and re-review flow', async () => {
+  // 用 202 在“cannot vote a pending work”里创建的待审核作品做驳回+申诉
+  const mine = await api(202, '/submissions/mine');
+  const target = mine.body.list.find(x => x.title === '待审核作品');
+  assert.ok(target);
+
+  // 管理员驳回，必须写明理由
+  const noNote = await api(202, `/admin/submissions/${encodeURIComponent(target.id)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note: '' })
+  });
+  assert.equal(noNote.body.code, 1);
+
+  const rejected = await api(202, `/admin/submissions/${encodeURIComponent(target.id)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note: '作品模糊，请重新拍摄' })
+  });
+  assert.equal(rejected.body.code, 0);
+
+  // 本人可见详情与驳回理由
+  const detail = await api(202, `/submissions/${encodeURIComponent(target.id)}`);
+  assert.equal(detail.body.code, 0);
+  assert.equal(detail.body.data.submission.status, 'rejected');
+  assert.equal(detail.body.data.submission.reviewNote, '作品模糊，请重新拍摄');
+
+  // 他人不可见详情
+  const forbidden = await api(101, `/submissions/${encodeURIComponent(target.id)}`);
+  assert.equal(forbidden.response.status, 403);
+
+  // 申诉必须有理由
+  const noReason = await api(202, `/submissions/${encodeURIComponent(target.id)}/appeal`, {
+    method: 'POST',
+    body: JSON.stringify({ reason: '' })
+  });
+  assert.equal(noReason.body.code, 1);
+
+  // 提交申诉
+  const appeal = await api(202, `/submissions/${encodeURIComponent(target.id)}/appeal`, {
+    method: 'POST',
+    body: JSON.stringify({ reason: '原图清晰，是压缩导致模糊，请复核' })
+  });
+  assert.equal(appeal.body.code, 0);
+  assert.equal(appeal.body.data.submission.appealStatus, 'pending');
+
+  // 申诉中不能重复申诉
+  const repeat = await api(202, `/submissions/${encodeURIComponent(target.id)}/appeal`, {
+    method: 'POST',
+    body: JSON.stringify({ reason: '再申诉一次' })
+  });
+  assert.equal(repeat.body.code, 1);
+
+  // 管理员通过申诉 → 状态变为已通过
+  const approveAppeal = await api(202, `/admin/submissions/${encodeURIComponent(target.id)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  assert.equal(approveAppeal.body.code, 0);
+
+  const after = await api(202, `/submissions/${encodeURIComponent(target.id)}`);
+  assert.equal(after.body.data.submission.status, 'approved');
+  assert.equal(after.body.data.submission.appealStatus, 'resolved');
+  assert.equal(after.body.data.submission.appealResult, 'approved');
+});
+
+test('blocks user operations after activity deadline; admin still works', async () => {
+  const awards = require('../data/awards');
+  const originalDeadline = awards.deadline;
+  awards.deadline = '2020-01-01T00:00:00+08:00';
+  try {
+    const create = await api(101, '/submissions', {
+      method: 'POST',
+      body: JSON.stringify(validPayload({ category: 'photography' }))
+    });
+    assert.equal(create.body.code, 4);
+
+    const vote = await api(101, '/submissions/whatever/vote', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'vote' })
+    });
+    assert.equal(vote.body.code, 4);
+
+    const appeal = await api(101, '/submissions/whatever/appeal', {
+      method: 'POST',
+      body: JSON.stringify({ reason: '请复核' })
+    });
+    assert.equal(appeal.body.code, 4);
+
+    const del = await api(101, '/submissions/whatever', { method: 'DELETE' });
+    assert.equal(del.body.code, 4);
+
+    // 管理员功能不受截止时间影响
+    const adminList = await api(202, '/admin/submissions');
+    assert.equal(adminList.body.code, 0);
+  } finally {
+    awards.deadline = originalDeadline;
+  }
+});
+
+test('handles corrupted storage without crashing', async () => {
+  fs.writeFileSync(submissionsFile, '{broken', 'utf8');
+  const after = await api(101, '/submissions/mine');
+  assert.equal(after.body.code, 0);
+});
