@@ -14,13 +14,21 @@ const locationsData = require('../data/locations');
 const { isActivityEnded, winnerLabelOf, computeWinners } = require('../winner');
 
 // ====== 环境配置 ======
-const {
-  COS_BUCKET,
-  COS_REGION,
-  TENCENT_SECRET_ID,
-  TENCENT_SECRET_KEY,
-  PUBLIC_ASSET_DOMAIN
-} = process.env;
+// 本项目存储桶为“公有读写”，无需密钥；桶名/地域/域名已内置默认值，
+// 即使 .env 没配置也能正常上传（有密钥时仍走签名上传）。
+const normalizeEnv = (v, fallback) => {
+  const s = String(v || '').trim();
+  return (!s || /your-|replace-me|example/i.test(s)) ? fallback : s;
+};
+
+const COS_BUCKET = normalizeEnv(process.env.COS_BUCKET, 'sysuzngcxy-1322240898');
+const COS_REGION = normalizeEnv(process.env.COS_REGION, 'ap-guangzhou');
+const PUBLIC_ASSET_DOMAIN = normalizeEnv(
+  process.env.PUBLIC_ASSET_DOMAIN,
+  'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com'
+);
+const TENCENT_SECRET_ID = normalizeEnv(process.env.TENCENT_SECRET_ID, '');
+const TENCENT_SECRET_KEY = normalizeEnv(process.env.TENCENT_SECRET_KEY, '');
 
 const cos = (TENCENT_SECRET_ID && TENCENT_SECRET_KEY && COS_BUCKET && COS_REGION)
   ? new COS({ SecretId: TENCENT_SECRET_ID, SecretKey: TENCENT_SECRET_KEY })

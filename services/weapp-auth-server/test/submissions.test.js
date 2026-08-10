@@ -169,6 +169,16 @@ test('creates a pending submission', async () => {
   assert.equal(body.data.submission.categoryName, '最佳创意奖');
 });
 
+test('presign works without COS credentials via public bucket defaults', async () => {
+  const res = await api(101, '/submissions/presign', {
+    method: 'POST',
+    body: JSON.stringify({ ext: 'png' })
+  });
+  assert.equal(res.body.code, 0);
+  assert.ok(res.body.data.putUrl.includes('sysuzngcxy-1322240898'));
+  assert.ok(res.body.data.key.startsWith('Award/101__alice/'));
+});
+
 test('prevents duplicate submission in the same category', async () => {
   const { response, body } = await api(101, '/submissions', {
     method: 'POST',
