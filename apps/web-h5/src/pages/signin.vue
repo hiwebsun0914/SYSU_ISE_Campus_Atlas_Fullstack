@@ -10,19 +10,29 @@
     </div>
 
     <!-- 模式切换 -->
-    <div class="mode-tabs">
+    <div v-if="!adminMode" class="mode-tabs">
       <button :class="['tab', mode==='login' && 'active']" @click="mode='login'">登录</button>
       <button :class="['tab', mode==='register' && 'active']" @click="mode='register'">注册</button>
     </div>
 
+    <div v-else class="admin-login-notice" role="status">
+      <strong>切换到管理员账号</strong>
+      <p>当前账号没有管理员权限，请重新登录后进入管理员模式。</p>
+    </div>
+
     <!-- 表单 -->
     <div class="login-box">
-      <input class="input" placeholder="请输入昵称" v-model.trim="username" />
+      <input
+        class="input"
+        :placeholder="adminMode ? '请输入管理员账号' : '请输入昵称'"
+        autocomplete="username"
+        v-model.trim="username"
+      />
       <input v-if="mode==='register'"
              class="input"
              placeholder="请输入真实姓名（仅用于联系）"
              v-model.trim="phone" />
-      <input class="input" placeholder="请输入密码" type="password" v-model="password" />
+      <input class="input" placeholder="请输入密码" type="password" autocomplete="current-password" v-model="password" />
     </div>
 
     <div class="btn-row">
@@ -33,7 +43,7 @@
           {{ uploadStatusText }}
         </span>
         <span v-else>
-          {{ submitting ? '提交中…' : (mode==='login' ? '登录' : '注册并上传头像') }}
+          {{ submitting ? '提交中…' : (adminMode ? '进入管理员模式' : (mode==='login' ? '登录' : '注册并上传头像')) }}
         </span>
       </button>
     </div>
@@ -72,6 +82,7 @@ const router = useRouter()
 const route  = useRoute()
 
 const mode        = ref('login') // 'login' | 'register'
+const adminMode   = ref(false)
 const username    = ref('')
 const phone       = ref('')
 const password    = ref('')
@@ -97,7 +108,9 @@ const MAX_RETRY       = 2            // 上传失败重试次数
 const MIN_COMPRESS_MB = 0.8          // 文件大于该阈值（MB）才压缩
 
 onMounted(() => {
-  document.title = mode.value === 'login' ? '登录' : '注册'
+  adminMode.value = route.query?.mode === 'admin'
+  if (adminMode.value) mode.value = 'login'
+  document.title = adminMode.value ? '管理员登录' : (mode.value === 'login' ? '登录' : '注册')
   const r = route.query?.redirect ? decodeURIComponent(String(route.query.redirect)) : ''
   redirect.value = r
   // 空闲时预加载 COS SDK，减少之后等待
@@ -105,7 +118,9 @@ onMounted(() => {
 })
 
 // 切换页签时同步标题（小优化，非功能性）
-watch(mode, (m) => { document.title = m === 'login' ? '登录' : '注册' })
+watch(mode, (m) => {
+  document.title = adminMode.value ? '管理员登录' : (m === 'login' ? '登录' : '注册')
+})
 
 /* ====== 辅助 ====== */
 function idle(cb){
@@ -129,8 +144,9 @@ async function onSubmit() {
   try {
     if (mode.value === 'login') {
       await handleLoginStrict(username.value, password.value)
-      alert('登录成功')
-      goNext()
+      if (adminMode.value) assertAdministratorAccount()
+      alert(adminMode.value ? '管理员登录成功' : '登录成功')
+      await goNext()
     } else {
       await handleRegister(username.value, password.value, phone.value)
       // 注册成功后走头像上传面板（原逻辑保持）
@@ -146,22 +162,23 @@ async function onSubmit() {
   }
 }
 
+function assertAdministratorAccount() {
+  let user = {}
+  try { user = JSON.parse(localStorage.getItem('userInfo') || '{}') } catch {}
+  if (user.role === 'admin' || user.role === 'owner') return
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  throw new Error('该账号没有管理员权限，请更换账号')
+}
+
 /** 严格登录：不会自动创建账号；若账号不存在直接提示 */
 async function handleLoginStrict(name, pass) {
   // 1) 首选 /auth/login
-  try {
-    const resp = await request('/auth/login', 'POST', { username: name, password: pass })
-    const ok = normalizeOk(resp)
-    if (!ok) {
-      const why = normalizeWhy(resp)
-      if (why === 'USER_NOT_FOUND') throw new Error('账号不存在')
-      if (why === 'BAD_PASSWORD')  throw new Error('密码错误')
-      throw new Error(normalizeMsg(resp) || '登录失败')
-    }
+  const resp = await request('/auth/login', 'POST', { username: name, password: pass })
+  if (!isMissingEndpoint(resp)) {
+    assertLoginResponse(resp)
     persistLogin(resp)
     return
-  } catch (err) {
-    // 如果接口不存在/404/网络错误，继续降级策略
   }
 
   // 2) 可选：查询是否存在该账号（支持任一存在性接口）
@@ -169,46 +186,31 @@ async function handleLoginStrict(name, pass) {
   if (exists === false) throw new Error('账号不存在')
 
   // 3) 兼容后端仍只提供 /login_or_register 的情况：显式声明登录模式，禁止自动创建
-  try {
-    const resp = await request('/login_or_register', 'POST', {
-      username: name, password: pass, phone: '',
-      mode: 'login', allowCreate: false, registerIfNotExist: false
-    })
-    const ok = normalizeOk(resp)
-    if (!ok) {
-      const why = normalizeWhy(resp)
-      if (why === 'USER_NOT_FOUND') throw new Error('账号不存在')
-      if (why === 'BAD_PASSWORD')  throw new Error('密码错误')
-      throw new Error(normalizeMsg(resp) || '登录失败')
-    }
-    // 若后端仍然误创建了用户，这里也会拿到 token。你可以按需在此增加二次判断。
-    persistLogin(resp)
-  } catch (e) {
-    // 最后保底：如果有 exists===true 但登录接口不可用，给出明确报错
-    throw new Error('登录接口不可用或服务异常')
-  }
+  const fallback = await request('/login_or_register', 'POST', {
+    username: name, password: pass, phone: '',
+    mode: 'login', allowCreate: false, registerIfNotExist: false
+  })
+  assertLoginResponse(fallback)
+  persistLogin(fallback)
 }
 
 /** 注册：优先 /auth/register，不可用再降级到 /login_or_register */
 async function handleRegister(name, pass, phoneNum) {
   // 1) 首选 /auth/register
-  try {
-    const resp = await request('/auth/register', 'POST', { username: name, password: pass, phone: phoneNum, realName: phoneNum })
-    const ok = normalizeOk(resp)
-    if (!ok) throw new Error(normalizeMsg(resp) || '注册失败')
+  const resp = await request('/auth/register', 'POST', { username: name, password: pass, phone: phoneNum, realName: phoneNum })
+  if (!isMissingEndpoint(resp)) {
+    if (!normalizeOk(resp)) throw new Error(normalizeMsg(resp) || '注册失败')
     persistLogin(resp) // 大多数注册接口会直接返回 token
     return
-  } catch (err) {
-    // 降级
   }
 
   // 2) 兼容：/login_or_register 作为注册模式
-  const resp = await request('/login_or_register', 'POST', {
+  const fallback = await request('/login_or_register', 'POST', {
     username: name, password: pass, phone: phoneNum, realName: phoneNum, mode: 'register'
   })
-  const ok = normalizeOk(resp)
-  if (!ok) throw new Error(normalizeMsg(resp) || '注册失败')
-  persistLogin(resp)
+  const ok = normalizeOk(fallback)
+  if (!ok) throw new Error(normalizeMsg(fallback) || '注册失败')
+  persistLogin(fallback)
 }
 
 /** 查询账号是否存在（支持两种常见接口名，任一可用即可） */
@@ -249,6 +251,17 @@ function normalizeWhy(resp) {
   if (code === 1001 || /user.*not.*exist|用户不存在|账号不存在/.test(msg)) return 'USER_NOT_FOUND'
   if (code === 1002 || /password|密码/.test(msg)) return 'BAD_PASSWORD'
   return ''
+}
+function isMissingEndpoint(resp) {
+  return resp?.status === 404 || resp?.status === 405
+}
+function assertLoginResponse(resp) {
+  if (normalizeOk(resp)) return
+  if (resp?.status === 0) throw new Error('无法连接登录服务，请检查网络后重试')
+  const why = normalizeWhy(resp)
+  if (why === 'USER_NOT_FOUND') throw new Error('账号不存在')
+  if (why === 'BAD_PASSWORD') throw new Error('密码错误')
+  throw new Error(normalizeMsg(resp) || '登录失败')
 }
 function persistLogin(resp) {
   const d = resp?.data || {}
@@ -508,10 +521,14 @@ function fmtETA(sec) {
 }
 
 /* ====== 完成后跳转 ====== */
-function goNext() {
+async function goNext() {
   const dest = redirect.value?.trim()
-  if (dest) router.replace(dest)
-  else router.replace('/profile')
+  let user = {}
+  try { user = JSON.parse(localStorage.getItem('userInfo') || '{}') } catch {}
+  const isAdmin = user.role === 'admin' || user.role === 'owner'
+  if (isAdmin) return router.replace('/admin')
+  if (dest && dest.startsWith('/') && !dest.startsWith('/admin')) return router.replace(dest)
+  return router.replace('/myCheckins')
 }
 </script>
 
@@ -528,6 +545,19 @@ function goNext() {
 .mode-tabs { display:flex; gap:10px; justify-content:center; margin-top:-20px; }
 .tab { padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,.7); background:rgba(255,255,255,.25); cursor:pointer; color:#102822; }
 .tab.active { background:#176B52; color:#fff; border-color:#176B52; }
+
+.admin-login-notice {
+  width: min(86%, 440px);
+  margin: -20px auto 0;
+  padding: 14px 16px;
+  background: rgba(255,255,255,.78);
+  color: #102822;
+  border: 1px solid rgba(23,107,82,.35);
+  border-radius: 10px;
+}
+.admin-login-notice strong,
+.admin-login-notice p { display: block; }
+.admin-login-notice p { margin: 6px 0 0; font-size: 13px; line-height: 1.6; }
 
 /* 表单 */
 .login-box{

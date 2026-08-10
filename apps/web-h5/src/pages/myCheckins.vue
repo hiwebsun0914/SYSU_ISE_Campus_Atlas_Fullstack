@@ -1,560 +1,1356 @@
-<!-- src/pages/myCheckins.vue -->
 <template>
-  <div class="bg-wrapper" @contextmenu.prevent>
-    <!-- 背景图 -->
-    <img
-      class="bg-img"
-      src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/bg.jpg"
-      alt="bg"
-      draggable="false"
-    />
+  <div class="profile-page">
+    <a class="profile-skip-link" href="#profile-main">跳到主要内容</a>
 
-    <!-- 内容 -->
-    <div class="content">
-      <!-- LOGO -->
-      <div class="logo-container">
-        <img
-          class="logo-img"
-          src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png"
-          alt="logo"
-          draggable="false"
-        />
-      </div>
+    <header class="profile-nav">
+      <button class="profile-brand" type="button" aria-label="返回校园首页" @click="router.push('/')">
+        <span class="profile-brand-mark">SYSU</span>
+        <span class="profile-brand-name">笃行校园图鉴</span>
+      </button>
+      <button
+        class="command-trigger"
+        type="button"
+        aria-haspopup="dialog"
+        aria-keyshortcuts="Control+K Meta+K"
+        @click="openCommandPalette"
+      >
+        <Command :size="17" aria-hidden="true" />
+        <span>快速前往</span>
+        <kbd>⌘ K</kbd>
+      </button>
+    </header>
 
-      <!-- 个人信息卡片 -->
-      <div class="user-card">
-        <img
-          class="avatar"
-          :src="userInfo.avatar || 'https://img.yzcdn.cn/vant/user-active.png'"
-          alt="avatar"
-          draggable="false"
-        />
-        <div class="user-meta">
-          <div class="user-name">{{ userInfo.username || '未登录用户' }}</div>
-          <div class="user-id">ID：{{ userInfo.id || '-' }}</div>
+    <main id="profile-main" class="profile-shell">
+      <section v-if="loading" class="profile-loading" aria-busy="true" aria-label="正在加载个人主页">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-band"></div>
+        <div class="skeleton-grid">
+          <div class="skeleton skeleton-panel"></div>
+          <div class="skeleton skeleton-panel"></div>
         </div>
+      </section>
 
-        <div class="progress">
-          <div class="progress-label">徽章进度：{{ unlockedCount }} / {{ badges.length }}</div>
-          <div class="progress-bar">
-            <div class="progress-inner" :style="{ width: progressWidth }"></div>
-          </div>
-        </div>
-      </div>
+      <section v-else-if="loadError" class="fatal-state" role="alert">
+        <AlertCircle :size="28" aria-hidden="true" />
+        <h1>个人主页暂时没有加载完成</h1>
+        <p>{{ loadError }}</p>
+        <button class="button button-primary" type="button" @click="fetchDashboard">
+          <RotateCcw :size="17" aria-hidden="true" />
+          重新加载
+        </button>
+      </section>
 
-      <!-- 标题 -->
-      <div class="section-head">
-        <span class="section-emoji">🏅</span>
-        <span class="section-title">徽章墙</span>
-      </div>
+      <template v-else>
+        <aside v-if="pageNotice" class="notice-banner" role="status" aria-live="polite">
+          <AlertCircle :size="17" aria-hidden="true" />
+          <span>{{ pageNotice }}</span>
+          <button type="button" aria-label="关闭提示" @click="pageNotice = ''">
+            <X :size="16" aria-hidden="true" />
+          </button>
+        </aside>
 
-      <!-- 三列网格徽章（懒加载缩略图 + 预取下一屏） -->
-      <div class="badge-grid">
-        <div
-          v-for="item in badges"
-          :key="item.id"
-          class="badge-card"
-          :class="item.unlocked ? 'is-unlocked' : 'is-locked'"
-          @click="onTapBadge(item.id)"
-        >
-          <div class="badge-thumb" :title="item.name">
-            <!-- 进入视口才真正设置 src -->
-            <img
-              class="badge-img"
-              v-lazy-img="item.thumb"
-              :alt="item.name"
-              loading="lazy"
-              decoding="async"
-              fetchpriority="low"
-              draggable="false"
-            />
-            <div v-if="!item.unlocked" class="badge-mask">
-              <span class="lock">🔒</span>
+        <section class="profile-hero" aria-labelledby="profile-title">
+          <div class="profile-identity">
+            <div class="profile-avatar" aria-hidden="true">
+              <img
+                v-if="avatarSrc && !avatarFailed"
+                :src="avatarSrc"
+                :alt="displayName + '的头像'"
+                width="112"
+                height="112"
+                decoding="async"
+                @error="avatarFailed = true"
+              />
+              <UserRound v-else :size="42" />
+            </div>
+            <div class="profile-heading">
+              <p class="eyebrow">STUDENT PROFILE / {{ profileCode }}</p>
+              <h1 id="profile-title">{{ displayName }}</h1>
+              <p class="profile-bio">{{ userInfo.bio || '记录走过的校园，也记录正在形成的自己。' }}</p>
+              <dl class="profile-identifiers">
+                <div>
+                  <dt>姓名</dt>
+                  <dd>{{ userInfo.realName || '未填写' }}</dd>
+                </div>
+                <div>
+                  <dt>学号</dt>
+                  <dd>{{ userInfo.studentId || '未填写' }}</dd>
+                </div>
+                <div>
+                  <dt>账户</dt>
+                  <dd>{{ userInfo.id || '未同步' }}</dd>
+                </div>
+              </dl>
             </div>
           </div>
-          <span class="badge-name">{{ item.name }}</span>
+          <button class="button button-secondary hero-edit" type="button" @click="openProfileDialog">
+            <Pencil :size="16" aria-hidden="true" />
+            编辑资料
+          </button>
+        </section>
+
+        <section class="stat-strip" aria-label="个人概览">
+          <div>
+            <span>POINTS</span>
+            <strong>{{ userInfo.points || 0 }}</strong>
+            <small>当前积分</small>
+          </div>
+          <div>
+            <span>ATLAS</span>
+            <strong>{{ unlockedCount }}<i>/{{ totalBadges }}</i></strong>
+            <small>地点已解锁</small>
+          </div>
+          <div>
+            <span>REVIEW</span>
+            <strong>{{ submissionCounts.pending }}</strong>
+            <small>投稿待审核</small>
+          </div>
+          <div>
+            <span>ROUTES</span>
+            <strong>{{ completedRouteCount }}</strong>
+            <small>路线已完成</small>
+          </div>
+        </section>
+
+        <div class="profile-workbench">
+          <div class="workbench-main">
+            <section class="profile-section atlas-section" aria-labelledby="atlas-title">
+              <div class="section-heading section-heading-split">
+                <div>
+                  <h2 id="atlas-title">图鉴进度与打卡记录</h2>
+                </div>
+                <button class="text-link" type="button" @click="router.push('/atlas')">
+                  打开完整图鉴
+                  <ChevronRight :size="16" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div class="atlas-progress">
+                <div class="atlas-progress-copy">
+                  <strong>{{ atlasProgress }}%</strong>
+                  <span>已解锁 {{ unlockedCount }} 个地点，另有 {{ lockingCount }} 个正在审核</span>
+                </div>
+                <div
+                  class="atlas-signal"
+                  role="progressbar"
+                  aria-label="校园图鉴完成度"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  :aria-valuenow="atlasProgress"
+                  :style="atlasProgressStyle"
+                >
+                  <span></span>
+                </div>
+              </div>
+
+              <div class="record-block">
+                <div class="record-block-head">
+                  <h3>最近打卡</h3>
+                  <button
+                    v-if="recentCheckins.length > 4"
+                    class="quiet-button"
+                    type="button"
+                    :aria-expanded="checkinsExpanded"
+                    @click="checkinsExpanded = !checkinsExpanded"
+                  >
+                    {{ checkinsExpanded ? '收起记录' : '查看全部' }}
+                  </button>
+                </div>
+
+                <ol v-if="visibleCheckins.length" class="checkin-list">
+                  <li v-for="record in visibleCheckins" :key="recordKey(record)">
+                    <div class="record-index">{{ String(record.locationId).padStart(3, '0') }}</div>
+                    <div class="record-copy">
+                      <strong>{{ badgeName(record.locationId) }}</strong>
+                      <span>{{ formatMethod(record.method) }} / {{ formatDistance(record.distance) }}</span>
+                    </div>
+                    <time :datetime="record.time">{{ formatDate(record.time, 'short') }}</time>
+                  </li>
+                </ol>
+
+                <div v-else class="empty-state">
+                  <MapPin :size="24" aria-hidden="true" />
+                  <div>
+                    <strong>还没有打卡记录</strong>
+                    <p>从校园地图选择一个地点，完成第一次探索。</p>
+                  </div>
+                  <button class="button button-secondary" type="button" @click="router.push('/map')">去地图打卡</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="profile-section collection-section" aria-labelledby="collection-title">
+              <div class="section-heading">
+                <h2 id="collection-title">徽章与成就</h2>
+                <p>地点徽章来自真实打卡，个人成就由主页中的进度自动计算。</p>
+              </div>
+
+              <div class="collection-tabs" role="tablist" aria-label="徽章与成就">
+                <button
+                  v-for="(tab, index) in collectionTabs"
+                  :id="'collection-tab-' + tab.id"
+                  :key="tab.id"
+                  type="button"
+                  role="tab"
+                  :aria-selected="collectionTab === tab.id"
+                  :aria-controls="'collection-panel-' + tab.id"
+                  :tabindex="collectionTab === tab.id ? 0 : -1"
+                  @click="collectionTab = tab.id"
+                  @keydown="handleCollectionTabKeydown($event, index)"
+                >
+                  {{ tab.label }}
+                  <span>{{ tab.count }}</span>
+                </button>
+              </div>
+
+              <div
+                v-if="collectionTab === 'badges'"
+                id="collection-panel-badges"
+                role="tabpanel"
+                aria-labelledby="collection-tab-badges"
+                class="badge-panel"
+              >
+                <ul v-if="unlockedBadges.length" class="badge-list">
+                  <li v-for="badge in unlockedBadges" :key="badge.id">
+                    <img
+                      :src="badge.thumb"
+                      :alt="badge.name + '徽章'"
+                      width="128"
+                      height="128"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <span>{{ String(badge.id).padStart(3, '0') }}</span>
+                    <strong>{{ badge.name }}</strong>
+                  </li>
+                </ul>
+                <div v-else class="empty-state compact">
+                  <Award :size="24" aria-hidden="true" />
+                  <div>
+                    <strong>第一枚徽章还在路上</strong>
+                    <p>完成一个地点打卡后，徽章会自动进入这里。</p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-else
+                id="collection-panel-achievements"
+                role="tabpanel"
+                aria-labelledby="collection-tab-achievements"
+                class="achievement-panel"
+              >
+                <ul class="achievement-list">
+                  <li
+                    v-for="achievement in achievements"
+                    :key="achievement.id"
+                    :class="{ achieved: achievement.achieved }"
+                  >
+                    <component :is="achievement.achieved ? CheckCircle2 : LockKeyhole" :size="20" aria-hidden="true" />
+                    <div>
+                      <strong>{{ achievement.name }}</strong>
+                      <span>{{ achievement.condition }}</span>
+                    </div>
+                    <small>{{ achievement.achieved ? '已达成' : '进行中' }}</small>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="profile-section submission-section" aria-labelledby="submission-title">
+              <div class="section-heading section-heading-split">
+                <div>
+                  <h2 id="submission-title">投稿作品</h2>
+                </div>
+                <button class="button button-primary" type="button" @click="router.push('/award/submit')">
+                  <Plus :size="16" aria-hidden="true" />
+                  发起投稿
+                </button>
+              </div>
+
+              <div class="submission-filters" aria-label="筛选投稿状态">
+                <button
+                  v-for="filter in submissionFilters"
+                  :key="filter.id"
+                  type="button"
+                  :aria-pressed="submissionFilter === filter.id"
+                  @click="submissionFilter = filter.id"
+                >
+                  {{ filter.label }}
+                  <span>{{ filter.count }}</span>
+                </button>
+              </div>
+
+              <div v-if="filteredSubmissions.length" class="submission-list">
+                <article
+                  v-for="submission in filteredSubmissions"
+                  :key="submission.id"
+                  class="submission-card"
+                >
+                  <div class="submission-media">
+                    <img
+                      v-if="submissionImage(submission) && !failedSubmissionImages.has(String(submission.id))"
+                      :src="submissionImage(submission)"
+                      :alt="submission.title + '作品预览'"
+                      width="640"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
+                      @error="markSubmissionImageFailed(submission.id)"
+                    />
+                    <ImageIcon v-else :size="30" aria-hidden="true" />
+                  </div>
+                  <div class="submission-copy">
+                    <div class="submission-meta">
+                      <span>{{ submission.categoryName || '校园作品' }}</span>
+                      <span :class="'status status-' + statusInfo(submission.status).tone">
+                        <component :is="statusInfo(submission.status).icon" :size="14" aria-hidden="true" />
+                        {{ statusInfo(submission.status).label }}
+                      </span>
+                    </div>
+                    <h3>{{ submission.title || '未命名作品' }}</h3>
+                    <p>{{ submission.description || '暂未填写作品说明。' }}</p>
+                    <div class="submission-foot">
+                      <span>{{ submission.locationName || badgeName(submission.locationId) }}</span>
+                      <time :datetime="toDateTime(submission.createdAt)">{{ formatDate(submission.createdAt, 'short') }}</time>
+                      <button type="button" @click="openSubmission(submission.id)">
+                        查看详情
+                        <ChevronRight :size="15" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <p v-if="submission.status === 'rejected' && submission.reviewNote" class="review-note">
+                      审核说明：{{ submission.reviewNote }}
+                    </p>
+                  </div>
+                </article>
+              </div>
+
+              <div v-else class="empty-state">
+                <ImageIcon :size="24" aria-hidden="true" />
+                <div>
+                  <strong>{{ submissions.length ? '当前筛选下没有作品' : '还没有投稿作品' }}</strong>
+                  <p>{{ submissions.length ? '切换状态筛选查看其他投稿。' : '提交创意或摄影作品后，审核状态会显示在这里。' }}</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="workbench-side">
+            <section class="side-panel personality-panel" aria-labelledby="personality-title">
+              <div class="section-heading">
+                <p class="eyebrow">ISETI / PLACE @ SYSU</p>
+                <h2 id="personality-title">校园人格</h2>
+              </div>
+
+              <template v-if="userInfo.personality">
+                <div class="personality-code">
+                  {{ userInfo.personality.mainCode }} / {{ userInfo.personality.subCode }}
+                </div>
+                <h3>{{ userInfo.personality.mainName }}</h3>
+                <p class="personality-sub">{{ userInfo.personality.subName }}</p>
+                <blockquote>{{ userInfo.personality.line || '你的校园探索方式已经记录。' }}</blockquote>
+                <dl class="personality-details">
+                  <div>
+                    <dt>今日推荐</dt>
+                    <dd>{{ userInfo.personality.placeName || '校园随机地点' }}</dd>
+                  </div>
+                  <div>
+                    <dt>行动任务</dt>
+                    <dd>{{ userInfo.personality.task || '从一次真实探索开始。' }}</dd>
+                  </div>
+                </dl>
+                <ul v-if="userInfo.personality.badges?.length" class="personality-badges" aria-label="人格标签">
+                  <li v-for="badge in userInfo.personality.badges" :key="badge.code">{{ badge.name }}</li>
+                </ul>
+                <p v-if="personalitySyncMessage" class="inline-status">{{ personalitySyncMessage }}</p>
+                <button class="button button-secondary full-width" type="button" @click="router.push('/place')">
+                  <RotateCcw :size="16" aria-hidden="true" />
+                  重新测试
+                </button>
+              </template>
+
+              <div v-else class="empty-state vertical">
+                <Compass :size="26" aria-hidden="true" />
+                <div>
+                  <strong>还没有 ISETI 结果</strong>
+                  <p>完成 PLACE @ SYSU 测试，获得你的校园人格与今日地点。</p>
+                </div>
+                <button class="button button-primary full-width" type="button" @click="router.push('/place')">开始测试</button>
+                <p v-if="personalitySyncMessage" class="inline-error">{{ personalitySyncMessage }}</p>
+              </div>
+            </section>
+
+            <section id="feedback" class="side-panel feedback-panel" aria-labelledby="feedback-title">
+              <div class="section-heading">
+                <h2 id="feedback-title">意见反馈</h2>
+                <p>告诉我们遇到的问题或希望增加的功能。</p>
+              </div>
+
+              <form novalidate @submit.prevent="submitFeedback">
+                <div class="form-field">
+                  <label for="feedback-category">反馈类型</label>
+                  <select
+                    id="feedback-category"
+                    v-model="feedbackForm.category"
+                    :aria-invalid="Boolean(feedbackErrors.category)"
+                    @change="onFeedbackInput('category')"
+                    @blur="validateFeedbackField('category')"
+                  >
+                    <option value="suggestion">功能建议</option>
+                    <option value="bug">问题反馈</option>
+                    <option value="content">内容纠错</option>
+                    <option value="other">其他</option>
+                  </select>
+                  <div class="field-message-slot" aria-live="polite">
+                    <p v-if="feedbackErrors.category" class="field-error">{{ feedbackErrors.category }}</p>
+                  </div>
+                </div>
+
+                <div class="form-field">
+                  <div class="label-row">
+                    <label for="feedback-content">具体内容</label>
+                    <span>{{ feedbackForm.content.length }}/1000</span>
+                  </div>
+                  <textarea
+                    id="feedback-content"
+                    v-model="feedbackForm.content"
+                    rows="5"
+                    maxlength="1000"
+                    placeholder="请描述操作步骤、遇到的情况或你的建议"
+                    :aria-invalid="Boolean(feedbackErrors.content)"
+                    aria-describedby="feedback-content-help"
+                    @input="onFeedbackInput('content')"
+                    @blur="validateFeedbackField('content')"
+                  ></textarea>
+                  <div id="feedback-content-help" class="field-message-slot" aria-live="polite">
+                    <p v-if="feedbackErrors.content" class="field-error">{{ feedbackErrors.content }}</p>
+                    <p v-else class="field-help">至少 5 个字符，请勿填写密码等敏感信息。</p>
+                  </div>
+                </div>
+
+                <div class="form-field">
+                  <label for="feedback-contact">联系方式 <span>选填</span></label>
+                  <input
+                    id="feedback-contact"
+                    v-model="feedbackForm.contact"
+                    type="text"
+                    maxlength="100"
+                    autocomplete="email"
+                    placeholder="邮箱或其他便于联系的方式"
+                    :aria-invalid="Boolean(feedbackErrors.contact)"
+                    @input="onFeedbackInput('contact')"
+                    @blur="validateFeedbackField('contact')"
+                  />
+                  <div class="field-message-slot" aria-live="polite">
+                    <p v-if="feedbackErrors.contact" class="field-error">{{ feedbackErrors.contact }}</p>
+                  </div>
+                </div>
+
+                <p v-if="feedbackMessage" :class="feedbackSaveState === 'error' ? 'inline-error' : 'inline-status'" role="status">
+                  {{ feedbackMessage }}
+                </p>
+
+                <button
+                  class="button button-primary full-width stateful-button"
+                  type="submit"
+                  :data-state="feedbackSaveState"
+                  :disabled="feedbackSaveState === 'loading'"
+                >
+                  <LoaderCircle v-if="feedbackSaveState === 'loading'" class="spinner" :size="17" aria-hidden="true" />
+                  <CheckCircle2 v-else-if="feedbackSaveState === 'success'" :size="17" aria-hidden="true" />
+                  <Send v-else :size="17" aria-hidden="true" />
+                  {{ feedbackButtonCopy }}
+                </button>
+              </form>
+
+              <div v-if="feedbackHistory.length" class="feedback-history">
+                <h3>最近反馈</h3>
+                <ol>
+                  <li v-for="item in feedbackHistory.slice(0, 3)" :key="item.id">
+                    <div>
+                      <strong>{{ item.categoryName || '意见反馈' }}</strong>
+                      <span>{{ feedbackStatusLabel(item.status) }}</span>
+                    </div>
+                    <p>{{ item.content }}</p>
+                    <time :datetime="toDateTime(item.createdAt)">{{ formatDate(item.createdAt, 'short') }}</time>
+                  </li>
+                </ol>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </template>
+    </main>
+
+    <footer class="profile-footer">
+      <span>SYSU ISE CAMPUS ATLAS</span>
+      <span>学生个人空间</span>
+      <button type="button" @click="openCommandPalette">快速导航</button>
+    </footer>
+
+    <dialog
+      ref="profileDialog"
+      class="profile-dialog"
+      aria-labelledby="profile-dialog-title"
+      @click="handleProfileDialogBackdrop"
+      @close="resetProfileDialog"
+    >
+      <form class="dialog-sheet" novalidate @submit.prevent="saveProfile">
+        <header class="dialog-header">
+          <div>
+            <h2 id="profile-dialog-title">编辑个人资料</h2>
+          </div>
+          <button class="icon-button" type="button" aria-label="关闭资料编辑" @click="closeProfileDialog">
+            <X :size="19" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div class="profile-editor">
+          <div class="avatar-preview">
+            <img
+              v-if="profileForm.avatar && !profilePreviewFailed"
+              :src="profileForm.avatar"
+              alt="新头像预览"
+              width="88"
+              height="88"
+              @error="profilePreviewFailed = true"
+            />
+            <UserRound v-else :size="34" aria-hidden="true" />
+            <span>头像预览</span>
+          </div>
+
+          <div class="form-field profile-avatar-field">
+            <label for="profile-avatar">头像图片地址 <span>选填</span></label>
+            <input
+              id="profile-avatar"
+              v-model="profileForm.avatar"
+              type="url"
+              maxlength="500"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://example.com/avatar.jpg"
+              :aria-invalid="Boolean(profileErrors.avatar)"
+              @input="onProfileInput('avatar')"
+              @blur="validateProfileField('avatar')"
+            />
+            <div class="field-message-slot" aria-live="polite">
+              <p v-if="profileErrors.avatar" class="field-error">{{ profileErrors.avatar }}</p>
+              <p v-else class="field-help">当前版本使用公开的 http 或 https 图片地址。</p>
+            </div>
+          </div>
         </div>
 
-        <!-- 预取下一屏的哨兵元素 -->
-        <div ref="sentinel" style="height:1px;"></div>
-      </div>
+        <div class="dialog-form-grid">
+          <div class="form-field">
+            <label for="profile-username">昵称</label>
+            <input
+              id="profile-username"
+              ref="firstProfileField"
+              v-model="profileForm.username"
+              type="text"
+              maxlength="24"
+              autocomplete="nickname"
+              :aria-invalid="Boolean(profileErrors.username)"
+              @input="onProfileInput('username')"
+              @blur="validateProfileField('username')"
+            />
+            <div class="field-message-slot" aria-live="polite">
+              <p v-if="profileErrors.username" class="field-error">{{ profileErrors.username }}</p>
+            </div>
+          </div>
 
-      <div v-if="loading" class="loading">加载中…</div>
-    </div>
+          <div class="form-field">
+            <label for="profile-real-name">姓名 <span>选填</span></label>
+            <input
+              id="profile-real-name"
+              v-model="profileForm.realName"
+              type="text"
+              maxlength="30"
+              autocomplete="name"
+              :aria-invalid="Boolean(profileErrors.realName)"
+              @input="onProfileInput('realName')"
+              @blur="validateProfileField('realName')"
+            />
+            <div class="field-message-slot" aria-live="polite">
+              <p v-if="profileErrors.realName" class="field-error">{{ profileErrors.realName }}</p>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="profile-student-id">学号 <span>选填</span></label>
+            <input
+              id="profile-student-id"
+              v-model="profileForm.studentId"
+              type="text"
+              maxlength="24"
+              autocomplete="off"
+              :aria-invalid="Boolean(profileErrors.studentId)"
+              @input="onProfileInput('studentId')"
+              @blur="validateProfileField('studentId')"
+            />
+            <div class="field-message-slot" aria-live="polite">
+              <p v-if="profileErrors.studentId" class="field-error">{{ profileErrors.studentId }}</p>
+              <p v-else class="field-help">6 至 24 位字母、数字、下划线或连字符。</p>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="profile-phone">联系电话 <span>选填</span></label>
+            <input
+              id="profile-phone"
+              v-model="profileForm.phone"
+              type="tel"
+              maxlength="30"
+              autocomplete="tel"
+              :aria-invalid="Boolean(profileErrors.phone)"
+              @input="onProfileInput('phone')"
+              @blur="validateProfileField('phone')"
+            />
+            <div class="field-message-slot" aria-live="polite">
+              <p v-if="profileErrors.phone" class="field-error">{{ profileErrors.phone }}</p>
+            </div>
+          </div>
+
+          <div class="form-field form-field-wide">
+            <div class="label-row">
+              <label for="profile-bio">个人简介 <span>选填</span></label>
+              <span>{{ profileForm.bio.length }}/160</span>
+            </div>
+            <textarea
+              id="profile-bio"
+              v-model="profileForm.bio"
+              rows="3"
+              maxlength="160"
+              placeholder="写下你正在探索的校园主题"
+              :aria-invalid="Boolean(profileErrors.bio)"
+              @input="onProfileInput('bio')"
+              @blur="validateProfileField('bio')"
+            ></textarea>
+            <div class="field-message-slot" aria-live="polite">
+              <p v-if="profileErrors.bio" class="field-error">{{ profileErrors.bio }}</p>
+            </div>
+          </div>
+        </div>
+
+        <p v-if="profileMessage" :class="profileSaveState === 'error' ? 'inline-error' : 'inline-status'" role="status">
+          {{ profileMessage }}
+        </p>
+
+        <footer class="dialog-actions">
+          <button class="button button-secondary" type="button" @click="closeProfileDialog">取消</button>
+          <button
+            class="button button-primary stateful-button"
+            type="submit"
+            :data-state="profileSaveState"
+            :disabled="profileSaveState === 'loading' || profileSaveState === 'success'"
+          >
+            <LoaderCircle v-if="profileSaveState === 'loading'" class="spinner" :size="17" aria-hidden="true" />
+            <CheckCircle2 v-else-if="profileSaveState === 'success'" :size="17" aria-hidden="true" />
+            <Pencil v-else :size="16" aria-hidden="true" />
+            {{ profileButtonCopy }}
+          </button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog
+      ref="commandDialog"
+      class="command-dialog"
+      aria-labelledby="command-dialog-title"
+      @click="handleCommandBackdrop"
+      @close="resetCommandPalette"
+    >
+      <div class="command-sheet">
+        <h2 id="command-dialog-title" class="sr-only">快速前往</h2>
+        <div class="command-search">
+          <Search :size="18" aria-hidden="true" />
+          <input
+            ref="commandInput"
+            v-model="commandQuery"
+            type="search"
+            placeholder="搜索页面或操作"
+            aria-label="搜索页面或操作"
+            aria-controls="command-results"
+            @keydown.down.prevent="moveCommand(1)"
+            @keydown.up.prevent="moveCommand(-1)"
+            @keydown.enter.prevent="runSelectedCommand"
+          />
+          <kbd>ESC</kbd>
+        </div>
+        <div id="command-results" class="command-results" role="listbox" aria-label="快速前往结果">
+          <button
+            v-for="(command, index) in filteredCommands"
+            :key="command.label"
+            type="button"
+            role="option"
+            :aria-selected="commandIndex === index"
+            :class="{ selected: commandIndex === index }"
+            @mouseenter="commandIndex = index"
+            @click="executeCommand(command)"
+          >
+            <component :is="command.icon" :size="18" aria-hidden="true" />
+            <span>
+              <strong>{{ command.label }}</strong>
+              <small>{{ command.hint }}</small>
+            </span>
+            <ChevronRight :size="16" aria-hidden="true" />
+          </button>
+          <p v-if="!filteredCommands.length" class="command-empty">没有匹配的页面或操作</p>
+        </div>
+      </div>
+    </dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  AlertCircle,
+  Award,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Command,
+  Compass,
+  Home,
+  Image as ImageIcon,
+  LoaderCircle,
+  LockKeyhole,
+  LogOut,
+  Map,
+  MapPin,
+  MessageSquareText,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Send,
+  Trophy,
+  UserRound,
+  X,
+  XCircle
+} from '@lucide/vue'
+import '@fontsource/space-grotesk/latin-500.css'
+import '@fontsource/space-grotesk/latin-600.css'
+import '@fontsource/jetbrains-mono/latin-500.css'
+import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import { request } from '@/utils/request'
+import { badgeCatalog, badgeThumb, getBadge } from '@/data/badgeCatalog'
 
-/* =========================
-   轻量懒加载指令（本地注册）
-   ========================= */
-const vLazyImg = {
-  mounted(el, binding) {
-    const url = binding.value
-    if (!url) return
-    // 不要立刻设 src，先挂到 data-src，等进入视口再赋值
-    el.setAttribute('data-src', url)
-    if ('IntersectionObserver' in window) {
-      const io = new IntersectionObserver(([e]) => {
-        if (e.isIntersecting) {
-          el.src = url
-          io.unobserve(el)
-        }
-      }, { rootMargin: '300px' })
-      io.observe(el)
-      el.__lazyIo__ = io
-    } else {
-      el.src = url
-    }
+const router = useRouter()
+const totalBadges = badgeCatalog.length
+const profileDialog = ref(null)
+const commandDialog = ref(null)
+const firstProfileField = ref(null)
+const commandInput = ref(null)
+
+const loading = ref(true)
+const loadError = ref('')
+const pageNotice = ref('')
+const userInfo = ref({})
+const submissions = ref([])
+const failedSubmissionImages = ref(new Set())
+const feedbackHistory = ref([])
+const checkinsExpanded = ref(false)
+const avatarFailed = ref(false)
+const personalitySyncMessage = ref('')
+const submissionFilter = ref('all')
+const collectionTab = ref('badges')
+
+const profileForm = ref({
+  username: '',
+  realName: '',
+  studentId: '',
+  phone: '',
+  bio: '',
+  avatar: ''
+})
+const profileOriginal = ref({})
+const profileErrors = ref({})
+const profileMessage = ref('')
+const profileSaveState = ref('idle')
+const profilePreviewFailed = ref(false)
+
+const feedbackForm = ref({ category: 'suggestion', content: '', contact: '' })
+const feedbackErrors = ref({})
+const feedbackMessage = ref('')
+const feedbackSaveState = ref('idle')
+
+const commandQuery = ref('')
+const commandIndex = ref(0)
+
+const collectionTabs = computed(() => [
+  { id: 'badges', label: '地点徽章', count: unlockedCount.value },
+  { id: 'achievements', label: '个人成就', count: achievementUnlockedCount.value }
+])
+
+const displayName = computed(() => userInfo.value.username || userInfo.value.realName || '校园探索者')
+const profileCode = computed(() => String(userInfo.value.id || 'LOCAL').slice(-8).toUpperCase())
+const avatarSrc = computed(() => String(userInfo.value.avatar || '').trim())
+const unlockedIds = computed(() => new Set((userInfo.value.unlockedLocations || []).map(Number)))
+const lockingIds = computed(() => new Set((userInfo.value.lockingLocations || []).map(Number)))
+const unlockedCount = computed(() => unlockedIds.value.size)
+const lockingCount = computed(() => lockingIds.value.size)
+const completedRouteCount = computed(() => (userInfo.value.completedRoutes || []).length)
+const atlasProgress = computed(() => Math.min(100, Math.round((unlockedCount.value / totalBadges) * 100)))
+const atlasProgressStyle = computed(() => ({ '--atlas-scale': String(atlasProgress.value / 100) }))
+
+const recentCheckins = computed(() => {
+  return [...(userInfo.value.checkinRecords || [])]
+    .sort((a, b) => new Date(b.time || 0).getTime() - new Date(a.time || 0).getTime())
+})
+const visibleCheckins = computed(() => checkinsExpanded.value ? recentCheckins.value : recentCheckins.value.slice(0, 4))
+
+const unlockedBadges = computed(() => {
+  return Array.from(unlockedIds.value)
+    .map(id => getBadge(id))
+    .filter(Boolean)
+    .sort((a, b) => a.id - b.id)
+    .map(item => ({ ...item, thumb: badgeThumb(item.icon, 256, 75) }))
+})
+
+const submissionCounts = computed(() => ({
+  all: submissions.value.length,
+  pending: submissions.value.filter(item => item.status === 'pending').length,
+  approved: submissions.value.filter(item => item.status === 'approved').length,
+  rejected: submissions.value.filter(item => item.status === 'rejected').length
+}))
+
+const submissionFilters = computed(() => [
+  { id: 'all', label: '全部', count: submissionCounts.value.all },
+  { id: 'pending', label: '待审核', count: submissionCounts.value.pending },
+  { id: 'approved', label: '已通过', count: submissionCounts.value.approved },
+  { id: 'rejected', label: '未通过', count: submissionCounts.value.rejected }
+])
+
+const filteredSubmissions = computed(() => {
+  if (submissionFilter.value === 'all') return submissions.value
+  return submissions.value.filter(item => item.status === submissionFilter.value)
+})
+
+const achievements = computed(() => [
+  {
+    id: 'first-checkin',
+    name: '图鉴启程',
+    condition: '解锁第 1 个校园地点',
+    achieved: unlockedCount.value >= 1
   },
-  unmounted(el) {
-    el.__lazyIo__?.disconnect?.()
-    delete el.__lazyIo__
+  {
+    id: 'five-checkins',
+    name: '康乐园漫游者',
+    condition: '累计解锁 5 个校园地点',
+    achieved: unlockedCount.value >= 5
+  },
+  {
+    id: 'route',
+    name: '路线完成者',
+    condition: '完成 1 条校园探索路线',
+    achieved: completedRouteCount.value >= 1
+  },
+  {
+    id: 'photo',
+    name: '校园记录者',
+    condition: '留下 1 次照片打卡记录',
+    achieved: recentCheckins.value.some(item => String(item.method || '').toLowerCase().includes('photo'))
+  },
+  {
+    id: 'personality',
+    name: '找到校园人格',
+    condition: '完成 PLACE @ SYSU 测试',
+    achieved: Boolean(userInfo.value.personality)
+  },
+  {
+    id: 'contributor',
+    name: '图鉴共建者',
+    condition: '有 1 件投稿作品通过审核',
+    achieved: submissionCounts.value.approved >= 1
   }
-}
-// 在 <script setup> 中，变量名以 vXxx 暴露即可在模板中用 v-xxx
-// (已命名为 vLazyImg，模板里用 v-lazy-img)
+])
+const achievementUnlockedCount = computed(() => achievements.value.filter(item => item.achieved).length)
 
-/* =========================
-   会话缓存 key
-   ========================= */
-const SS_USER   = 'MYCHECKINS_USER_V1'
-const SS_UNLOCK = 'MYCHECKINS_UNLOCK_SET_V1'
+const feedbackButtonCopy = computed(() => ({
+  idle: '提交反馈',
+  loading: '正在提交',
+  success: '已提交',
+  error: '重新提交'
+}[feedbackSaveState.value] || '提交反馈'))
 
-/* =========================
-   COS CI 缩略图直链
-   ========================= */
-function thumb(url, size = 256, q = 75) {
-  if (!url) return ''
-  const ci = `imageMogr2/thumbnail/${size}x/format/webp/quality/${q}`
-  return url.includes('?') ? `${url}&${ci}` : `${url}?${ci}`
-}
+const profileButtonCopy = computed(() => ({
+  idle: '保存资料',
+  loading: '正在保存',
+  success: '已保存',
+  error: '重新保存'
+}[profileSaveState.value] || '保存资料'))
 
-/* =========================
-   静态徽章列表（1-101）
-   ========================= */
-const base = 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Badge'
-const ALL = [
-  { id: 1, name: '何尔达屋', icon: `${base}/sysu_001_he_er_da_house.png` },
-  { id: 2, name: '高利士屋', icon: `${base}/sysu_002_gao_lishi_house.png` },
-  { id: 3, name: '宾省校屋', icon: `${base}/sysu_003_pennsylvania_school_house.png` },
-  { id: 4, name: '端木正教授像', icon: `${base}/sysu_004_prof_duanmu_zheng_statue.png` },
-  { id: 5, name: '韦耶孝实屋', icon: `${base}/sysu_005_wei_yexiaoshi_house.png` },
-  { id: 6, name: '伦敦会屋', icon: `${base}/sysu_006_london_missionary_society_house.png` },
-  { id: 7, name: '美臣屋一号', icon: `${base}/sysu_007_meichen_house_no1.png` },
-  { id: 8, name: '白德理屋', icon: `${base}/sysu_008_bai_deli_house.png` },
-  { id: 9, name: '屈林宾屋', icon: `${base}/sysu_009_qu_linbin_house.png` },
-  { id: 10, name: '惠师礼屋', icon: `${base}/sysu_010_hui_shili_house.png` },
-  { id: 11, name: '马岗堂', icon: `${base}/sysu_011_magang_hall.png` },
-  { id: 12, name: '图书馆', icon: `${base}/sysu_012_library.png` },
-  { id: 13, name: '黄焕秋校长像', icon: `${base}/sysu_013_zou_lu_president_statue.png` },
-  { id: 14, name: '格兰堂', icon: `${base}/sysu_014_gelan_hall.png` },
-  { id: 15, name: '廖承志像', icon: `${base}/sysu_015_liao_chengzhi_statue.png` },
-  { id: 16, name: '马丁堂', icon: `${base}/sysu_016_martin_hall.png` },
-  { id: 17, name: '附属小学建筑群', icon: `${base}/sysu_017_affiliated_primary_school_complex.png` },
-  { id: 18, name: '南草坪餐厅', icon: `${base}/sysu_018_south_lawn_dining_hall.png` },
-  { id: 19, name: '第一教学楼', icon: `${base}/sysu_019_teaching_building_1.png` },
-  { id: 20, name: '附属小学方亭', icon: `${base}/sysu_020_affiliated_primary_school_pavilion.png` },
-  { id: 21, name: '荣光堂', icon: `${base}/sysu_021_rongguang_hall.png` },
-  { id: 22, name: '中山大学南门', icon: `${base}/sysu_022_sysu_south_gate.png` },
-  { id: 23, name: '生命科学楼', icon: `${base}/sysu_023_life_sciences_building.png` },
-  { id: 24, name: '蚕丝学院制种室', icon: `${base}/sysu_024_sericulture_institute_breeding_room.png` },
-  { id: 25, name: '生物楼', icon: `${base}/sysu_025_biology_building.png` },
-  { id: 26, name: '达尔文雕塑', icon: `${base}/sysu_026_charles_darwin_sculpture.png` },
-  { id: 27, name: '曾宪梓堂', icon: `${base}/sysu_027_zeng_xianzhi_hall.png` },
-  { id: 28, name: '蒲蛰龙雕塑', icon: `${base}/sysu_028_pu_zhelong_sculpture.png` },
-  { id: 29, name: '马文辉堂', icon: `${base}/sysu_029_ma_wenhui_hall.png` },
-  { id: 30, name: '贺丹青堂', icon: `${base}/sysu_030_he_danqing_hall.png` },
-  { id: 31, name: '测试大楼', icon: `${base}/sysu_031_test_building.png` },
-  { id: 32, name: '竹林', icon: `${base}/sysu_032_bamboo_grove.png` },
-  { id: 33, name: '中山楼', icon: `${base}/sysu_033_zhongshan_building.png` },
-  { id: 34, name: '梁銶琚堂', icon: `${base}/sysu_034_liang_xiju_hall.png` },
-  { id: 35, name: '研究生院', icon: `${base}/sysu_035_yanjiushengyuan.png` },
-  { id: 36, name: '张弼士堂', icon: `${base}/sysu_036_zhang_bishi_hall.png` },
-  { id: 37, name: '逸夫楼', icon: `${base}/sysu_037_yifu_building.png` },
-  { id: 38, name: '西大操场', icon: `${base}/sysu_038_west_field.png` },
-  { id: 39, name: '洗为坚堂', icon: `${base}/sysu_039_xi_weijian_hall.png` },
-  { id: 40, name: '紫荆园餐厅', icon: `${base}/sysu_040_bauhinia_garden_dining_hall.png` },
-  { id: 41, name: '协和神学院建筑群', icon: `${base}/sysu_041_union_theological_seminary_complex.png` },
-  { id: 42, name: '芙兰堂', icon: `${base}/sysu_042_teaching_building_3.png` },
-  { id: 43, name: '锡昌堂', icon: `${base}/sysu_043_xichang_hall.png` },
-  { id: 44, name: '四墩楼', icon: `${base}/sysu_044_sidun_building.png` },
-  { id: 45, name: '8号住宅', icon: `${base}/sysu_045_residence_no8.png` },
-  { id: 46, name: '孖屋二', icon: `${base}/sysu_046_twin_house_no2.png` },
-  { id: 47, name: '谭礼庭屋', icon: `${base}/sysu_047_tan_liting_house.png` },
-  { id: 48, name: '马应彪夫人护养院', icon: `${base}/sysu_048_madam_ma_yingbiao_convalescent_home.png` },
-  { id: 49, name: '麻金墨屋二号', icon: `${base}/sysu_049_ma_jinmo_house_no2.png` },
-  { id: 50, name: '怀士堂', icon: `${base}/sysu_050_huaishi_hall.png` },
-  { id: 51, name: '鲁迅先生像', icon: `${base}/sysu_051_lu_xun_statue.png` },
-  { id: 52, name: '校训雕像', icon: `${base}/sysu_052_school_motto_stone_carving.png` },
-  { id: 53, name: '希伦高屋', icon: `${base}/sysu_053_xi_lungao_house.png` },
-  { id: 54, name: '黑石屋', icon: `${base}/sysu_054_blackstone_house.png` },
-  { id: 55, name: '麻金墨屋一号', icon: `${base}/sysu_055_ma_jinmo_house_no1.png` },
-  { id: 56, name: '美臣屋二号', icon: `${base}/sysu_056_meichen_house_no2.png` },
-  { id: 57, name: '神甫屋', icon: `${base}/sysu_057_priest_house.png` },
-  { id: 58, name: '积臣屋', icon: `${base}/sysu_058_jichen_house.png` },
-  { id: 59, name: '英东体育馆', icon: `${base}/sysu_059_yingdong_stadium.png` },
-  { id: 60, name: '新女学', icon: `${base}/sysu_060_new_womens_school.png` },
-  { id: 61, name: '“摇篮”铜像', icon: `${base}/sysu_061_cradle_bronze_statue.png` },
-  { id: 62, name: '冼星海半身铜像', icon: `${base}/sysu_062_xian_xinghai_bust.png` },
-  { id: 63, name: '翘燊堂、文虎堂', icon: `${base}/sysu_063_qiaoshen_hall_and_wenhu_hall.png` },
-  { id: 64, name: '松涛园', icon: `${base}/sysu_064_songtao_garden.png` },
-  { id: 65, name: '新体育馆', icon: `${base}/sysu_065_new_gymnasium.png` },
-  { id: 66, name: '松园湖', icon: `${base}/sysu_066_songyuan_lake.png` },
-  { id: 67, name: '第二教学楼', icon: `${base}/sysu_067_teaching_building_2.png` },
-  { id: 68, name: '卡彭特楼', icon: `${base}/sysu_068_carpenter_building.png` },
-  { id: 69, name: '林护堂、黄铭衍堂、黄传经堂', icon: `${base}/sysu_069_linhu_hall_huang_mingyan_hall_huang_chuanjing_hall.png` },
-  { id: 70, name: '叶葆定堂', icon: `${base}/sysu_070_ye_baoding_hall.png` },
-  { id: 71, name: '中山大学北门牌坊', icon: `${base}/sysu_071_north_gate_archway.png` },
-  { id: 72, name: '伍沾德堂', icon: `${base}/sysu_072_wu_zhande_hall.png` },
-  { id: 73, name: '丰盛堂', icon: `${base}/sysu_073_fengsheng_hall.png` },
-  { id: 74, name: '中山大学西北门', icon: `${base}/sysu_074_northwest_gate.png` },
-  { id: 75, name: '伍舜德图书馆', icon: `${base}/sysu_075_wu_shunde_library.png` },
-  { id: 76, name: '岭南堂', icon: `${base}/sysu_076_lingnan_hall.png` },
-  { id: 77, name: '马应彪招待室', icon: `${base}/sysu_077_ma_yingbiao_reception_room.png` },
-  { id: 78, name: '哲生堂', icon: `${base}/sysu_078_zhesheng_hall.png` },
-  { id: 79, name: '陆佑堂', icon: `${base}/sysu_079_lu_you_hall.png` },
-  { id: 80, name: '爪哇堂', icon: `${base}/sysu_080_java_hall.png` },
-  { id: 81, name: '博物馆', icon: `${base}/sysu_081_museum.png` },
-  { id: 82, name: '八角亭', icon: `${base}/sysu_082_octagonal_pavilion.png` },
-  { id: 83, name: '乙丑进士牌坊', icon: `${base}/sysu_083_yichou_jinshi_archway.png` },
-  { id: 84, name: '惺亭', icon: `${base}/sysu_084_xing_pavilion.png` },
-  { id: 85, name: '孙中山先生铜像', icon: `${base}/sysu_085_sun_yat_sen_bronze_statue.png` },
-  { id: 86, name: '史达理堂', icon: `${base}/sysu_086_shidali_hall.png` },
-  { id: 87, name: '激光光学大楼', icon: `${base}/sysu_087_long_kanghou_sculpture.png` },
-  { id: 88, name: '十友堂', icon: `${base}/sysu_088_shiyou_hall.png` },
-  { id: 89, name: '模范村', icon: `${base}/sysu_089_model_village.png` },
-  { id: 90, name: '法学院', icon: `${base}/sysu_090_law_college.png` },
-  { id: 91, name: '永芳堂', icon: `${base}/sysu_091_yongfang_hall.png` },
-  { id: 92, name: '人口研究所', icon: `${base}/sysu_092_people_research_academic.png` },
-  { id: 93, name: '学人书境', icon: `${base}/sysu_093_SYSU_publishinghouse.png` },
-  { id: 94, name: '中山大学人文高等研究院', icon: `${base}/sysu_094_deng_shichang_navy_statue.png` },
-  { id: 95, name: '康乐园餐厅', icon: `${base}/sysu_095_kangle_garden_dining_hall.png` },
-  { id: 96, name: '园西湖', icon: `${base}/sysu_096_yuanxi_lake.png` },
-  { id: 97, name: '蒲园食堂', icon: `${base}/sysu_097_puyuan_canteen.png` },
-  { id: 98, name: '中山大学西门', icon: `${base}/sysu_098_west_gate.png` },
-  { id: 99, name: '中山大学小西门', icon: `${base}/sysu_099_small_west_gate.png` },
-  { id: 100, name: '震寰堂', icon: `${base}/sysu_100_zhenhuan_hall.png` },
-  { id: 101, name: '你的见闻', icon: `${base}/sysu_101_your_observations.png` }
+const commands = [
+  { label: '校园首页', hint: '返回功能总览', keywords: '首页 home', icon: Home, run: () => router.push('/') },
+  { label: '校园图鉴', hint: '查看全部地点与解锁状态', keywords: '图鉴 地点 atlas', icon: Map, run: () => router.push('/atlas') },
+  { label: '校园地图', hint: '定位地点并发起打卡', keywords: '地图 打卡 map', icon: MapPin, run: () => router.push('/map') },
+  { label: 'ISETI 测试', hint: '查看或更新校园人格', keywords: '人格 测试 place iseti', icon: Compass, run: () => router.push('/place') },
+  { label: '投稿活动', hint: '提交或查看校园作品', keywords: '投稿 作品 award', icon: Trophy, run: () => router.push('/award') },
+  { label: '编辑个人资料', hint: '更新头像、昵称与学号', keywords: '资料 编辑 头像 学号', icon: Pencil, run: openProfileFromCommand },
+  { label: '提交意见反馈', hint: '报告问题或提出建议', keywords: '意见 反馈 bug', icon: MessageSquareText, run: focusFeedbackFromCommand },
+  { label: '退出登录', hint: '清除当前设备的登录信息', keywords: '退出 logout', icon: LogOut, run: logout }
 ]
 
-/* =========================
-   组件状态
-   ========================= */
-const router = useRouter()
-const userInfo = ref({})
-const userRole = ref('visitor')
-const badges   = ref([])          // [{ id, name, icon, thumb, unlocked }]
-const unlockedCount = ref(0)
-const progressWidth = ref('0%')
-const loading  = ref(false)
+const filteredCommands = computed(() => {
+  const query = commandQuery.value.trim().toLowerCase()
+  if (!query) return commands
+  return commands.filter(item => (item.label + ' ' + item.hint + ' ' + item.keywords).toLowerCase().includes(query))
+})
 
-/* 预取下一屏哨兵 */
-const sentinel = ref(null)
-let ioNext = null
-
-function setupNextPrefetch() {
-  if (!('IntersectionObserver' in window)) return
-  ioNext = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (!e.isIntersecting) return
-      // 预取后续 15 张（仍然不触发视口加载，只提示浏览器空闲拉取）
-      const imgs = Array.from(document.querySelectorAll('.badge-img'))
-      let cnt = 0
-      for (const img of imgs) {
-        if (cnt >= 15) break
-        const ds = img.getAttribute('data-src')
-        if (ds && !img.src) {
-          const link = document.createElement('link')
-          link.rel = 'prefetch'
-          link.as = 'image'
-          link.href = ds
-          document.head.appendChild(link)
-          cnt++
-        }
-      }
-    })
-  }, { rootMargin: '1000px' })
-  sentinel.value && ioNext.observe(sentinel.value)
-}
-function cleanupNextPrefetch() {
-  if (ioNext) { ioNext.disconnect(); ioNext = null }
+function responseOkay(response) {
+  return Boolean(response?.ok && response?.data?.code === 0)
 }
 
-/* =========================
-   复水（从 sessionStorage 秒显）
-   ========================= */
-function hydrate(ssUser, ssUnlockArr) {
-  userInfo.value = ssUser || {}
-  userRole.value = (ssUser && ssUser.role) || 'visitor'
-  const unlockedSet = new Set(ssUnlockArr || [])
-  const mapped = ALL.map(b => ({
-    ...b,
-    thumb: thumb(b.icon, 256, 75),
-    unlocked: unlockedSet.has(b.id),
-  }))
-  badges.value = mapped
-  const uCount = mapped.filter(b => b.unlocked).length
-  unlockedCount.value = uCount
-  progressWidth.value = mapped.length
-    ? `${Math.round((uCount / mapped.length) * 100)}%`
-    : '0%'
+function responseMessage(response, fallback) {
+  return response?.data?.message || response?.data?.error || fallback
 }
 
-/* =========================
-   初始化流程（并行请求 + 会话缓存）
-   ========================= */
-onMounted(async () => {
-  document.title = '我的打卡'
+function redirectToSignin() {
+  localStorage.removeItem('token')
+  router.replace({ path: '/signin', query: { redirect: '/myCheckins' } })
+}
 
-  // 1) 鉴权
-  const token = localStorage.getItem('token')
-  if (!token) {
-    router.push({ path: '/signin', query: { redirect: encodeURIComponent('/myCheckins') } })
+async function fetchDashboard() {
+  if (!localStorage.getItem('token')) {
+    redirectToSignin()
     return
   }
 
   loading.value = true
+  loadError.value = ''
+  pageNotice.value = ''
 
-  // 2) 会话缓存先把页面填起来（秒显）
   try {
-    const ssUser   = JSON.parse(sessionStorage.getItem(SS_USER)   || 'null')
-    const ssUnlock = JSON.parse(sessionStorage.getItem(SS_UNLOCK) || 'null')
-    if (ssUser && ssUnlock) hydrate(ssUser, ssUnlock)
-  } catch {}
-
-  // 3) 并行拉取最新
-  try {
-    const [meResp, stResp] = await Promise.allSettled([
-      request('/auth/me', 'GET', null, { credentials: 'include' }),
-      request('/checkin/status', 'GET', null, { credentials: 'include' }),
+    const [meResponse, statusResponse, submissionsResponse, feedbackResponse] = await Promise.all([
+      request('/auth/me'),
+      request('/checkin/status'),
+      request('/submissions/mine'),
+      request('/feedback/mine')
     ])
 
-    // 用户信息
-    if (meResp.status !== 'fulfilled' || meResp.value?.data?.code !== 0) {
-      router.push({ path: '/signin', query: { redirect: encodeURIComponent('/myCheckins') } })
+    if (meResponse.status === 401) {
+      redirectToSignin()
       return
     }
-    const serverUser = meResp.value.data.userInfo || {}
-    userInfo.value = serverUser
-    userRole.value = serverUser.role || 'visitor'
-    // 同步到本地
-    const localUser = JSON.parse(localStorage.getItem('userInfo') || '{}')
-    localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...serverUser }))
-    // 写入会话缓存
-    sessionStorage.setItem(SS_USER, JSON.stringify(userInfo.value))
-
-    // 解锁集合：优先使用 /checkin/status，兼容 /auth/me
-    let unlockedSet = new Set(serverUser.unlockedLocations || [])
-    if (stResp.status === 'fulfilled' && stResp.value?.data?.code === 0) {
-      unlockedSet = new Set(stResp.value.data.unlockedLocations || [])
+    if (!responseOkay(meResponse)) {
+      throw new Error(responseMessage(meResponse, '无法读取用户资料，请检查本地服务是否正在运行。'))
     }
-    sessionStorage.setItem(SS_UNLOCK, JSON.stringify(Array.from(unlockedSet)))
 
-    // 构造渲染数据（用缩略图，不要直接用大图）
-    const mapped = ALL.map(b => ({
-      ...b,
-      thumb: thumb(b.icon, 256, 75),
-      unlocked: unlockedSet.has(b.id),
-    }))
-    badges.value = mapped
+    const serverUser = meResponse.data.userInfo || {}
+    if (responseOkay(statusResponse)) {
+      serverUser.unlockedLocations = statusResponse.data.unlockedLocations || serverUser.unlockedLocations || []
+      serverUser.lockingLocations = statusResponse.data.lockingLocations || serverUser.lockingLocations || []
+    } else {
+      pageNotice.value = '打卡审核状态暂时未更新，页面已显示最近一次账户数据。'
+    }
 
-    // 进度条
-    const uCount = mapped.filter(b => b.unlocked).length
-    unlockedCount.value = uCount
-    requestAnimationFrame(() => {
-      progressWidth.value = mapped.length
-        ? `${Math.round((uCount / mapped.length) * 100)}%`
-        : '0%'
-    })
-  } catch (e) {
-    console.error('[myCheckins:init]', e)
-    alert('加载失败，请稍后重试')
+    userInfo.value = serverUser
+    avatarFailed.value = false
+    const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
+    localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...serverUser }))
+
+    if (responseOkay(submissionsResponse)) {
+      submissions.value = Array.isArray(submissionsResponse.data.list) ? submissionsResponse.data.list : []
+      failedSubmissionImages.value = new Set()
+    } else {
+      submissions.value = []
+      pageNotice.value = pageNotice.value || '投稿状态暂时无法读取，其他个人数据仍可正常使用。'
+    }
+
+    if (responseOkay(feedbackResponse)) {
+      feedbackHistory.value = Array.isArray(feedbackResponse.data.list) ? feedbackResponse.data.list : []
+    } else {
+      feedbackHistory.value = []
+      pageNotice.value = pageNotice.value || '反馈历史暂时无法读取，你仍可尝试提交新反馈。'
+    }
+
+    await syncLocalPersonality()
+  } catch (error) {
+    loadError.value = error?.message || '网络连接异常，请稍后重试。'
   } finally {
     loading.value = false
-    setupNextPrefetch()
   }
+}
+
+async function syncLocalPersonality() {
+  if (userInfo.value.personality) return
+  const localResult = safeJsonParse(localStorage.getItem('ISETI_PERSONALITY_V1'), null)
+  if (!localResult?.mainCode || !localResult?.subCode || !localResult?.placeId) return
+
+  const payload = {
+    mainCode: localResult.mainCode,
+    subCode: localResult.subCode,
+    badges: Array.isArray(localResult.badges)
+      ? localResult.badges.map(item => typeof item === 'string' ? item : item?.code).filter(Boolean)
+      : [],
+    placeId: localResult.placeId,
+    placeName: localResult.placeName || localResult.place?.name || '',
+    line: localResult.line || '',
+    task: localResult.task || ''
+  }
+  const response = await request('/user/personality', 'PUT', payload)
+  if (responseOkay(response)) {
+    userInfo.value = { ...userInfo.value, personality: response.data.data.personality }
+    localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(response.data.data.personality))
+    personalitySyncMessage.value = '本机的 ISETI 结果已同步到当前账户。'
+  } else {
+    personalitySyncMessage.value = '本机结果暂时无法同步，请稍后在测试页重试。'
+  }
+}
+
+function safeJsonParse(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function badgeName(locationId) {
+  return getBadge(locationId)?.name || ('地点 ' + (locationId || '未知'))
+}
+
+function recordKey(record) {
+  return [record.locationId, record.time, record.method].join('-')
+}
+
+function formatMethod(method) {
+  const labels = {
+    photo: '照片打卡',
+    map: '地图打卡',
+    geo: '定位打卡',
+    gps: '定位打卡'
+  }
+  const key = String(method || 'geo').toLowerCase()
+  return labels[key] || '校园打卡'
+}
+
+function formatDistance(distance) {
+  const value = Number(distance)
+  if (!Number.isFinite(value)) return '距离未记录'
+  if (value < 1000) return Math.round(value) + ' 米'
+  return (value / 1000).toFixed(1) + ' 公里'
+}
+
+function toDate(value) {
+  const date = new Date(value || 0)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function toDateTime(value) {
+  return toDate(value)?.toISOString() || ''
+}
+
+function formatDate(value, mode = 'long') {
+  const date = toDate(value)
+  if (!date) return '时间未记录'
+  const options = mode === 'short'
+    ? { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
+    : { year: 'numeric', month: 'long', day: 'numeric' }
+  return new Intl.DateTimeFormat('zh-CN', options).format(date)
+}
+
+function submissionImage(submission) {
+  return submission?.images?.find(item => item?.url)?.url || ''
+}
+
+function markSubmissionImageFailed(id) {
+  failedSubmissionImages.value = new Set([...failedSubmissionImages.value, String(id)])
+}
+
+function statusInfo(status) {
+  const map = {
+    pending: { label: '待审核', tone: 'pending', icon: Clock3 },
+    approved: { label: '已通过', tone: 'approved', icon: CheckCircle2 },
+    rejected: { label: '未通过', tone: 'rejected', icon: XCircle }
+  }
+  return map[status] || map.pending
+}
+
+function feedbackStatusLabel(status) {
+  return {
+    submitted: '已提交',
+    processing: '处理中',
+    resolved: '已回复',
+    closed: '已结束'
+  }[status] || '已提交'
+}
+
+function openSubmission(id) {
+  router.push('/award/submission/' + encodeURIComponent(id))
+}
+
+function handleCollectionTabKeydown(event, index) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  const tabs = collectionTabs.value
+  let target = index
+  if (event.key === 'ArrowRight') target = (index + 1) % tabs.length
+  if (event.key === 'ArrowLeft') target = (index - 1 + tabs.length) % tabs.length
+  if (event.key === 'Home') target = 0
+  if (event.key === 'End') target = tabs.length - 1
+  collectionTab.value = tabs[target].id
+  nextTick(() => {
+    document.getElementById('collection-tab-' + tabs[target].id)?.focus({ preventScroll: true })
+  })
+}
+
+function editablePhone(value) {
+  const phone = String(value || '').trim()
+  return !phone || /^[0-9+()\-\s]{5,30}$/.test(phone) ? phone : ''
+}
+
+function openProfileDialog() {
+  profileForm.value = {
+    username: String(userInfo.value.username || ''),
+    realName: String(userInfo.value.realName || ''),
+    studentId: String(userInfo.value.studentId || ''),
+    phone: editablePhone(userInfo.value.phone),
+    bio: String(userInfo.value.bio || ''),
+    avatar: String(userInfo.value.avatar || '')
+  }
+  profileOriginal.value = { ...profileForm.value }
+  profileErrors.value = {}
+  profileMessage.value = ''
+  profileSaveState.value = 'idle'
+  profilePreviewFailed.value = false
+  profileDialog.value?.showModal()
+  nextTick(() => firstProfileField.value?.focus())
+}
+
+function closeProfileDialog() {
+  profileDialog.value?.close()
+}
+
+function resetProfileDialog() {
+  profileErrors.value = {}
+  profileMessage.value = ''
+  profileSaveState.value = 'idle'
+}
+
+function handleProfileDialogBackdrop(event) {
+  if (event.target === profileDialog.value) closeProfileDialog()
+}
+
+function normalizedProfileValue(field, value) {
+  const text = String(value ?? '')
+  return field === 'bio' ? text.trim() : text.trim()
+}
+
+function validateProfileField(field) {
+  const value = normalizedProfileValue(field, profileForm.value[field])
+  let message = ''
+  if (field === 'username' && (Array.from(value).length < 2 || Array.from(value).length > 24)) {
+    message = '昵称需要 2 至 24 个字符。'
+  }
+  if (field === 'realName' && Array.from(value).length > 30) {
+    message = '姓名最多 30 个字符。'
+  }
+  if (field === 'studentId' && value && !/^[A-Za-z0-9_-]{6,24}$/.test(value)) {
+    message = '学号需为 6 至 24 位字母、数字、下划线或连字符。'
+  }
+  if (field === 'phone' && value && !/^[0-9+()\-\s]{5,30}$/.test(value)) {
+    message = '联系电话只能包含数字、空格和常用电话符号。'
+  }
+  if (field === 'bio' && Array.from(value).length > 160) {
+    message = '个人简介最多 160 个字符。'
+  }
+  if (field === 'avatar' && value && !/^https?:\/\/[^\s]+$/i.test(value)) {
+    message = '头像地址需要以 http:// 或 https:// 开头。'
+  }
+  profileErrors.value = { ...profileErrors.value, [field]: message }
+  return !message
+}
+
+function onProfileInput(field) {
+  profilePreviewFailed.value = false
+  profileMessage.value = ''
+  if (profileSaveState.value !== 'loading') profileSaveState.value = 'idle'
+  if (Object.prototype.hasOwnProperty.call(profileErrors.value, field)) validateProfileField(field)
+}
+
+async function saveProfile() {
+  const fields = Object.keys(profileForm.value)
+  const payload = {}
+  fields.forEach(field => {
+    const current = normalizedProfileValue(field, profileForm.value[field])
+    const original = normalizedProfileValue(field, profileOriginal.value[field])
+    if (current !== original) payload[field] = current
+  })
+
+  if (!Object.keys(payload).length) {
+    profileMessage.value = '没有需要保存的资料变更。'
+    profileSaveState.value = 'error'
+    return
+  }
+
+  const valid = Object.keys(payload).every(validateProfileField)
+  if (!valid) {
+    profileMessage.value = '请先修正标记的资料项。'
+    profileSaveState.value = 'error'
+    return
+  }
+
+  profileSaveState.value = 'loading'
+  profileMessage.value = ''
+  const response = await request('/user/profile', 'PUT', payload)
+
+  if (!responseOkay(response)) {
+    const field = response?.data?.field
+    if (field && Object.prototype.hasOwnProperty.call(profileForm.value, field)) {
+      profileErrors.value = { ...profileErrors.value, [field]: responseMessage(response, '请检查这一项。') }
+    }
+    profileMessage.value = responseMessage(response, '资料保存失败，请稍后重试。')
+    profileSaveState.value = 'error'
+    return
+  }
+
+  userInfo.value = { ...userInfo.value, ...response.data.data.userInfo }
+  profileOriginal.value = { ...profileForm.value }
+  avatarFailed.value = false
+  const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
+  localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...userInfo.value }))
+  profileMessage.value = '资料已保存，主页内容已更新。'
+  profileSaveState.value = 'success'
+}
+
+function validateFeedbackField(field) {
+  const value = String(feedbackForm.value[field] || '').trim()
+  let message = ''
+  if (field === 'category' && !['suggestion', 'bug', 'content', 'other'].includes(value)) {
+    message = '请选择有效的反馈类型。'
+  }
+  if (field === 'content' && Array.from(value).length < 5) {
+    message = '反馈内容至少需要 5 个字符。'
+  }
+  if (field === 'content' && Array.from(value).length > 1000) {
+    message = '反馈内容最多 1000 个字符。'
+  }
+  if (field === 'contact' && Array.from(value).length > 100) {
+    message = '联系方式最多 100 个字符。'
+  }
+  feedbackErrors.value = { ...feedbackErrors.value, [field]: message }
+  return !message
+}
+
+function onFeedbackInput(field) {
+  feedbackMessage.value = ''
+  if (feedbackSaveState.value !== 'loading') feedbackSaveState.value = 'idle'
+  if (Object.prototype.hasOwnProperty.call(feedbackErrors.value, field)) validateFeedbackField(field)
+}
+
+async function submitFeedback() {
+  const valid = ['category', 'content', 'contact'].every(validateFeedbackField)
+  if (!valid) {
+    feedbackMessage.value = '请先修正标记的反馈内容。'
+    feedbackSaveState.value = 'error'
+    return
+  }
+
+  feedbackSaveState.value = 'loading'
+  feedbackMessage.value = ''
+  const response = await request('/feedback', 'POST', {
+    category: feedbackForm.value.category,
+    content: feedbackForm.value.content.trim(),
+    contact: feedbackForm.value.contact.trim()
+  })
+
+  if (!responseOkay(response)) {
+    const field = response?.data?.field
+    if (field && Object.prototype.hasOwnProperty.call(feedbackForm.value, field)) {
+      feedbackErrors.value = { ...feedbackErrors.value, [field]: responseMessage(response, '请检查这一项。') }
+    }
+    feedbackMessage.value = responseMessage(response, '反馈提交失败，请稍后重试。')
+    feedbackSaveState.value = 'error'
+    return
+  }
+
+  feedbackHistory.value = [response.data.data.feedback, ...feedbackHistory.value]
+  feedbackForm.value = { ...feedbackForm.value, content: '', contact: '' }
+  feedbackErrors.value = {}
+  feedbackMessage.value = '反馈已提交，可在下方查看处理状态。'
+  feedbackSaveState.value = 'success'
+}
+
+function openCommandPalette() {
+  commandQuery.value = ''
+  commandIndex.value = 0
+  commandDialog.value?.showModal()
+  nextTick(() => commandInput.value?.focus())
+}
+
+function closeCommandPalette() {
+  commandDialog.value?.close()
+}
+
+function resetCommandPalette() {
+  commandQuery.value = ''
+  commandIndex.value = 0
+}
+
+function handleCommandBackdrop(event) {
+  if (event.target === commandDialog.value) closeCommandPalette()
+}
+
+function moveCommand(direction) {
+  if (!filteredCommands.value.length) return
+  commandIndex.value = (commandIndex.value + direction + filteredCommands.value.length) % filteredCommands.value.length
+}
+
+function runSelectedCommand() {
+  const command = filteredCommands.value[commandIndex.value]
+  if (command) executeCommand(command)
+}
+
+function executeCommand(command) {
+  closeCommandPalette()
+  nextTick(() => command.run())
+}
+
+function openProfileFromCommand() {
+  openProfileDialog()
+}
+
+function focusFeedbackFromCommand() {
+  document.getElementById('feedback')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
+  nextTick(() => document.getElementById('feedback-content')?.focus({ preventScroll: true }))
+}
+
+function logout() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  sessionStorage.removeItem('MYCHECKINS_USER_V1')
+  sessionStorage.removeItem('MYCHECKINS_UNLOCK_SET_V1')
+  router.replace('/signin')
+}
+
+function reducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+}
+
+function onGlobalKeydown(event) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    if (commandDialog.value?.open) closeCommandPalette()
+    else openCommandPalette()
+  }
+}
+
+onMounted(() => {
+  document.title = '个人主页｜笃行校园图鉴'
+  window.addEventListener('keydown', onGlobalKeydown)
+  fetchDashboard()
 })
 
 onBeforeUnmount(() => {
-  cleanupNextPrefetch()
+  window.removeEventListener('keydown', onGlobalKeydown)
+  profileDialog.value?.close()
+  commandDialog.value?.close()
 })
-
-/* =========================
-   交互
-   ========================= */
-function onTapBadge(id) {
-  const badge = badges.value.find(b => b.id === id)
-  if (!badge) return
-  if (badge.unlocked) alert(`已解锁：${badge.name}`)
-  else alert(`尚未解锁：${badge.name}`)
-}
 </script>
 
-<style scoped>
-/* 基础防选中/防长按 */
-* { -webkit-touch-callout: none; user-select: none; box-sizing: border-box; }
-
-/* ===== 背景与主体 ===== */
-.bg-wrapper {
-  position: relative;
-  width: 100%;
-  min-height: 100vh;
-  overflow: visible;
-}
-.bg-img {
-  position: fixed;
-  left: 0; top: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  object-fit: cover;
-}
-.content {
-  box-sizing: border-box;
-  padding: 10px 0 20px;
-  min-height: 100vh;
-  position: relative;
-  z-index: 1;
-}
-
-/* ===== LOGO ===== */
-.logo-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 12px;
-}
-.logo-img { width: 150px; }
-
-/* ===== 个人信息卡片 ===== */
-.user-card {
-  display: grid;
-  grid-template-columns: 60px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 10px;
-  align-items: center;
-
-  background: rgba(255,255,255,.88);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  border-radius: 12px;
-  margin: 0 12px 11px;
-  padding: 10px;
-  box-shadow: 0 5px 12px rgba(0,0,0,.08);
-}
-.avatar {
-  grid-row: 1 / span 2;
-  width: 60px; height: 60px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 3px 8px rgba(0,0,0,.08);
-}
-.user-meta { display: flex; flex-direction: column; }
-.user-name { font-size: 17px; font-weight: 700; color: #152; }
-.user-id   { font-size: 12px; color: #667; margin-top: 3px; }
-
-/* 进度条 */
-.progress { grid-column: 1 / -1; margin-top: 8px; width: 100%; }
-.progress-label { font-size: 12px; color: #314; margin-bottom: 5px; }
-.progress-bar {
-  position: relative;
-  width: 100%;
-  height: 8px;
-  border-radius: 8px;
-  background: rgba(23, 92, 40, .18);
-  overflow: hidden;
-}
-.progress-inner {
-  width: 0;
-  height: 100%;
-  background: linear-gradient(90deg, #175c28, #1f8f4a);
-  border-radius: 8px;
-  transition: width .25s ease;
-}
-
-/* ===== 标题 ===== */
-.section-head {
-  display: flex; align-items: baseline; gap: 5px;
-  padding: 0 12px; margin: 6px 0 9px;
-}
-.section-emoji { font-size: 15px; }
-.section-title {
-  font-size: 15px; font-weight: 700; color: #1a1a1a;
-  text-shadow: 0 1px 2px rgba(0,0,0,.08);
-}
-
-/* ===== 三列网格（强制等分） ===== */
-.badge-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)); /* 始终三列，等分整行 */
-  gap: 12px;
-  padding: 0 12px;
-  width: 100%;
-}
-
-/* 卡片 */
-.badge-card {
-  background: rgba(255,255,255,.88);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  border-radius: 12px;
-  padding: 10px 8px 8px;
-  display: flex; flex-direction: column; align-items: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,.06);
-  transition: transform .12s ease, box-shadow .12s ease;
-  cursor: pointer;
-}
-.badge-card:active { transform: scale(.98); box-shadow: 0 3px 7px rgba(0,0,0,.08); }
-
-/* 1:1 正方形缩略图容器（更稳：aspect-ratio） */
-.badge-thumb {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;      /* 统一正方形比例 */
-  border-radius: 8px;
-  overflow: hidden;
-}
-.badge-img {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;         /* 填充且不变形 */
-  transition: transform .18s ease;
-  pointer-events: none;
-}
-.badge-card:active .badge-img { transform: scale(1.02); }
-
-/* 名称：单行省略防溢出 */
-.badge-name {
-  margin-top: 6px; font-size: 13px; color: #213;
-  text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-/* 未解锁效果 */
-.is-locked .badge-img { filter: grayscale(100%) contrast(.9); opacity: .72; }
-.badge-mask {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.12));
-}
-.badge-mask .lock {
-  font-size: 20px; color: rgba(255,255,255,.95);
-  text-shadow: 0 2px 5px rgba(0,0,0,.28);
-}
-
-/* 已解锁轻强调 */
-.is-unlocked {
-  border: 1px solid rgba(23, 92, 40, .18);
-  box-shadow: 0 3px 9px rgba(23, 92, 40, .08);
-}
-
-/* Loading */
-.loading{
-  position: fixed; right: 12px; bottom: 12px;
-  background: rgba(17,24,39,.9); color: #fff;
-  padding: 8px 10px; border-radius: 8px; font-size: 12px;
-}
-</style>
+<style src="../styles/profile.css"></style>

@@ -11,7 +11,7 @@ const multer = require('multer');
 const auth = require('../middleware/auth');
 const { optionalAuth } = require('../middleware/auth');
 const awards = require('../data/awards');
-const locationsData = require('../data/locations');
+const { getLocations, getLocation } = require('../lib/locationSettings');
 const { isActivityEnded, winnerLabelOf, computeWinners } = require('../winner');
 
 // ====== 环境配置 ======
@@ -111,7 +111,7 @@ const bucketBaseUrl = (COS_BUCKET && COS_REGION)
 
 const validLocationIds = () => {
   const ids = new Set();
-  (locationsData.locations || []).forEach(l => {
+  getLocations().forEach(l => {
     const n = Number(l.id);
     if (Number.isInteger(n)) ids.add(n);
   });
@@ -446,7 +446,7 @@ router.post('/', auth, (req, res) => {
   }
 
   const now = Date.now();
-  const locName = (locationsData.locations || []).find(l => Number(l.id) === locationId)?.name || '';
+  const locName = getLocation(locationId)?.name || '';
   const record = {
     id: `${now}_${Math.random().toString(36).slice(2, 8)}`,
     category,

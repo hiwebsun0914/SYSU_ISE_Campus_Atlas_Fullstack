@@ -193,6 +193,7 @@
         <button class="secondary-action" type="button" @click="restart">再测一次</button>
         <button class="secondary-action" type="button" @click="goHome">回到校园图鉴 ↗</button>
       </div>
+      <p class="result-save-status" role="status" aria-live="polite">{{ resultSaveCopy }}</p>
     </section>
 
     <div v-if="shareCardVisible" class="share-modal" role="dialog" aria-modal="true" aria-label="分享卡预览" @click.self="closeShareCard">
@@ -226,6 +227,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
+import { request } from '@/utils/request'
 import doneVisual from '../assets/place/main/done.webp'
 import ddlVisual from '../assets/place/main/ddl.webp'
 import growVisual from '../assets/place/main/grow.webp'
@@ -272,6 +274,7 @@ const result = ref(null)
 const advancing = ref(false)
 const shareCardVisible = ref(false)
 const shareImage = ref('')
+const resultSaveState = ref('idle')
 
 const mainVisuals = {
   GROW: growVisual,
@@ -323,6 +326,13 @@ const progressPercent = computed(() => {
   return 0
 })
 const progressLabel = computed(() => stage.value === 'questions' ? '长期倾向' : '今日状态')
+const resultSaveCopy = computed(() => ({
+  idle: '测试完成后，结果会同步到个人主页。',
+  saving: '正在同步到个人主页…',
+  saved: 'ISETI 结果已同步到个人主页。',
+  local: '结果已保存在本机，登录后会同步到个人主页。',
+  error: '结果已保存在本机，进入个人主页后可重新同步。'
+}[resultSaveState.value] || ''))
 
 onMounted(() => {
   document.title = 'PLACE @ SYSU｜你的校园类型'
@@ -552,13 +562,46 @@ function buildResult() {
     distanceLabel: distanceCopy(picked.distance)
   }
   stage.value = 'result'
+  persistPersonality(result.value)
   nextTick(scrollTop)
+}
+
+function personalityPayload(card) {
+  return {
+    mainCode: card.mainCode,
+    subCode: card.subCode,
+    badges: card.badges.map(item => item.code),
+    placeId: card.place.id,
+    placeName: card.place.name,
+    line: card.line,
+    task: card.task
+  }
+}
+
+async function persistPersonality(card) {
+  const payload = personalityPayload(card)
+  localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(payload))
+
+  if (!localStorage.getItem('token')) {
+    resultSaveState.value = 'local'
+    return
+  }
+
+  resultSaveState.value = 'saving'
+  const response = await request('/user/personality', 'PUT', payload)
+  if (response.ok && response.data?.code === 0) {
+    resultSaveState.value = 'saved'
+    localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(response.data.data.personality))
+    return
+  }
+  resultSaveState.value = 'error'
 }
 
 function restart() {
   answers.value = Array(questions.length).fill(null)
   todayAnswers.value = {}
   result.value = null
+  resultSaveState.value = 'idle'
   questionIndex.value = 0
   todayIndex.value = 0
   stage.value = 'intro'
@@ -1062,6 +1105,7 @@ async function nativeShare() {
 .share-section .primary-action i { color: #fff; background: var(--primary); }
 .compact-action { min-width: 260px; min-height: 54px; }
 .result-actions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px; }
+.result-save-status { min-height: 1.5em; margin: 14px 0 0; color: var(--body); font-size: 12px; text-align: center; }
 .secondary-action { min-height: 48px; padding: 0 20px; border: 1px solid var(--hairline); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; }
 
 .share-modal { position: fixed; inset: 0; z-index: 13000; padding: 24px; overflow-y: auto; display: grid; place-items: center; background: rgba(26,26,26,.72); backdrop-filter: blur(14px); }

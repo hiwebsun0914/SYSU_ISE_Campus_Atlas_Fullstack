@@ -47,6 +47,7 @@
 | 开发微信小程序 | [微信小程序说明](#wechat-mini-program) |
 | 打包 Android APK | [Android 说明](#android-app) |
 | 部署到自己的服务器 | [部署指南](#deployment) |
+| 联调个人主页与管理员空间 | [接口规范与使用准则](docs/profile-admin-api.md) |
 
 <a id="project-map"></a>
 
@@ -66,6 +67,9 @@ SYSU_ISE_Campus_Atlas_Fullstack/
 ├─ deploy/
 │  ├─ nginx/                  # 服务器 Nginx 配置快照
 │  └─ web-h5-dist/            # 服务器当前 H5 部署快照
+│
+├─ docs/
+│  └─ profile-admin-api.md    # 用户主页/管理员空间接口与权限规范
 │
 ├─ .gitignore                 # 统一排除依赖、密钥、日志和运行数据
 └─ README.md                  # 你正在阅读的文件
@@ -203,6 +207,10 @@ cp .env.example .env.local
 | --- | --- | --- |
 | `PORT` | 可选 | 后端端口，默认 `3000` |
 | `JWT_SECRET` | **必须修改** | JWT 签名密钥，生产环境必须使用长随机字符串 |
+| `ADMIN_OWNER_IDS` | 管理端必须 | 受保护超级管理员的用户 ID，多个值用英文逗号分隔 |
+| `ADMIN_OWNER_USERNAMES` | 可选 | 按账号名补充受保护超级管理员 |
+| `FEEDBACK_FILE` | 推荐 | 用户反馈持久化文件路径 |
+| `LOCATION_SETTINGS_FILE` | 推荐 | 地点内容与积分设置持久化文件路径 |
 | `COS_BUCKET` | 图片功能需要 | 腾讯云 COS Bucket 名称 |
 | `COS_REGION` | 图片功能需要 | 例如 `ap-guangzhou` |
 | `PUBLIC_ASSET_DOMAIN` | 推荐 | 图片公开访问域名 |
@@ -219,6 +227,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 > [!NOTE]
 > 不配置 COS 也能学习项目结构和测试部分基础接口；头像、打卡图片及图片签名相关功能需要完整的 COS 配置。
+
+用户主页与管理员空间的全部 API、权限边界、状态流转及部署检查项见 [接口规范与使用准则](docs/profile-admin-api.md)。
 
 ### Web `apps/web-h5/.env.local`
 
@@ -426,4 +436,3 @@ sudo systemctl reload nginx
   如果这个项目帮助你理解了一个多端全栈项目，欢迎点亮 ⭐ Star。<br />
   <sub>Built for campus discovery, shared learning and joyful exploration.</sub>
 </p>
-

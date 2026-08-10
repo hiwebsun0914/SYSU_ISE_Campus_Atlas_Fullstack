@@ -16,8 +16,11 @@ const bottleRouter  = require('./routes/bottle');
 const futureCardsRouter = require('./routes/futureCards');
 const adminRouter   = require('./routes/admin');
 const submissionsRouter = require('./routes/submissions');
+const profileRouter = require('./routes/profile');
+const feedbackRouter = require('./routes/feedback');
 const gallery       = require('./data/gallery');
-const locations     = require('./data/locations');
+const { getLocations } = require('./lib/locationSettings');
+const { effectiveRole, isAdminRole } = require('./lib/roles');
 
 // === 新增：COS SDK 与配置（用于列目录 + 生成签名 URL） ===
 const COS = require('cos-nodejs-sdk-v5');
@@ -125,6 +128,8 @@ app.use('/checkin', checkinRouter);
 app.use('/bottle',  bottleRouter);
 app.use('/future-cards', futureCardsRouter);
 app.use('/submissions',  submissionsRouter);
+app.use('/user', profileRouter);
+app.use('/feedback', feedbackRouter);
 app.use('/admin',   auth, adminOnly, adminRouter);
 
 /* ========= 文件路径 ========= */
@@ -133,7 +138,7 @@ const BOTTLES_FILE = path.join(__dirname, 'bottles.json');
 
 /* ========= 常量 ========= */
 const DEFAULT_AVATAR = 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/NumberImage.png';
-const DEFAULT_ROLE   = 'visitor'; // visitor | admin
+const DEFAULT_ROLE   = 'visitor'; // visitor | admin | owner
 // —— 登录/注册错误码（前端已按这些码处理）——
 const ERR_USER_NOT_FOUND = 1001;
 const ERR_BAD_PASSWORD   = 1002;
@@ -221,7 +226,11 @@ function respondSuccess(res, user) {
       username: user.username,
       avatar: effectiveAvatar,
       phone: user.phone || '',
-      role: user.role || DEFAULT_ROLE
+      realName: user.realName || '',
+      studentId: user.studentId || '',
+      bio: user.bio || '',
+      personality: user.personality || null,
+      role: effectiveRole(user)
     }
   });
 }
@@ -236,6 +245,9 @@ function createUser({ username, passwordPlain, phone, realName }) {
     password: hashedPassword,
     phone: phone || '',
     realName: realName || phone || '',
+    studentId: '',
+    bio: '',
+    personality: null,
     avatar: DEFAULT_AVATAR,
     avatarKey: null,
     role: DEFAULT_ROLE,
@@ -349,7 +361,7 @@ app.get('/home/gallery', (_req, res) => {
 });
 
 app.get('/locations', (_req, res) => {
-  res.json({ code: 0, data: { locations: locations.locations || [] } });
+  res.json({ code: 0, data: { locations: getLocations() } });
 });
 
 /* ========= 排行榜（补回此路由！） ========= */
@@ -508,7 +520,11 @@ app.get('/auth/me', auth, (req, res) => {
       username: u.username,
       avatar: effectiveAvatar,
       phone: u.phone || '',
-      role: u.role || DEFAULT_ROLE,
+      realName: u.realName || '',
+      studentId: u.studentId || '',
+      bio: u.bio || '',
+      personality: u.personality || null,
+      role: effectiveRole(u),
       points: u.points || 0,
       unlockedLocations: u.unlockedLocations || [],
       lockingLocations: u.lockingLocations || [],
@@ -531,21 +547,6 @@ app.get('/checkin/status', auth, (req, res) => {
     unlockedLocations: u.unlockedLocations || [],
     lockingLocations: u.lockingLocations || []
   });
-});
-
-/* ========= 个人资料更新 ========= */
-app.put('/user/profile', auth, (req, res) => {
-  const { phone, username } = req.body || {};
-  const users = readUsers();
-  const idx = users.findIndex(u => String(u.id) === String(req.userId));
-  if (idx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
-
-  if (typeof phone === 'string') users[idx].phone = phone.trim();
-  if (typeof username === 'string' && username.trim()) users[idx].username = username.trim();
-  users[idx].updatedAt = Date.now();
-  writeUsers(users);
-
-  return res.json({ code: 0, message: '更新成功' });
 });
 
 /* ========= 打卡解锁 ========= */
@@ -809,7 +810,7 @@ app.get('/bottle/quota', auth, (req, res) => {
 function adminOnly(req, res, next) {
   const u = findUserById(req.userId);
   if (!u) return res.status(401).json({ code: 1, message: '未登录' });
-  if ((u.role || DEFAULT_ROLE) !== 'admin') {
+  if (!isAdminRole(effectiveRole(u))) {
     return res.status(403).json({ code: 1, message: '无管理员权限' });
   }
   next();
@@ -819,8 +820,10 @@ app.get('/admin/users', auth, adminOnly, (_req, res) => {
   const users = readUsers().map(u => ({
     id: u.id,
     username: u.username,
+    realName: u.realName || '',
+    studentId: u.studentId || '',
     phone: u.phone || '',
-    role: u.role || DEFAULT_ROLE,
+    role: effectiveRole(u),
     unlockedLocations: u.unlockedLocations || [],
     lockingLocations: u.lockingLocations || [],
     bottlesThrow: u.bottlesThrow || [],
@@ -860,6 +863,12 @@ function ensureDevUser() {
     id: devId,
     openId: `dev_openid_${devId}`,
     nickName: '开发测试用户',
+    username: '开发测试用户',
+    realName: '',
+    studentId: '',
+    phone: '',
+    bio: '',
+    personality: null,
     avatarUrl: '',
     role: 'visitor',
     points: 0,
@@ -882,7 +891,10 @@ function ensureDevUser() {
 
 /* ========= 启动 ========= */
 ensureDevUser();
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running at http://0.0.0.0:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Server running at http://0.0.0.0:${PORT}`);
+  });
+}
 
+module.exports = app;

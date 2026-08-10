@@ -7,6 +7,8 @@ const path = require('path');
 const COS = require('cos-nodejs-sdk-v5');
 const auth = require('../middleware/auth');
 const routes = require('../data/routes');
+const { effectiveRole, isAdminRole, canManageRoles, isConfiguredOwner } = require('../lib/roles');
+const { getLocations, getLocation, updateLocation } = require('../lib/locationSettings');
 
 // ====== 常量 / 配置 ======
 const USERS_FILE   = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
@@ -57,8 +59,12 @@ function readUsers() {
       username: u.username || '未命名',
       unlockedLocations: Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [],
       lockingLocations : Array.isArray(u.lockingLocations)  ? u.lockingLocations  : [],
+      completedRoutes  : Array.isArray(u.completedRoutes)   ? u.completedRoutes   : [],
+      checkinRecords   : Array.isArray(u.checkinRecords)    ? u.checkinRecords    : [],
+      pendingCheckins  : Array.isArray(u.pendingCheckins)   ? u.pendingCheckins   : [],
       bottlesThrow    : Array.isArray(u.bottlesThrow)       ? u.bottlesThrow       : [],
       bottlesReceived : Array.isArray(u.bottlesReceived)    ? u.bottlesReceived    : [],
+      points: Number.isFinite(Number(u.points)) ? Number(u.points) : 0,
     }));
   } catch (e) {
     console.error('[admin] readUsers fail:', e);
@@ -94,8 +100,18 @@ function adminOnly(req, res, next) {
   const users = readUsers();
   const me = users.find(u => String(u.id) === String(req.userId));
   if (!me) return res.status(401).json({ code: 1, message: '未登录' });
-  if ((me.role || DEFAULT_ROLE) !== 'admin') {
+  const role = effectiveRole(me);
+  if (!isAdminRole(role)) {
     return res.status(403).json({ code: 1, message: '无管理员权限' });
+  }
+  req.role = role;
+  req.adminUser = me;
+  next();
+}
+
+function ownerOnly(req, res, next) {
+  if (!canManageRoles(req.role)) {
+    return res.status(403).json({ code: 1, message: '仅超级管理员可以调整管理员权限' });
   }
   next();
 }
@@ -127,7 +143,7 @@ function listLatestPhoto(uid, username, locationId) {
 
 // ====== 用户列表（含统计：unlocked/locking/threw） ======
 // GET /admin/users
-router.get('/users', auth, adminOnly, (_req, res) => {
+router.get('/users', auth, adminOnly, (req, res) => {
   const users   = readUsers();
   const bottles = readBottlesArray();
 
@@ -145,17 +161,267 @@ router.get('/users', auth, adminOnly, (_req, res) => {
     return {
       id: u.id,
       username: u.username,
-      role: u.role,
+      realName: u.realName || '',
+      studentId: u.studentId || '',
+      role: effectiveRole(u),
       avatar: u.avatar,
       unlocked: u.unlockedLocations.length,
       locking : u.lockingLocations.length,
       threw,
+      points: u.points,
+      protectedOwner: isConfiguredOwner(u) || String(u.role || '') === 'owner',
       createdAt: u.createdAt || null,
       updatedAt: u.updatedAt || null
     };
   });
 
-  res.json({ code: 0, list });
+  res.json({ code: 0, list, canManageRoles: canManageRoles(req.role) });
+});
+
+// PATCH /admin/users/:id/role  { role: 'visitor' | 'admin' }
+router.patch('/users/:id/role', auth, adminOnly, ownerOnly, (req, res) => {
+  const role = String(req.body?.role || '').trim();
+  if (!['visitor', 'admin'].includes(role)) {
+    return res.status(400).json({ code: 1, message: '角色只能设置为普通用户或审核员' });
+  }
+
+  const users = readUsers();
+  const target = users.find(user => String(user.id) === String(req.params.id));
+  if (!target) return res.status(404).json({ code: 1, message: '用户不存在' });
+  if (String(target.id) === String(req.userId)) {
+    return res.status(400).json({ code: 1, message: '不能修改自己的权限' });
+  }
+  if (isConfiguredOwner(target) || String(target.role || '') === 'owner') {
+    return res.status(400).json({ code: 1, message: '不能修改受保护的超级管理员' });
+  }
+
+  target.role = role;
+  target.updatedAt = Date.now();
+  writeUsers(users);
+  return res.json({
+    code: 0,
+    message: role === 'admin' ? '已授予审核员权限' : '已撤销审核员权限',
+    data: { id: target.id, role }
+  });
+});
+
+function timestampOf(value) {
+  const parsed = typeof value === 'number' ? value : Date.parse(value || '');
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function beijingDay(value) {
+  const timestamp = timestampOf(value);
+  if (!timestamp) return '';
+  return new Date(timestamp + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function buildActivity(users, days = 7) {
+  const now = Date.now();
+  const rows = [];
+  const byDay = new Map();
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const timestamp = now - offset * 24 * 60 * 60 * 1000;
+    const date = beijingDay(timestamp);
+    const row = { date, label: date.slice(5), count: 0 };
+    rows.push(row);
+    byDay.set(date, row);
+  }
+
+  users.forEach(user => {
+    user.checkinRecords.forEach(record => {
+      const row = byDay.get(beijingDay(record.time || record.createdAt));
+      if (row) row.count += 1;
+    });
+  });
+  return rows;
+}
+
+function buildHotspots(users, limit = 8) {
+  const counts = new Map();
+  users.forEach(user => {
+    new Set(user.unlockedLocations.map(Number)).forEach(locationId => {
+      if (Number.isInteger(locationId)) counts.set(locationId, (counts.get(locationId) || 0) + 1);
+    });
+  });
+
+  return Array.from(counts.entries())
+    .map(([locationId, count]) => {
+      const location = getLocation(locationId);
+      return {
+        locationId,
+        name: location?.name || `未知地点 #${locationId}`,
+        count,
+        points: location?.points ?? 1
+      };
+    })
+    .sort((a, b) => b.count - a.count || a.locationId - b.locationId)
+    .slice(0, limit);
+}
+
+function buildAnomalies(users) {
+  const anomalies = [];
+  const distanceLimit = Math.max(1, Number(process.env.CHECKIN_ANOMALY_DISTANCE_M || 200));
+  const staleLimit = Math.max(1, Number(process.env.CHECKIN_PENDING_STALE_HOURS || 48)) * 60 * 60 * 1000;
+  const now = Date.now();
+
+  users.forEach(user => {
+    const duplicateKeys = new Set();
+    const seen = new Map();
+
+    user.checkinRecords.forEach((record, index) => {
+      const locationId = Number(record.locationId);
+      const location = getLocation(locationId);
+      const occurredAt = timestampOf(record.time || record.createdAt);
+      const distance = Number(record.distance);
+
+      if (!location) {
+        anomalies.push({
+          id: `unknown-${user.id}-${locationId}-${index}`,
+          type: 'unknown_location',
+          severity: 'high',
+          userId: user.id,
+          username: user.username,
+          locationId,
+          locationName: `未知地点 #${locationId}`,
+          title: '打卡点编号不存在',
+          detail: '记录引用了当前地点库中不存在的编号，需要人工核对。',
+          occurredAt
+        });
+      }
+
+      if (Number.isFinite(distance) && distance > distanceLimit) {
+        anomalies.push({
+          id: `distance-${user.id}-${locationId}-${index}`,
+          type: 'distance',
+          severity: distance > distanceLimit * 2 ? 'high' : 'medium',
+          userId: user.id,
+          username: user.username,
+          locationId,
+          locationName: location?.name || `#${locationId}`,
+          title: '定位距离超出阈值',
+          detail: `记录距离为 ${Math.round(distance)} 米，当前阈值为 ${Math.round(distanceLimit)} 米。`,
+          occurredAt
+        });
+      }
+
+      const day = beijingDay(occurredAt);
+      if (day) {
+        const duplicateKey = `${locationId}-${day}`;
+        const count = (seen.get(duplicateKey) || 0) + 1;
+        seen.set(duplicateKey, count);
+        if (count > 1 && !duplicateKeys.has(duplicateKey)) {
+          duplicateKeys.add(duplicateKey);
+          anomalies.push({
+            id: `duplicate-${user.id}-${duplicateKey}`,
+            type: 'duplicate',
+            severity: 'medium',
+            userId: user.id,
+            username: user.username,
+            locationId,
+            locationName: location?.name || `#${locationId}`,
+            title: '同日重复打卡',
+            detail: `${day} 在同一地点出现多条成功记录。`,
+            occurredAt
+          });
+        }
+      }
+    });
+
+    user.pendingCheckins.forEach((pending, index) => {
+      const submittedAt = timestampOf(pending.submittedAt || pending.createdAt);
+      if (!submittedAt || now - submittedAt <= staleLimit) return;
+      const locationId = Number(pending.locationId);
+      const location = getLocation(locationId);
+      anomalies.push({
+        id: `stale-${user.id}-${locationId}-${index}`,
+        type: 'stale_pending',
+        severity: 'low',
+        userId: user.id,
+        username: user.username,
+        locationId,
+        locationName: location?.name || `#${locationId}`,
+        title: '打卡等待审核过久',
+        detail: `已等待超过 ${Math.round(staleLimit / 3600000)} 小时。`,
+        occurredAt: submittedAt
+      });
+    });
+  });
+
+  return anomalies.sort((a, b) => {
+    const priority = { high: 3, medium: 2, low: 1 };
+    return (priority[b.severity] || 0) - (priority[a.severity] || 0) || b.occurredAt - a.occurredAt;
+  });
+}
+
+// GET /admin/dashboard
+router.get('/dashboard', auth, adminOnly, (req, res) => {
+  const users = readUsers();
+  const submissions = readSubmissionsArray();
+  const anomalies = buildAnomalies(users);
+  const pendingCheckins = users.reduce((sum, user) => sum + user.lockingLocations.length, 0);
+  const pendingSubmissions = submissions.filter(item =>
+    item.status === 'pending' || (item.status === 'rejected' && item.appealStatus === 'pending')
+  ).length;
+
+  return res.json({
+    code: 0,
+    data: {
+      currentAdmin: {
+        id: req.adminUser.id,
+        username: req.adminUser.username,
+        avatar: req.adminUser.avatar,
+        role: req.role,
+        canManageRoles: canManageRoles(req.role)
+      },
+      metrics: {
+        pendingTotal: pendingCheckins + pendingSubmissions,
+        pendingCheckins,
+        pendingSubmissions,
+        userCount: users.length,
+        submissionCount: submissions.length,
+        checkinCount: users.reduce((sum, user) => sum + user.unlockedLocations.length, 0),
+        anomalyCount: anomalies.length,
+        featuredCount: submissions.filter(item => item.featured).length
+      },
+      activity: buildActivity(users),
+      hotspots: buildHotspots(users),
+      anomalyPreview: anomalies.slice(0, 5)
+    }
+  });
+});
+
+// GET /admin/anomalies
+router.get('/anomalies', auth, adminOnly, (req, res) => {
+  const type = String(req.query.type || 'all');
+  const all = buildAnomalies(readUsers());
+  const list = type === 'all' ? all : all.filter(item => item.type === type);
+  const stat = all.reduce((acc, item) => {
+    acc.all += 1;
+    acc[item.severity] = (acc[item.severity] || 0) + 1;
+    return acc;
+  }, { all: 0, high: 0, medium: 0, low: 0 });
+  return res.json({ code: 0, list, stat });
+});
+
+// GET /admin/locations
+router.get('/locations', auth, adminOnly, (req, res) => {
+  const query = String(req.query.query || '').trim().toLowerCase();
+  const all = getLocations();
+  const list = query
+    ? all.filter(item => `${item.id} ${item.name} ${item.position}`.toLowerCase().includes(query))
+    : all;
+  return res.json({ code: 0, list, total: all.length });
+});
+
+// PATCH /admin/locations/:id
+router.patch('/locations/:id', auth, adminOnly, (req, res) => {
+  try {
+    const location = updateLocation(req.params.id, req.body || {});
+    return res.json({ code: 0, message: '打卡点设置已保存', data: { location } });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ code: 1, message: error.message || '保存打卡点失败' });
+  }
 });
 
 // ====== 打卡审核列表（区分 pending/approved/all） ======
@@ -180,26 +446,35 @@ router.get('/checkins', auth, adminOnly, async (req, res) => {
 
   // COS 查每条的“最新一张图”
   const rows = await Promise.all(tasks.map(async ({ u, locId, status }) => {
-    const found = await listLatestPhoto(u.id, u.username, locId); // 可能拿不到（未配置 COS 访问）
+    const pending = u.pendingCheckins.find(item => Number(item.locationId) === locId);
+    const approvedRecord = u.checkinRecords
+      .filter(item => Number(item.locationId) === locId)
+      .sort((a, b) => timestampOf(b.time) - timestampOf(a.time))[0];
+    const storedPhoto = pending?.photo || (pending?.key ? toUrl(pending.key) : '');
+    const found = storedPhoto ? null : await listLatestPhoto(u.id, u.username, locId);
+    const location = getLocation(locId);
     return {
       id: `${u.id}_${locId}`,     // 组合键：userId_locationId
       userId: u.id,
       username: u.username,
       avatar: u.avatar,
       locationId: locId,
+      locationName: location?.name || `未知地点 #${locId}`,
+      points: location?.points ?? 1,
       status,                     // 'pending' or 'approved'
-      photo: found ? found.url : '',
-      uploadTime: found ? found.uploadTime : 0
+      photo: storedPhoto || (found ? found.url : ''),
+      uploadTime: timestampOf(pending?.submittedAt || approvedRecord?.time) || (found ? found.uploadTime : 0)
     };
   }));
 
   // 排序：最新在前
   rows.sort((a, b) => (b.uploadTime || 0) - (a.uploadTime || 0));
 
-  // 统计
-  const stat = rows.reduce((acc, r) => {
-    acc[r.status] = (acc[r.status] || 0) + 1;
-    acc.all++;
+  // 统计始终基于完整队列，避免切换筛选时数字跳成 0
+  const stat = users.reduce((acc, user) => {
+    acc.pending += user.lockingLocations.length;
+    acc.approved += user.unlockedLocations.length;
+    acc.all += user.lockingLocations.length + user.unlockedLocations.length;
     return acc;
   }, { all: 0, pending: 0, approved: 0 });
 
@@ -224,21 +499,29 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
   u.unlockedLocations = Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [];
   u.completedRoutes   = Array.isArray(u.completedRoutes)   ? u.completedRoutes   : [];
   u.checkinRecords    = Array.isArray(u.checkinRecords)    ? u.checkinRecords    : [];
+  u.pendingCheckins   = Array.isArray(u.pendingCheckins)   ? u.pendingCheckins   : [];
+  u.checkinReviewRecords = Array.isArray(u.checkinReviewRecords) ? u.checkinReviewRecords : [];
   u.points = Number.isFinite(u.points) ? u.points : 0;
 
   const alreadyUnlocked = u.unlockedLocations.includes(locationId);
   const newlyCompletedRoutes = [];
+  const pending = u.pendingCheckins.find(item => Number(item.locationId) === locationId);
+  const location = getLocation(locationId);
+  const pointsAwarded = Number.isInteger(Number(location?.points)) ? Number(location.points) : 1;
+  u.pendingCheckins = u.pendingCheckins.filter(item => Number(item.locationId) !== locationId);
 
   // 未解锁时才追加积分与打卡记录
   if (!alreadyUnlocked) {
     u.unlockedLocations.push(locationId);
-    u.points += 1;
+    u.points += pointsAwarded;
 
     u.checkinRecords.push({
       locationId,
       distance: null,
       method: 'photo',
-      time: new Date().toISOString()
+      pointsAwarded,
+      time: new Date(timestampOf(pending?.submittedAt) || Date.now()).toISOString(),
+      approvedAt: new Date().toISOString()
     });
 
     // 与 /checkin/map 相同的路线完成判定
@@ -255,6 +538,15 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
     }
   }
 
+  u.checkinReviewRecords.push({
+    locationId,
+    status: 'approved',
+    note: String(req.body?.note || '').trim(),
+    reviewerId: req.userId,
+    reviewedAt: Date.now()
+  });
+  u.checkinReviewRecords = u.checkinReviewRecords.slice(-100);
+
   u.updatedAt = Date.now();
   writeUsers(users);
 
@@ -263,6 +555,7 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
     message: '已通过',
     data: {
       locationId,
+      pointsAwarded: alreadyUnlocked ? 0 : pointsAwarded,
       newlyUnlocked: !alreadyUnlocked,
       newlyCompletedRoutes,
       points: u.points,
@@ -278,15 +571,25 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
 router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
   const raw = String(req.params.id || '');
   const [uidStr, locStr] = raw.includes(':') ? raw.split(':') : raw.split('_');
-  const userId = Number(uidStr);
+  const userId = uidStr;
   const locationId = Number(locStr);
   if (!userId || !locationId) return res.status(400).json({ code: 1, message: '参数不正确' });
 
   const users = readUsers();
-  const u = users.find(x => x.id === userId);
+  const u = users.find(x => String(x.id) === String(userId));
   if (!u) return res.status(404).json({ code: 1, message: '用户不存在' });
 
   u.lockingLocations = (u.lockingLocations || []).filter(x => Number(x) !== locationId);
+  u.pendingCheckins = (u.pendingCheckins || []).filter(item => Number(item.locationId) !== locationId);
+  u.checkinReviewRecords = Array.isArray(u.checkinReviewRecords) ? u.checkinReviewRecords : [];
+  u.checkinReviewRecords.push({
+    locationId,
+    status: 'rejected',
+    note: String(req.body?.note || '').trim(),
+    reviewerId: req.userId,
+    reviewedAt: Date.now()
+  });
+  u.checkinReviewRecords = u.checkinReviewRecords.slice(-100);
   u.updatedAt = Date.now();
   writeUsers(users);
 
@@ -483,6 +786,9 @@ router.post('/submissions/:id/feature', auth, adminOnly, (req, res) => {
   const list = readSubmissionsArray();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  if (item.status !== 'approved') {
+    return res.status(400).json({ code: 1, message: '只有已通过的作品可以标记为优秀' });
+  }
 
   const featured = req.body?.featured === true || req.body?.featured === 'true';
   item.featured = featured;
