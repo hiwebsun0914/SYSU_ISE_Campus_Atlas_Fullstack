@@ -2,10 +2,10 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const COS = require('cos-nodejs-sdk-v5');
 
 const auth = require('../middleware/auth');
 
-const router = express.Router();
 const STORE_FILE = path.resolve(
   process.env.FUTURE_CARDS_FILE || path.join(__dirname, '..', 'future_cards.json')
 );
@@ -15,10 +15,24 @@ const FONTS = new Set(['song', 'sans', 'hand']);
 const SIZES = new Set(['small', 'medium', 'large']);
 const ALIGNS = new Set(['left', 'center']);
 const SIGNATURE_MODES = new Set(['default', 'nickname']);
-const WRITE_LIMIT = Math.max(1, Number(process.env.FUTURE_CARD_WRITE_LIMIT || 30));
-const BODY_LIMIT = Math.max(1024, Number(process.env.FUTURE_CARD_BODY_LIMIT || 16 * 1024));
+function readPositiveLimit(name, fallback) {
+  const value = Number(process.env[name]);
+  if (!Number.isFinite(value) || value <= 0) return fallback;
+  return Math.max(1, Math.floor(value));
+}
+
+const WRITE_LIMIT = readPositiveLimit('FUTURE_CARD_WRITE_LIMIT', 30);
+const BODY_LIMIT = readPositiveLimit('FUTURE_CARD_BODY_LIMIT', 16 * 1024);
 const WRITE_WINDOW_MS = 60 * 1000;
 const writeWindows = new Map();
+const COS_BUCKET = process.env.COS_BUCKET;
+const COS_REGION = process.env.COS_REGION;
+const COS_SECRET_ID = process.env.COS_SECRET_ID || process.env.TENCENT_SECRET_ID;
+const COS_SECRET_KEY = process.env.COS_SECRET_KEY || process.env.TENCENT_SECRET_KEY;
+const IMAGE_LIMIT_BYTES = readPositiveLimit('FUTURE_CARD_IMAGE_LIMIT', 8 * 1024 * 1024);
+const cos = COS_BUCKET && COS_REGION && COS_SECRET_ID && COS_SECRET_KEY
+  ? new COS({ SecretId: COS_SECRET_ID, SecretKey: COS_SECRET_KEY })
+  : null;
 
 class ApiError extends Error {
   constructor(status, errorCode, message) {
@@ -205,86 +219,220 @@ function ownCard(store, id, userId) {
   return store.cards.find(card => card.id === id && String(card.ownerId) === String(userId));
 }
 
-router.get('/', auth, (req, res) => {
+function imageKeyFor(userId, cardId) {
+  const random = crypto.randomBytes(6).toString('hex');
+  return `FutureCard/${String(userId)}/${String(cardId)}/${Date.now()}_${random}.png`;
+}
+
+function signedImageUrl(key, client = cos) {
+  if (!client || !key || typeof client.getObjectUrl !== 'function') return null;
   try {
-    const store = readStore();
-    const cards = store.cards
-      .filter(card => String(card.ownerId) === String(req.userId))
-      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-    return res.json({ code: 0, data: { cards } });
-  } catch (error) {
-    return sendError(res, error);
+    return client.getObjectUrl({
+      Bucket: COS_BUCKET,
+      Region: COS_REGION,
+      Key: key,
+      Sign: true,
+      Expires: 600
+    });
+  } catch {
+    return null;
   }
-});
+}
 
-router.get('/:id', auth, (req, res) => {
+function cardForResponse(card, client = cos) {
+  const output = { ...card };
+  if (card.imageKey) output.imageUrl = signedImageUrl(card.imageKey, client);
+  return output;
+}
+
+function requireCos(client) {
+  if (!client) throw new ApiError(503, 'COS_UNAVAILABLE', '图片存储服务暂不可用，请稍后重试');
+  return client;
+}
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+function cleanupObject(client, key, label) {
+  if (!client || !key || typeof client.deleteObject !== 'function') return;
   try {
-    const store = readStore();
-    const card = ownCard(store, String(req.params.id || ''), req.userId);
-    if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
-    return res.json({ code: 0, data: { card } });
+    const result = client.deleteObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key });
+    if (result && typeof result.catch === 'function') {
+      result.catch(error => console.warn(`[future-cards] ${label} cleanup failed:`, error?.code || error?.message));
+    }
   } catch (error) {
-    return sendError(res, error);
+    console.warn(`[future-cards] ${label} cleanup failed:`, error?.code || error?.message);
   }
-});
+}
 
-router.post('/', auth, enforceBodyLimit, writeRateLimit, (req, res) => {
-  try {
-    const validated = validatePayload(req.body, req.user);
-    const store = readStore();
-    const timestamp = new Date().toISOString();
-    const card = {
-      id: crypto.randomUUID(),
-      ownerId: req.userId,
-      ...validated,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-    store.cards.unshift(card);
-    writeStore(store);
-    return res.status(201).json({ code: 0, data: { card } });
-  } catch (error) {
-    return sendError(res, error);
+function registerRoutes(router, cosClient) {
+  router.use((req, _res, next) => {
+    req.futureCardsCos = cosClient;
+    next();
+  });
+
+  router.get('/', auth, (req, res) => {
+    try {
+      const store = readStore();
+      const cards = store.cards
+        .filter(card => String(card.ownerId) === String(req.userId))
+        .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+      return res.json({ code: 0, data: { cards: cards.map(card => cardForResponse(card, req.futureCardsCos)) } });
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  router.get('/:id', auth, (req, res) => {
+    try {
+      const store = readStore();
+      const card = ownCard(store, String(req.params.id || ''), req.userId);
+      if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
+      return res.json({ code: 0, data: { card: cardForResponse(card, req.futureCardsCos) } });
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  router.post('/', auth, enforceBodyLimit, writeRateLimit, (req, res) => {
+    try {
+      const validated = validatePayload(req.body, req.user);
+      const store = readStore();
+      const timestamp = new Date().toISOString();
+      const card = {
+        id: crypto.randomUUID(),
+        ownerId: req.userId,
+        ...validated,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      store.cards.unshift(card);
+      writeStore(store);
+      return res.status(201).json({ code: 0, data: { card: cardForResponse(card, req.futureCardsCos) } });
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  router.patch('/:id', auth, enforceBodyLimit, writeRateLimit, (req, res) => {
+    try {
+      const validated = validatePayload(req.body, req.user);
+      const store = readStore();
+      const card = ownCard(store, String(req.params.id || ''), req.userId);
+      if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
+      Object.assign(card, validated, { updatedAt: new Date().toISOString() });
+      writeStore(store);
+      return res.json({ code: 0, data: { card: cardForResponse(card, req.futureCardsCos) } });
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  const imageRawParser = express.raw({ type: 'image/png', limit: IMAGE_LIMIT_BYTES });
+  function parseImageBody(req, res, next) {
+    return imageRawParser(req, res, error => {
+      if (!error) return next();
+      if (error.type === 'entity.too.large' || error.status === 413) {
+        return sendError(res, new ApiError(413, 'IMAGE_TOO_LARGE', '图片大小超过限制'));
+      }
+      return sendError(res, new ApiError(400, 'INVALID_IMAGE', '仅支持非空 PNG 图片'));
+    });
   }
-});
 
-router.patch('/:id', auth, enforceBodyLimit, writeRateLimit, (req, res) => {
-  try {
-    const validated = validatePayload(req.body, req.user);
-    const store = readStore();
-    const card = ownCard(store, String(req.params.id || ''), req.userId);
-    if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
-    Object.assign(card, validated, { updatedAt: new Date().toISOString() });
-    writeStore(store);
-    return res.json({ code: 0, data: { card } });
-  } catch (error) {
-    return sendError(res, error);
-  }
-});
+  router.post('/:id/image', auth, writeRateLimit, parseImageBody, async (req, res) => {
+    let uploadedKey = '';
+    try {
+      const contentType = String(req.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      const body = Buffer.isBuffer(req.body) ? req.body : null;
+      if (contentType !== 'image/png' || !body?.length || body.length < PNG_SIGNATURE.length
+        || !body.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) {
+        throw new ApiError(400, 'INVALID_IMAGE', '仅支持非空 PNG 图片');
+      }
+      if (body.length > IMAGE_LIMIT_BYTES) {
+        throw new ApiError(413, 'IMAGE_TOO_LARGE', '图片大小超过限制');
+      }
 
-router.delete('/:id', auth, writeRateLimit, (req, res) => {
-  try {
-    const store = readStore();
-    const index = store.cards.findIndex(card => (
-      card.id === String(req.params.id || '') && String(card.ownerId) === String(req.userId)
-    ));
-    if (index === -1) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
-    const [{ id }] = store.cards.splice(index, 1);
-    writeStore(store);
-    return res.json({ code: 0, data: { id } });
-  } catch (error) {
-    return sendError(res, error);
-  }
-});
+      const store = readStore();
+      const card = ownCard(store, String(req.params.id || ''), req.userId);
+      if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
 
-router._test = {
-  MODE_LIMITS,
-  normalizeContent,
-  visibleLength,
-  moderationFingerprint,
-  contentRejected,
-  validatePayload
-};
+      const client = requireCos(req.futureCardsCos);
+      uploadedKey = imageKeyFor(req.userId, card.id);
+      try {
+        await client.putObject({
+          Bucket: COS_BUCKET,
+          Region: COS_REGION,
+          Key: uploadedKey,
+          Body: body,
+          ContentType: 'image/png'
+        });
+      } catch (uploadError) {
+        console.error('[future-cards] image upload failed:', uploadError?.code || uploadError?.message || uploadError);
+        throw new ApiError(502, 'IMAGE_UPLOAD_FAILED', '图片上传失败，请稍后重试');
+      }
 
+      // Re-read after the asynchronous upload so a concurrent PATCH is retained.
+      const latestStore = readStore();
+      const latestCard = ownCard(latestStore, String(req.params.id || ''), req.userId);
+      if (!latestCard) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
+
+      const previousKey = latestCard.imageKey;
+      const now = new Date().toISOString();
+      latestCard.imageKey = uploadedKey;
+      latestCard.imageUpdatedAt = now;
+      latestCard.updatedAt = now;
+      writeStore(latestStore);
+      uploadedKey = '';
+
+      if (previousKey && previousKey !== latestCard.imageKey) {
+        cleanupObject(client, previousKey, 'old image');
+      }
+
+      return res.status(201).json({ code: 0, data: { card: cardForResponse(latestCard, client) } });
+    } catch (error) {
+      cleanupObject(req.futureCardsCos, uploadedKey, 'image');
+      return sendError(res, error);
+    }
+  });
+
+  router.delete('/:id', auth, writeRateLimit, (req, res) => {
+    try {
+      const store = readStore();
+      const index = store.cards.findIndex(card => (
+        card.id === String(req.params.id || '') && String(card.ownerId) === String(req.userId)
+      ));
+      if (index === -1) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
+      const [{ id, imageKey }] = store.cards.splice(index, 1);
+      writeStore(store);
+      cleanupObject(req.futureCardsCos, imageKey, 'deleted image');
+      return res.json({ code: 0, data: { id } });
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  router._test = {
+    MODE_LIMITS,
+    BODY_LIMIT,
+    IMAGE_LIMIT_BYTES,
+    readPositiveLimit,
+    normalizeContent,
+    visibleLength,
+    moderationFingerprint,
+    contentRejected,
+    validatePayload,
+    imageKeyFor,
+    cardForResponse
+  };
+  return router;
+}
+
+function createFutureCardsRouter(options = {}) {
+  const client = Object.prototype.hasOwnProperty.call(options, 'cosClient')
+    ? options.cosClient
+    : cos;
+  return registerRoutes(express.Router(), client);
+}
+
+const router = createFutureCardsRouter();
+router.createFutureCardsRouter = createFutureCardsRouter;
 module.exports = router;
-
