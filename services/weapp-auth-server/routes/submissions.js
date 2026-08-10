@@ -7,6 +7,7 @@ const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
 const COS = require('cos-nodejs-sdk-v5');
+const multer = require('multer');
 const auth = require('../middleware/auth');
 const { optionalAuth } = require('../middleware/auth');
 const awards = require('../data/awards');
@@ -324,6 +325,60 @@ router.post('/commit', auth, async (req, res) => {
   }).catch(e => console.warn('[submissions/commit] ACL fail', e?.message));
 
   res.json({ code: 0, data: { key, url: toUrl(key) } });
+});
+
+// ====== 3b. 后端中转上传（推荐：绕过 COS 跨域限制，任何设备/域名都能传图） ======
+// POST /submissions/upload  multipart/form-data  file=<图片>
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: (awards.maxImageMB || 10) * 1024 * 1024,
+    files: 1
+  }
+});
+
+router.post('/upload', auth, uploadMemory.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.json({ code: 1, message: '请选择要上传的图片' });
+  if (file.size > (awards.maxImageMB || 10) * 1024 * 1024) {
+    return res.json({ code: 1, message: `图片不能超过 ${awards.maxImageMB}MB` });
+  }
+
+  const rawExt = String((file.originalname || '').split('.').pop() || '').toLowerCase();
+  const ext = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(rawExt) ? rawExt : '';
+  const typeOk = (awards.allowedImageTypes || []).includes(file.mimetype);
+  if (!typeOk && !ext) {
+    return res.json({ code: 1, message: '图片格式不支持，请使用 JPG / PNG / WebP / GIF' });
+  }
+
+  const key = buildKey(req, ext || 'jpg');
+  try {
+    if (cos) {
+      // 有密钥：用 SDK 服务端上传（不经过浏览器，无跨域问题）
+      await new Promise((resolve, reject) => {
+        cos.putObject({
+          Bucket: COS_BUCKET,
+          Region: COS_REGION,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype || 'image/jpeg'
+        }, err => (err ? reject(err) : resolve()));
+      });
+    } else {
+      // 无密钥：服务端直连公有桶上传（同样不经过浏览器）
+      if (!bucketBaseUrl) return res.status(500).json({ code: 1, message: 'COS 未配置，无法上传图片' });
+      const put = await fetch(`${bucketBaseUrl}/${encodeURI(key)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.mimetype || 'image/jpeg' },
+        body: file.buffer
+      });
+      if (!put.ok) return res.status(502).json({ code: 1, message: '图片上传到存储桶失败，请重试' });
+    }
+    res.json({ code: 0, data: { key, url: toUrl(key) } });
+  } catch (e) {
+    console.error('[submissions/upload] fail:', e);
+    res.status(500).json({ code: 1, message: '图片上传失败，请重试' });
+  }
 });
 
 // ====== 4. 创建投稿 ======

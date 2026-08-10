@@ -268,22 +268,12 @@ function removeImage(uid) {
 }
 
 async function uploadOne(file) {
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-  const sign = await request('/submissions/presign', 'POST', { ext })
-  if (sign?.data?.code !== 0) throw new Error(sign?.data?.message || '获取上传地址失败')
-  const { key, putUrl } = sign.data.data
-
-  const put = await fetch(putUrl, {
-    method: 'PUT',
-    mode: 'cors',
-    headers: { 'Content-Type': file.type || 'image/jpeg' },
-    body: file
-  })
-  if (!put.ok) throw new Error(`图片上传失败（HTTP ${put.status}）`)
-
-  const commit = await request('/submissions/commit', 'POST', { key, size: file.size })
-  if (commit?.data?.code !== 0) throw new Error(commit?.data?.message || '确认上传失败')
-  return { key, url: commit.data.data.url }
+  // 图片先传给后端，由后端转发到存储桶（不依赖存储桶跨域配置，任何设备都能上传）
+  const form = new FormData()
+  form.append('file', file)
+  const res = await request('/submissions/upload', 'POST', form)
+  if (res?.data?.code !== 0) throw new Error(res?.data?.message || '图片上传失败，请重试')
+  return { key: res.data.data.key, url: res.data.data.url }
 }
 
 async function submit() {
