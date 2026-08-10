@@ -16,6 +16,8 @@ export default createRouter({
     { path: '/future-card',  component: () => import('../pages/futureCard.vue') },
     { path: '/signin',       component: () => import('../pages/signin.vue') },
     { path: '/connect',      component: () => import('../pages/connect.vue') },
+    { path: '/hidden-checkpoints', component: () => import('../pages/HiddenCheckpoints.vue') },
+    { path: '/hidden-checkpoints/:id', component: () => import('../pages/HiddenCheckpointDetail.vue') },
 
     // 如果 Review 在 src/pages/admin/Review.vue，用下面这一行
     { path: '/admin/review', component: () => import('../pages/admin/Review.vue') },

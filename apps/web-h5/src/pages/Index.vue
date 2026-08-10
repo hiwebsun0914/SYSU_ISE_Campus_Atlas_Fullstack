@@ -531,30 +531,17 @@ function srcsetFor(item){
   return `${item.image} 1x, ${x15} 1.5x, ${x20} 2x`
 }
 
-/* ===== 打卡流程（原逻辑保持） ===== */
-import auth from '@/utils/auth'
+/* ===== 打卡流程（复用统一 checkinFlow，逻辑与 /atlas 原版一致） ===== */
+import { checkinFlow } from '@/utils/checkinFlow'
 
-function isAuthed() {
-  try { return typeof auth?.isLoggedIn === 'function' ? auth.isLoggedIn() : !!auth?.isLoggedIn }
-  catch { return false }
-}
-function showStepError(step, errOrMsg, extra = {}) {
-  const msg = typeof errOrMsg === 'string' ? errOrMsg : (errOrMsg?.message || '未知错误')
-  console.groupCollapsed(`[checkin] ❌ ${step} 失败：${msg}`)
-  console.log('extra =>', extra)
-  if (errOrMsg && typeof errOrMsg !== 'string') console.error(errOrMsg)
-  console.groupEnd()
-  alert(`${step} 失败：${msg}`)
-}
-function pickImageOnce() {
-  return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = () => resolve((input.files && input.files[0]) || null)
-    input.click()
-  })
-}
+const { isAuthed, runCheckInFlow } = (() => {
+  // 兼容导出：runCheckin 为主流程
+  const flow = checkinFlow
+  return {
+    isAuthed: flow.isAuthed,
+    runCheckInFlow: flow.runCheckin,
+  }
+})()
 
 async function checkIn(id) {
   const loc = (locations.value || []).find(l => l.id === id)
@@ -562,62 +549,22 @@ async function checkIn(id) {
     await previewExistingPhoto(id)
     return
   }
-  if (!isAuthed()) { pushOrRedirect('/signin'); return }
 
-  const file = await pickImageOnce()
-  if (!file) return
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-  const fileType = file.type || 'image/jpeg'
+  const res = await runCheckInFlow({
+    locationId: id,
+    onSubmitted: () => {
+      locations.value = (locations.value || []).map(it =>
+        it.id === id ? { ...it, status: 'pending' } : it
+      )
+    },
+    onError: (reason) => {
+      if (reason === 'unauthorized') pushOrRedirect('/signin')
+    },
+  })
+  if (res?.ok) return
 
-  try {
-    let sign
-    try { sign = await request('/checkin/presign', 'POST', { ext, locationId: id }) }
-    catch (e) { return showStepError('预签名(/checkin/presign) 网络', e) }
-    if ((sign?.status && sign.status !== 200) || sign?.data?.code !== 0) {
-      return showStepError('预签名(/checkin/presign) 返回', sign?.data?.message || `HTTP ${sign?.status}`, { sign })
-    }
-    const { key, putUrl, contentType } = sign.data.data || {}
-    if (!putUrl || !key) return showStepError('预签名', '返回缺少 putUrl 或 key', { signData: sign?.data })
-    const usedContentType = contentType || fileType
-
-    let putRes
-    try {
-      putRes = await fetch(putUrl, { method: 'PUT', mode: 'cors', headers: { 'Content-Type': usedContentType }, body: file })
-    } catch (e) {
-      return showStepError('上传(对象存储 PUT) 网络/CORS', e, { putUrl, usedContentType })
-    }
-    if (!putRes.ok) {
-      let bodyText = ''
-      try { bodyText = await putRes.text() } catch {}
-      return showStepError('上传(对象存储 PUT) 状态码', `HTTP ${putRes.status}`, {
-        status: putRes.status,
-        headers: Object.fromEntries(putRes.headers.entries()),
-        bodyText: bodyText?.slice(0, 400)
-      })
-    }
-
-    let commit
-    try { commit = await request('/checkin/commit', 'POST', { key, size: file.size, locationId: id }) }
-    catch (e) { return showStepError('绑定(/checkin/commit) 网络', e) }
-    if ((commit?.status && commit.status !== 200) || commit?.data?.code !== 0) {
-      return showStepError('绑定(/checkin/commit) 返回', commit?.data?.message || `HTTP ${commit?.status}`, { commit })
-    }
-    const photoUrl = commit?.data?.url || ''
-
-    const nowISO = new Date().toISOString()
-    const records = JSON.parse(localStorage.getItem('checkinRecords') || '[]')
-    records.push({ locationId: id, time: nowISO, photo: photoUrl })
-    localStorage.setItem('checkinRecords', JSON.stringify(records))
-
-    locations.value = (locations.value || []).map(it =>
-      it.id === id ? { ...it, status: 'pending' } : it
-    )
-
-    alert('打卡成功，等待审核')
-  } catch (err) {
-    console.error('[checkin] 未捕获错误', err)
-    alert('网络异常（可能是 CORS、跨域 Cookie 或对象存储拦截）')
-  }
+  // 未登录跳转已在 onError 中处理；其余失败由 checkinFlow 内部弹窗
+  if (res && res.reason === 'no-file') return
 }
 
 /* ===== ✅ 已上传图片预览：优先从后端拿“最新一张” ===== */

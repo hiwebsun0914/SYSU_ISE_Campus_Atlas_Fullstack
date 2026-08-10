@@ -249,6 +249,7 @@ router.post('/commit', auth, async (req, res) => {
   // === 关键：把 locationId 写入 users.json 的 lockingLocations（仅数字） ===
   // 说明：前端打卡时会把 locationId 一并传给 commit
   const locNum = Number(req.body?.locationId);
+  let awardedPoints = 0;
   if (Number.isInteger(locNum)) {
     const users = readUsers();
     const idx = users.findIndex(u => String(u.id) === String(uid));
@@ -257,16 +258,22 @@ router.post('/commit', auth, async (req, res) => {
       u.lockingLocations = Array.isArray(u.lockingLocations) ? u.lockingLocations : [];
       u.unlockedLocations = Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [];
 
+      u.points = Number.isFinite(u.points) ? u.points : 0;
+
       // 已解锁则不再加入待审；未解锁也未待审时加入
       if (!u.unlockedLocations.includes(locNum) && !u.lockingLocations.includes(locNum)) {
         u.lockingLocations.push(locNum);
+        // 首次拍照打卡加分：隐藏地点 +2，普通地点 +1（仅首次，不与 GPS 重复）
+        const isHidden = locations.some(l => l.id === locNum && l.isHidden);
+        awardedPoints = isHidden ? 2 : 1;
+        u.points += awardedPoints;
       }
       u.updatedAt = Date.now();
       writeUsers(users);
     }
   }
 
-  res.json({ code: 0, key, url: toUrl(key) });
+  res.json({ code: 0, key, url: toUrl(key), awardedPoints });
 });
 
 // ==== D. 获取打卡状态 ====
@@ -319,11 +326,15 @@ router.post('/map', auth, (req, res) => {
     user.points = Number.isFinite(user.points) ? user.points : 0;
 
     const alreadyUnlocked = user.unlockedLocations.includes(locNum);
+    const alreadyPending = user.lockingLocations.includes(locNum); // 已通过拍照打卡（已加分）
 
     // 未解锁时才写入积分与记录
     if (!alreadyUnlocked) {
       user.unlockedLocations.push(locNum);
-      user.points += 1;
+      // 仅当该地点之前未通过拍照打卡时才加 GPS 的 1 分，避免与拍照重复加分
+      if (!alreadyPending) {
+        user.points += 1;
+      }
 
       user.checkinRecords.push({
         locationId: locNum,
@@ -342,7 +353,6 @@ router.post('/map', auth, (req, res) => {
       const allUnlocked = route.points.every(id => user.unlockedLocations.includes(id));
       if (allUnlocked) {
         user.completedRoutes.push(route.id);
-        user.points += route.bonus || 5;
         newlyCompletedRoutes.push(route.id);
       }
     }
