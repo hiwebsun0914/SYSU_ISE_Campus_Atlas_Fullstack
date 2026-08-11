@@ -27,12 +27,57 @@ const WRITE_WINDOW_MS = 60 * 1000;
 const writeWindows = new Map();
 const COS_BUCKET = process.env.COS_BUCKET;
 const COS_REGION = process.env.COS_REGION;
+const PUBLIC_ASSET_DOMAIN = process.env.PUBLIC_ASSET_DOMAIN;
 const COS_SECRET_ID = process.env.COS_SECRET_ID || process.env.TENCENT_SECRET_ID;
 const COS_SECRET_KEY = process.env.COS_SECRET_KEY || process.env.TENCENT_SECRET_KEY;
 const IMAGE_LIMIT_BYTES = readPositiveLimit('FUTURE_CARD_IMAGE_LIMIT', 8 * 1024 * 1024);
-const cos = COS_BUCKET && COS_REGION && COS_SECRET_ID && COS_SECRET_KEY
-  ? new COS({ SecretId: COS_SECRET_ID, SecretKey: COS_SECRET_KEY })
-  : null;
+
+function publicAssetBase() {
+  return (PUBLIC_ASSET_DOMAIN || (
+    COS_BUCKET && COS_REGION ? `https://${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com` : ''
+  )).replace(/\/+$/, '');
+}
+
+function publicUrlForKey(key) {
+  const base = publicAssetBase();
+  if (!base || !key) return null;
+  return `${base}/${String(key).split('/').map(encodeURIComponent).join('/')}`;
+}
+
+function createPublicBucketClient(fetchImpl = globalThis.fetch) {
+  if (!COS_BUCKET || !COS_REGION || !publicAssetBase() || typeof fetchImpl !== 'function') return null;
+  return {
+    async putObject({ Key, Body, ContentType }) {
+      const response = await fetchImpl(publicUrlForKey(Key), {
+        method: 'PUT',
+        headers: { 'Content-Type': ContentType || 'application/octet-stream' },
+        body: Body
+      });
+      if (!response || !response.ok) {
+        const status = response?.status || 'NO_RESPONSE';
+        throw new Error(`public bucket upload failed: ${status}`);
+      }
+    },
+    async deleteObject({ Key }) {
+      const response = await fetchImpl(publicUrlForKey(Key), { method: 'DELETE' });
+      if (response && !response.ok && response.status !== 404) {
+        throw new Error(`public bucket delete failed: ${response.status}`);
+      }
+    },
+    getObjectUrl({ Key }) {
+      return publicUrlForKey(Key);
+    }
+  };
+}
+
+function createDefaultCosClient(fetchImpl = globalThis.fetch) {
+  if (COS_BUCKET && COS_REGION && COS_SECRET_ID && COS_SECRET_KEY) {
+    return new COS({ SecretId: COS_SECRET_ID, SecretKey: COS_SECRET_KEY });
+  }
+  return createPublicBucketClient(fetchImpl);
+}
+
+const cos = createDefaultCosClient();
 
 class ApiError extends Error {
   constructor(status, errorCode, message) {
@@ -429,7 +474,7 @@ function registerRoutes(router, cosClient) {
 function createFutureCardsRouter(options = {}) {
   const client = Object.prototype.hasOwnProperty.call(options, 'cosClient')
     ? options.cosClient
-    : cos;
+    : createDefaultCosClient(options.fetchImpl);
   return registerRoutes(express.Router(), client);
 }
 

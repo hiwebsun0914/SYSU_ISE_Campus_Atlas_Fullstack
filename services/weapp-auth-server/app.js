@@ -15,6 +15,7 @@ const checkinRouter = require('./routes/checkin');// 打卡/通用上传
 const bottleRouter  = require('./routes/bottle');
 const futureCardsRouter = require('./routes/futureCards');
 const adminRouter   = require('./routes/admin');
+const submissionsRouter = require('./routes/submissions');
 const gallery       = require('./data/gallery');
 const locations     = require('./data/locations');
 
@@ -123,6 +124,7 @@ app.use('/avatar',  avatarRouter);
 app.use('/checkin', checkinRouter);
 app.use('/bottle',  bottleRouter);
 app.use('/future-cards', futureCardsRouter);
+app.use('/submissions',  submissionsRouter);
 app.use('/admin',   auth, adminOnly, adminRouter);
 
 /* ========= 文件路径 ========= */

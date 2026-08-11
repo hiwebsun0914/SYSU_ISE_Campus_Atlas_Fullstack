@@ -23,10 +23,18 @@ process.env.JWT_SECRET = jwtSecret;
 process.env.SENSITIVE_WORDS = '诈骗,赌博';
 process.env.FUTURE_CARD_WRITE_LIMIT = '100';
 process.env.FUTURE_CARD_IMAGE_LIMIT = '64';
+process.env.COS_BUCKET = 'public-bucket';
+process.env.COS_REGION = 'ap-guangzhou';
+process.env.PUBLIC_ASSET_DOMAIN = 'https://public.example.test';
+delete process.env.COS_SECRET_ID;
+delete process.env.COS_SECRET_KEY;
+delete process.env.TENCENT_SECRET_ID;
+delete process.env.TENCENT_SECRET_KEY;
 
 const futureCardsModule = require('../routes/futureCards');
 const putCalls = [];
 const deleteCalls = [];
+const publicFetchCalls = [];
 let failPut = false;
 let pendingPut = null;
 const fakeCos = {
@@ -53,10 +61,21 @@ const noCosApp = express();
 noCosApp.use(express.json({ limit: '32kb' }));
 noCosApp.use('/future-cards', futureCardsModule.createFutureCardsRouter({ cosClient: null }));
 
+const publicApp = express();
+publicApp.use(express.json({ limit: '32kb' }));
+publicApp.use('/future-cards', futureCardsModule.createFutureCardsRouter({
+  fetchImpl(url, options) {
+    publicFetchCalls.push({ url, options });
+    return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('') });
+  }
+}));
+
 const server = app.listen(0, '127.0.0.1');
 const noCosServer = noCosApp.listen(0, '127.0.0.1');
+const publicServer = publicApp.listen(0, '127.0.0.1');
 let baseUrl = '';
 let noCosBaseUrl = '';
+let publicBaseUrl = '';
 const tokens = Object.fromEntries(users.map(user => [
   user.id,
   jwt.sign({ sub: user.id, username: user.username, role: user.role }, jwtSecret, { expiresIn: '5m' })
@@ -113,8 +132,10 @@ async function createImageCard(content = 'image card') {
 test.before(async () => {
   if (!server.listening) await once(server, 'listening');
   if (!noCosServer.listening) await once(noCosServer, 'listening');
+  if (!publicServer.listening) await once(publicServer, 'listening');
   baseUrl = `http://127.0.0.1:${server.address().port}`;
   noCosBaseUrl = `http://127.0.0.1:${noCosServer.address().port}`;
+  publicBaseUrl = `http://127.0.0.1:${publicServer.address().port}`;
 });
 
 test.after(async () => {
@@ -125,6 +146,10 @@ test.after(async () => {
   if (noCosServer.listening) {
     noCosServer.close();
     await once(noCosServer, 'close');
+  }
+  if (publicServer.listening) {
+    publicServer.close();
+    await once(publicServer, 'close');
   }
   const resolved = path.resolve(testDir);
   if (resolved.startsWith(path.resolve(os.tmpdir()))) fs.rmSync(resolved, { recursive: true, force: true });
@@ -303,6 +328,27 @@ test('returns structured COS unavailable and upload failures', async () => {
   assert.equal(failed.body.errorCode, 'IMAGE_UPLOAD_FAILED');
   assert.equal(deleteCalls.length, 1);
   assert.equal(deleteCalls[0].Key, putCalls.at(-1).Key);
+});
+
+test('uploads to public bucket defaults without COS credentials', async () => {
+  const created = await apiAt(publicBaseUrl, 101, '/future-cards', {
+    method: 'POST',
+    body: JSON.stringify(payload('expectation', 'public bucket upload'))
+  });
+  const cardId = created.body.data.card.id;
+  publicFetchCalls.length = 0;
+
+  const uploaded = await apiAt(publicBaseUrl, 101, `/future-cards/${cardId}/image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png' },
+    body: validPng
+  });
+
+  assert.equal(uploaded.response.status, 201);
+  assert.equal(publicFetchCalls.length, 1);
+  assert.equal(publicFetchCalls[0].options.method, 'PUT');
+  assert.match(publicFetchCalls[0].url, /^https:\/\/public\.example\.test\/FutureCard\/101\//);
+  assert.match(uploaded.body.data.card.imageUrl, /^https:\/\/public\.example\.test\/FutureCard\/101\//);
 });
 
 test('uploads, replaces, and deletes card images with signed URLs and cleanup', async () => {
