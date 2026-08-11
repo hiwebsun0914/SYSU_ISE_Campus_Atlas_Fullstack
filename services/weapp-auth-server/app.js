@@ -50,8 +50,10 @@ app.use(express.json({ limit: '128kb' }));
 app.use(bodyParser.json({ limit: '128kb' }));
 
 /* ========= /api 前缀兼容（Nginx 若未去掉前缀，后端自行剥离） ========= */
-app.use('/api', (req, _res, next) => {
-  req.url = req.url.replace(/^\/api(\/|$)/, '/');
+app.use((req, _res, next) => {
+  if (/^\/api(?=\/|\?|$)/.test(req.url || '')) {
+    req.url = req.url.slice(4) || '/';
+  }
   next();
 });
 
