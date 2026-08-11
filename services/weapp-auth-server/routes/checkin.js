@@ -321,6 +321,7 @@ router.post('/map', auth, (req, res) => {
 
     const user = users[idx];
     user.unlockedLocations = Array.isArray(user.unlockedLocations) ? user.unlockedLocations : [];
+    user.lockingLocations = Array.isArray(user.lockingLocations) ? user.lockingLocations : [];
     user.completedRoutes = Array.isArray(user.completedRoutes) ? user.completedRoutes : [];
     user.checkinRecords = Array.isArray(user.checkinRecords) ? user.checkinRecords : [];
     user.points = Number.isFinite(user.points) ? user.points : 0;

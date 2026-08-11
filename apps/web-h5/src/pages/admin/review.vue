@@ -20,6 +20,8 @@
         :class="{ active: currentTab === 'users' }"
         @click="switchTab('users')"
       >用户</button>
+
+      <button class="tab" @click="goSubmissions">奖项投稿</button>
     </div>
 
     <!-- ========== 打卡审核 ========== -->
@@ -190,7 +192,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
+
+const router = useRouter()
+
+function goSubmissions() {
+  router.push('/admin/submissions')
+}
 
 /* 地点名映射 */
 const LOC_NAME = {

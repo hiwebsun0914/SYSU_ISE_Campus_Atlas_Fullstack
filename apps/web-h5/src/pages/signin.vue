@@ -193,7 +193,7 @@ async function handleLoginStrict(name, pass) {
 async function handleRegister(name, pass, phoneNum) {
   // 1) 首选 /auth/register
   try {
-    const resp = await request('/auth/register', 'POST', { username: name, password: pass, phone: phoneNum })
+    const resp = await request('/auth/register', 'POST', { username: name, password: pass, phone: phoneNum, realName: phoneNum })
     const ok = normalizeOk(resp)
     if (!ok) throw new Error(normalizeMsg(resp) || '注册失败')
     persistLogin(resp) // 大多数注册接口会直接返回 token
@@ -204,7 +204,7 @@ async function handleRegister(name, pass, phoneNum) {
 
   // 2) 兼容：/login_or_register 作为注册模式
   const resp = await request('/login_or_register', 'POST', {
-    username: name, password: pass, phone: phoneNum, mode: 'register'
+    username: name, password: pass, phone: phoneNum, realName: phoneNum, mode: 'register'
   })
   const ok = normalizeOk(resp)
   if (!ok) throw new Error(normalizeMsg(resp) || '注册失败')

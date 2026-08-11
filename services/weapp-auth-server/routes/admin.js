@@ -9,8 +9,8 @@ const auth = require('../middleware/auth');
 const routes = require('../data/routes');
 
 // ====== 常量 / 配置 ======
-const USERS_FILE   = path.join(__dirname, '..', 'users.json');
-const BOTTLES_FILE = path.join(__dirname, '..', 'bottles.json');
+const USERS_FILE   = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
+const BOTTLES_FILE = path.resolve(process.env.BOTTLES_FILE || path.join(__dirname, '..', 'bottles.json'));
 const DEFAULT_AVATAR = 'https://img.yzcdn.cn/vant/user-active.png';
 const DEFAULT_ROLE   = 'visitor';
 
@@ -342,6 +342,243 @@ router.get('/bottles', auth, adminOnly, (req, res) => {
   );
 
   return res.json({ code: 0, list, stat: { all, picked, unpicked } });
+});
+
+// ================================================================
+// Part 6: Best Creativity Award / Best Photography Award review
+// ================================================================
+const SUBMISSIONS_FILE = path.resolve(
+  process.env.SUBMISSIONS_FILE || path.join(__dirname, '..', 'submissions.json')
+);
+const AWARDS = require('../data/awards');
+const { isActivityEnded, computeWinners } = require('../winner');
+
+function readSubmissionsArray() {
+  ensureFile(SUBMISSIONS_FILE, '[]');
+  try {
+    const raw = fs.readFileSync(SUBMISSIONS_FILE, 'utf8') || '[]';
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error('[admin] readSubmissionsArray fail:', e);
+    return [];
+  }
+}
+
+function writeSubmissionsArray(list) {
+  try {
+    fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[admin] writeSubmissionsArray fail:', e);
+  }
+}
+
+// Build statistics: total + per-status + per-category
+function buildSubmissionStat(list) {
+  const stat = {
+    all: list.length,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    down: 0,
+    featured: 0,
+    byCategory: {}
+  };
+  (AWARDS.categories || []).forEach(cat => {
+    stat.byCategory[cat.id] = { all: 0, pending: 0, approved: 0, rejected: 0, down: 0, featured: 0 };
+  });
+  list.forEach(s => {
+    const st = s.status || 'pending';
+    if (stat[st] !== undefined) stat[st] += 1;
+    if (s.featured) stat.featured += 1;
+    const cat = stat.byCategory[s.category];
+    if (cat) {
+      cat.all += 1;
+      if (cat[st] !== undefined) cat[st] += 1;
+      if (s.featured) cat.featured += 1;
+    }
+  });
+  return stat;
+}
+
+// ====== Submission list + statistics ======
+// GET /admin/submissions?status=all|pending|approved|rejected|featured&category=all|creative|photography
+router.get('/submissions', auth, adminOnly, (req, res) => {
+  const statusQ = String(req.query.status || 'all').toLowerCase();
+  const categoryQ = String(req.query.category || 'all').toLowerCase();
+
+  // 截止后自动按票数统计获奖名单
+  const all = readSubmissionsArray();
+  const { list: computedList, changed } = computeWinners(all, false);
+  if (changed) writeSubmissionsArray(computedList);
+
+  let list = computedList.slice();
+  if (statusQ !== 'all') {
+    list = list.filter(s => statusQ === 'featured' ? !!s.featured : (s.status || 'pending') === statusQ);
+  }
+  if (categoryQ !== 'all') {
+    list = list.filter(s => s.category === categoryQ);
+  }
+  list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  const stat = buildSubmissionStat(readSubmissionsArray());
+  return res.json({ code: 0, list, stat });
+});
+
+// ====== Submission statistics only ======
+// GET /admin/submissions/stats
+router.get('/submissions/stats', auth, adminOnly, (_req, res) => {
+  return res.json({ code: 0, stat: buildSubmissionStat(readSubmissionsArray()) });
+});
+
+// ====== Approve ======
+// POST /admin/submissions/:id/approve
+router.post('/submissions/:id/approve', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  const isAppeal = item.status === 'rejected' && item.appealStatus === 'pending';
+  if (item.status !== 'pending' && !isAppeal) return res.json({ code: 1, message: '该投稿已审核' });
+
+  item.status = 'approved';
+  item.updatedAt = Date.now();
+  item.reviewedAt = Date.now();
+  if (req.body?.note !== undefined && req.body?.note !== null) {
+    item.reviewNote = String(req.body.note || '').trim();
+  }
+  if (isAppeal) {
+    item.appealStatus = 'resolved';
+    item.appealResult = 'approved';
+  }
+  writeSubmissionsArray(list);
+  res.json({ code: 0, message: isAppeal ? '已通过申诉' : '已通过' });
+});
+
+// ====== Reject ======
+// POST /admin/submissions/:id/reject  { note }
+router.post('/submissions/:id/reject', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  const isAppeal = item.status === 'rejected' && item.appealStatus === 'pending';
+  if (item.status !== 'pending' && !isAppeal) return res.json({ code: 1, message: '该投稿已审核' });
+
+  const note = String(req.body?.note || '').trim();
+  if (!note) return res.json({ code: 1, message: '请填写驳回理由' });
+  item.status = 'rejected';
+  item.updatedAt = Date.now();
+  item.reviewedAt = Date.now();
+  item.reviewNote = note;
+  if (isAppeal) {
+    item.appealStatus = 'resolved';
+    item.appealResult = 'rejected';
+  }
+  writeSubmissionsArray(list);
+  res.json({ code: 0, message: isAppeal ? '已驳回申诉' : '已驳回' });
+});
+
+// ====== Mark / unmark featured ======
+// POST /admin/submissions/:id/feature  { featured: true|false }
+router.post('/submissions/:id/feature', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+
+  const featured = req.body?.featured === true || req.body?.featured === 'true';
+  item.featured = featured;
+  item.updatedAt = Date.now();
+  writeSubmissionsArray(list);
+  res.json({ code: 0, message: featured ? '已标记为优秀作品' : '已取消优秀标记', featured });
+});
+
+// ====== 下架（已通过 → 已下架，不再公开展示） ======
+// POST /admin/submissions/:id/down
+router.post('/submissions/:id/down', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  if (item.status !== 'approved') return res.json({ code: 1, message: '只有已通过的作品可以下架' });
+
+  item.status = 'down';
+  item.updatedAt = Date.now();
+  writeSubmissionsArray(list);
+  res.json({ code: 0, message: '已下架，作品不再公开展示' });
+});
+
+// ====== 重新上架（已下架 → 已通过） ======
+// POST /admin/submissions/:id/restore
+router.post('/submissions/:id/restore', auth, adminOnly, (req, res) => {
+  const list = readSubmissionsArray();
+  const item = list.find(s => String(s.id) === String(req.params.id));
+  if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
+  if (item.status !== 'down') return res.json({ code: 1, message: '只有已下架的作品可以重新上架' });
+
+  item.status = 'approved';
+  item.updatedAt = Date.now();
+  writeSubmissionsArray(list);
+  res.json({ code: 0, message: '已重新上架，作品恢复公开展示' });
+});
+
+// ====== 按当前票数刷新获奖名单（截止后自动执行；这里供管理员预览） ======
+// POST /admin/submissions/compute-winners
+router.post('/submissions/compute-winners', auth, adminOnly, (_req, res) => {
+  const list = readSubmissionsArray();
+  const { list: updated, changed, summary } = computeWinners(list, true);
+  if (changed) writeSubmissionsArray(updated);
+  res.json({
+    code: 0,
+    message: changed ? '已按当前票数刷新获奖名单' : '获奖名单未变化',
+    changed,
+    summary
+  });
+});
+
+// ====== Export submission list (CSV) ======
+// GET /admin/submissions/export?category=all|creative|photography
+router.get('/submissions/export', auth, adminOnly, (req, res) => {
+  const categoryQ = String(req.query.category || 'all').toLowerCase();
+  let list = readSubmissionsArray().slice();
+  if (categoryQ !== 'all') list = list.filter(s => s.category === categoryQ);
+  list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  const fmtTime = ts => {
+    if (!ts) return '';
+    try {
+      return new Date(Number(ts)).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    } catch {
+      return String(ts);
+    }
+  };
+
+  // Prevent CSV formula injection
+  const esc = v => {
+    let s = String(v ?? '');
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
+    s = s.replace(/"/g, '""');
+    return `"${s}"`;
+  };
+
+  const header = ['序号', '奖项', '作品名称', '作品说明', '打卡点', '投稿人', '提交时间', '审核状态', '是否优秀', '图片链接'];
+  const rows = list.map((s, i) => [
+    i + 1,
+    s.categoryName || s.category || '',
+    s.title || '',
+    s.description || '',
+    s.locationName || '',
+    s.username || '',
+    fmtTime(s.createdAt),
+    ({ pending: '待审核', approved: '已通过', rejected: '已驳回', down: '已下架' })[s.status] || s.status,
+    s.featured ? '是' : '否',
+    (s.images || []).map(img => img.url || '').join('；')
+  ]);
+
+  const csv = '\ufeff' + [header, ...rows].map(row => row.map(esc).join(',')).join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename*=UTF-8''${encodeURIComponent('奖项投稿名单')}_${Date.now()}.csv`
+  );
+  res.send(csv);
 });
 
 module.exports = router;

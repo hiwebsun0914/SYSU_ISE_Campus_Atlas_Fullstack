@@ -8,7 +8,6 @@
     >
       🧭
     </button>
-
     <!-- 收起态浮动按钮 -->
     <button
       v-if="!expanded"
@@ -156,7 +155,6 @@ function onHiddenClick() {
 .extra-fab:hover {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
 }
-
 /* ---- 收起态浮动按钮 ---- */
 .route-fab {
   width: 42px;
