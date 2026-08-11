@@ -8,8 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const auth = require('../middleware/auth');
 const routes = require('../data/routes');
-const locationData = require('../data/locations');
-const locations = Array.isArray(locationData) ? locationData : (locationData.locations || []);
+const { getLocation } = require('../lib/locationSettings');
 
 // ==== 环境变量 ====
 const {
@@ -266,7 +265,7 @@ router.post('/commit', auth, async (req, res) => {
       if (!u.unlockedLocations.includes(locNum) && !u.lockingLocations.includes(locNum)) {
         u.lockingLocations.push(locNum);
         // 首次拍照打卡加分：隐藏地点 +2，普通地点 +1（仅首次，不与 GPS 重复）
-        const isHidden = locations.some(l => l.id === locNum && l.isHidden);
+        const isHidden = !!getLocation(locNum)?.isHidden;
         awardedPoints = isHidden ? 2 : 1;
         u.points += awardedPoints;
       }
@@ -323,7 +322,7 @@ router.post('/map', auth, (req, res) => {
       return res.status(400).json({ code: 1, message: 'locationId 必须是正整数' });
     }
 
-    const location = locations.find(l => l.id === locNum);
+    const location = getLocation(locNum);
     if (!location) {
       return res.status(404).json({ code: 1, message: '地点不存在' });
     }

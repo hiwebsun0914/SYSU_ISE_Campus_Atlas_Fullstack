@@ -33,7 +33,7 @@
           <div class="sidebar-button" @click="goToMessage">🪁 漂流瓶</div>
           <div class="sidebar-button" @click="goToPlace">🧭 PLACE 校园测试</div>
           <div class="sidebar-button" @click="goToConnect">🛠️ 问题反馈</div>
-          <div v-if="userRole === 'admin'" class="sidebar-button" @click="goToAdmin">🧰 审核管理</div>
+          <div v-if="userRole === 'admin' || userRole === 'owner'" class="sidebar-button" @click="goToAdmin">🧰 管理员空间</div>
         </div>
       </div>
 
@@ -602,7 +602,7 @@ function goToRank(){ isAuthed() ? pushOrRedirect('/rank') : pushOrRedirect('/sig
 function goToMessage(){ isAuthed() ? pushOrRedirect('/message') : pushOrRedirect('/signin') }
 function goToPlace(){ pushOrRedirect('/place') }
 function goToConnect(){ pushOrRedirect('/connect') }
-function goToAdmin(){ pushOrRedirect('/admin/review') }
+function goToAdmin(){ pushOrRedirect('/admin') }
 </script>
 
 <style scoped>
