@@ -8,7 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const auth = require('../middleware/auth');
 const routes = require('../data/routes');
-const locations = require('../data/locations');
+const locationData = require('../data/locations');
+const locations = Array.isArray(locationData) ? locationData : (locationData.locations || []);
 
 // ==== 环境变量 ====
 const {
@@ -257,6 +258,7 @@ router.post('/commit', auth, async (req, res) => {
       const u = users[idx];
       u.lockingLocations = Array.isArray(u.lockingLocations) ? u.lockingLocations : [];
       u.unlockedLocations = Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [];
+      u.pendingCheckins = Array.isArray(u.pendingCheckins) ? u.pendingCheckins : [];
 
       u.points = Number.isFinite(u.points) ? u.points : 0;
 
@@ -267,6 +269,17 @@ router.post('/commit', auth, async (req, res) => {
         const isHidden = locations.some(l => l.id === locNum && l.isHidden);
         awardedPoints = isHidden ? 2 : 1;
         u.points += awardedPoints;
+      }
+      if (!u.unlockedLocations.includes(locNum)) {
+        const pending = {
+          locationId: locNum,
+          key,
+          photo: toUrl(key),
+          submittedAt: Date.now()
+        };
+        const pendingIndex = u.pendingCheckins.findIndex(item => Number(item.locationId) === locNum);
+        if (pendingIndex === -1) u.pendingCheckins.push(pending);
+        else u.pendingCheckins[pendingIndex] = pending;
       }
       u.updatedAt = Date.now();
       writeUsers(users);
@@ -324,6 +337,7 @@ router.post('/map', auth, (req, res) => {
     user.lockingLocations = Array.isArray(user.lockingLocations) ? user.lockingLocations : [];
     user.completedRoutes = Array.isArray(user.completedRoutes) ? user.completedRoutes : [];
     user.checkinRecords = Array.isArray(user.checkinRecords) ? user.checkinRecords : [];
+    user.pendingCheckins = Array.isArray(user.pendingCheckins) ? user.pendingCheckins : [];
     user.points = Number.isFinite(user.points) ? user.points : 0;
 
     const alreadyUnlocked = user.unlockedLocations.includes(locNum);
@@ -332,15 +346,17 @@ router.post('/map', auth, (req, res) => {
     // 未解锁时才写入积分与记录
     if (!alreadyUnlocked) {
       user.unlockedLocations.push(locNum);
-      // 仅当该地点之前未通过拍照打卡时才加 GPS 的 1 分，避免与拍照重复加分
-      if (!alreadyPending) {
-        user.points += 1;
-      }
+      const pointsAwarded = alreadyPending
+        ? 0
+        : (Number.isInteger(Number(location.points)) ? Number(location.points) : 1);
+      user.points += pointsAwarded;
+      user.pendingCheckins = user.pendingCheckins.filter(item => Number(item.locationId) !== locNum);
 
       user.checkinRecords.push({
         locationId: locNum,
         distance: Number.isFinite(Number(distance)) ? Math.round(Number(distance) * 10) / 10 : null,
         method: String(method || 'geo').slice(0, 20),
+        pointsAwarded,
         time: new Date().toISOString()
       });
     }
