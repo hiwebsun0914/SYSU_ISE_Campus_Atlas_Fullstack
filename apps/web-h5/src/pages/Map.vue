@@ -57,6 +57,7 @@
       :exploring-route-id="exploringRoute?.id ?? null"
       @route-select="onRouteSelect"
       @start-explore="onStartExplore"
+      @open-hidden="goHiddenCheckpoints"
     />
 
     <Transition name="sheet">
@@ -107,7 +108,8 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import auth from '@/utils/auth'
 import {
   ArrowLeft, Crosshair, Layers, List,
   RotateCcw, Search, X,
@@ -131,6 +133,7 @@ import { checkinPlace as checkinUserPlace, fetchUserProgress } from '@/stores/us
 import { CHECKIN_RADIUS } from '@/utils/geoCheckin'
 
 const router = useRouter()
+const route = useRoute()
 const campusMapRef = ref(null)
 
 const visibleBase = campusLocations.filter(p => p.isHidden !== 1)
@@ -175,6 +178,10 @@ function onMarkerClick(place) {
 
 function onMapClick() {
   selectedPlace.value = null
+}
+
+function goHiddenCheckpoints() {
+  router.push('/hidden-checkpoints')
 }
 
 function onRouteSelect(route) {
@@ -303,6 +310,12 @@ async function onGeoCheckin() {
     geoDistance.value = dist
 
     if (dist <= CHECKIN_RADIUS) {
+      // 在范围内，先校验登录（与拍照打卡流程一致）
+      if (!auth.isLoggedIn()) {
+        const redirect = encodeURIComponent(route.fullPath)
+        router.push({ path: '/signin', query: { redirect } })
+        return
+      }
       // 在范围内，直接打卡
       geoStatus.value = 'success'
       executeCheckin(dist)

@@ -249,6 +249,7 @@ router.post('/commit', auth, async (req, res) => {
   // === 关键：把 locationId 写入 users.json 的 lockingLocations（仅数字） ===
   // 说明：前端打卡时会把 locationId 一并传给 commit
   const locNum = Number(req.body?.locationId);
+  let awardedPoints = 0;
   if (Number.isInteger(locNum)) {
     const users = readUsers();
     const idx = users.findIndex(u => String(u.id) === String(uid));
@@ -258,9 +259,15 @@ router.post('/commit', auth, async (req, res) => {
       u.unlockedLocations = Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [];
       u.pendingCheckins = Array.isArray(u.pendingCheckins) ? u.pendingCheckins : [];
 
+      u.points = Number.isFinite(u.points) ? u.points : 0;
+
       // 已解锁则不再加入待审；未解锁也未待审时加入
       if (!u.unlockedLocations.includes(locNum) && !u.lockingLocations.includes(locNum)) {
         u.lockingLocations.push(locNum);
+        // 首次拍照打卡加分：隐藏地点 +2，普通地点 +1（仅首次，不与 GPS 重复）
+        const isHidden = !!getLocation(locNum)?.isHidden;
+        awardedPoints = isHidden ? 2 : 1;
+        u.points += awardedPoints;
       }
       if (!u.unlockedLocations.includes(locNum)) {
         const pending = {
@@ -278,7 +285,7 @@ router.post('/commit', auth, async (req, res) => {
     }
   }
 
-  res.json({ code: 0, key, url: toUrl(key) });
+  res.json({ code: 0, key, url: toUrl(key), awardedPoints });
 });
 
 // ==== D. 获取打卡状态 ====
@@ -326,17 +333,21 @@ router.post('/map', auth, (req, res) => {
 
     const user = users[idx];
     user.unlockedLocations = Array.isArray(user.unlockedLocations) ? user.unlockedLocations : [];
+    user.lockingLocations = Array.isArray(user.lockingLocations) ? user.lockingLocations : [];
     user.completedRoutes = Array.isArray(user.completedRoutes) ? user.completedRoutes : [];
     user.checkinRecords = Array.isArray(user.checkinRecords) ? user.checkinRecords : [];
     user.pendingCheckins = Array.isArray(user.pendingCheckins) ? user.pendingCheckins : [];
     user.points = Number.isFinite(user.points) ? user.points : 0;
 
     const alreadyUnlocked = user.unlockedLocations.includes(locNum);
+    const alreadyPending = user.lockingLocations.includes(locNum); // 已通过拍照打卡（已加分）
 
     // 未解锁时才写入积分与记录
     if (!alreadyUnlocked) {
       user.unlockedLocations.push(locNum);
-      const pointsAwarded = Number.isInteger(Number(location.points)) ? Number(location.points) : 1;
+      const pointsAwarded = alreadyPending
+        ? 0
+        : (Number.isInteger(Number(location.points)) ? Number(location.points) : 1);
       user.points += pointsAwarded;
       user.pendingCheckins = user.pendingCheckins.filter(item => Number(item.locationId) !== locNum);
 
@@ -358,7 +369,6 @@ router.post('/map', auth, (req, res) => {
       const allUnlocked = route.points.every(id => user.unlockedLocations.includes(id));
       if (allUnlocked) {
         user.completedRoutes.push(route.id);
-        user.points += route.bonus || 5;
         newlyCompletedRoutes.push(route.id);
       }
     }

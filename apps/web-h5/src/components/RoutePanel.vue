@@ -1,5 +1,13 @@
 <template>
   <div class="route-panel-wrapper">
+    <!-- 隐藏打卡点入口（位于推荐路线上方） -->
+    <button
+      class="extra-fab"
+      @click="onHiddenClick"
+      title="隐藏打卡点"
+    >
+      🧭
+    </button>
     <!-- 收起态浮动按钮 -->
     <button
       v-if="!expanded"
@@ -83,7 +91,7 @@ const props = defineProps({
   exploringRouteId: { type: String, default: null },
 })
 
-const emit = defineEmits(['route-select', 'start-explore'])
+const emit = defineEmits(['route-select', 'start-explore', 'open-hidden'])
 
 const expanded = ref(false)
 
@@ -110,6 +118,10 @@ function onCardClick(route) {
 function onStartClick(route) {
   emit('start-explore', route)
 }
+
+function onHiddenClick() {
+  emit('open-hidden')
+}
 </script>
 
 <style scoped>
@@ -121,6 +133,28 @@ function onStartClick(route) {
   max-height: 60vh;
 }
 
+/* ---- 隐藏打卡点入口浮动按钮（位于推荐路线上方） ---- */
+.extra-fab {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.18s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  margin-bottom: 10px;
+}
+
+.extra-fab:hover {
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
 /* ---- 收起态浮动按钮 ---- */
 .route-fab {
   width: 42px;
