@@ -7,6 +7,8 @@ const STS = require('qcloud-cos-sts');
 const fs = require('fs');
 const path = require('path');
 const auth = require('../middleware/auth');
+const routes = require('../data/routes');
+const locations = require('../data/locations');
 
 // ==== 环境变量 ====
 const {
@@ -30,7 +32,7 @@ function readUsers() {
   }
 }
 function getUserById(id) {
-  return readUsers().find(u => u.id === id);
+  return readUsers().find(u => String(u.id) === String(id));
 }
 function writeUsers(list) {
   try { fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf8'); }
@@ -249,7 +251,7 @@ router.post('/commit', auth, async (req, res) => {
   const locNum = Number(req.body?.locationId);
   if (Number.isInteger(locNum)) {
     const users = readUsers();
-    const idx = users.findIndex(u => u.id === uid);
+    const idx = users.findIndex(u => String(u.id) === String(uid));
     if (idx !== -1) {
       const u = users[idx];
       u.lockingLocations = Array.isArray(u.lockingLocations) ? u.lockingLocations : [];
@@ -290,6 +292,82 @@ router.get('/status', auth, (req, res) => {
   }
 });
 
+
+// ==== E. 地图 GPS 打卡（无需上传图片）====
+router.post('/map', auth, (req, res) => {
+  try {
+    const { locationId, distance, method = 'geo' } = req.body || {};
+    const locNum = Number(locationId);
+
+    if (!Number.isInteger(locNum) || locNum <= 0) {
+      return res.status(400).json({ code: 1, message: 'locationId 必须是正整数' });
+    }
+
+    const location = locations.find(l => l.id === locNum);
+    if (!location) {
+      return res.status(404).json({ code: 1, message: '地点不存在' });
+    }
+
+    const users = readUsers();
+    const idx = users.findIndex(u => String(u.id) === String(req.userId));
+    if (idx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
+
+    const user = users[idx];
+    user.unlockedLocations = Array.isArray(user.unlockedLocations) ? user.unlockedLocations : [];
+    user.completedRoutes = Array.isArray(user.completedRoutes) ? user.completedRoutes : [];
+    user.checkinRecords = Array.isArray(user.checkinRecords) ? user.checkinRecords : [];
+    user.points = Number.isFinite(user.points) ? user.points : 0;
+
+    const alreadyUnlocked = user.unlockedLocations.includes(locNum);
+
+    // 未解锁时才写入积分与记录
+    if (!alreadyUnlocked) {
+      user.unlockedLocations.push(locNum);
+      user.points += 1;
+
+      user.checkinRecords.push({
+        locationId: locNum,
+        distance: Number.isFinite(Number(distance)) ? Math.round(Number(distance) * 10) / 10 : null,
+        method: String(method || 'geo').slice(0, 20),
+        time: new Date().toISOString()
+      });
+    }
+
+    // 路线完成判断（只要路线所有点都在 unlockedLocations 中即完成）
+    const newlyCompletedRoutes = [];
+    for (const route of routes) {
+      if (user.completedRoutes.includes(route.id)) continue;
+      if (!route.points || route.points.length === 0) continue;
+
+      const allUnlocked = route.points.every(id => user.unlockedLocations.includes(id));
+      if (allUnlocked) {
+        user.completedRoutes.push(route.id);
+        user.points += route.bonus || 5;
+        newlyCompletedRoutes.push(route.id);
+      }
+    }
+
+    user.updatedAt = Date.now();
+    writeUsers(users);
+
+    return res.json({
+      code: 0,
+      data: {
+        locationId: locNum,
+        locationName: location.name,
+        newlyUnlocked: !alreadyUnlocked,
+        newlyCompletedRoutes,
+        points: user.points,
+        unlockedLocations: user.unlockedLocations,
+        completedRoutes: user.completedRoutes,
+        checkinRecords: user.checkinRecords.slice(-20) // 只返回最近 20 条
+      }
+    });
+  } catch (e) {
+    console.error('[checkin/map] error:', e);
+    return res.status(500).json({ code: 1, message: '打卡失败' });
+  }
+});
 
 // ================== 新增：取图接口 ==================
 

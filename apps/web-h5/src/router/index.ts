@@ -6,6 +6,8 @@ export default createRouter({
   routes: [
     { path: '/', component: () => import('../pages/Home.vue') },
     { path: '/atlas', component: () => import('../pages/Index.vue') },
+    { path: '/map',   component: () => import('../pages/Map.vue') },
+    { path: '/place', component: () => import('../pages/PlaceTest.vue') },
 
     // 其余页面都用懒加载（就算文件没就位也不影响首页）
     { path: '/myCheckins',   component: () => import('../pages/myCheckins.vue') },
@@ -14,9 +16,15 @@ export default createRouter({
     { path: '/future-card',  component: () => import('../pages/futureCard.vue') },
     { path: '/signin',       component: () => import('../pages/signin.vue') },
     { path: '/connect',      component: () => import('../pages/connect.vue') },
+    { path: '/award',        component: () => import('../pages/award/AwardHome.vue') },
+    { path: '/award/submit', component: () => import('../pages/award/AwardSubmit.vue') },
+    { path: '/award/my',     component: () => import('../pages/award/AwardMine.vue') },
+    { path: '/award/results', component: () => import('../pages/award/AwardResults.vue') },
+    { path: '/award/submission/:id', component: () => import('../pages/award/AwardSubmissionDetail.vue') },
 
     // 如果 Review 在 src/pages/admin/Review.vue，用下面这一行
     { path: '/admin/review', component: () => import('../pages/admin/Review.vue') },
+    { path: '/admin/submissions', component: () => import('../pages/admin/Submissions.vue') },
     // 如果你其实放在 src/pages/Review.vue，请改成：
     // { path: '/admin/review', component: () => import('../pages/Review.vue') },
 
