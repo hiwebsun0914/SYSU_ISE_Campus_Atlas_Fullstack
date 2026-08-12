@@ -11,7 +11,6 @@
 
       <nav class="desktop-nav" aria-label="桌面端主要导航">
         <RouterLink to="/" aria-current="page">首页</RouterLink>
-        <RouterLink to="/atlas">校园图鉴</RouterLink>
         <RouterLink to="/map">校园地图</RouterLink>
         <button type="button" @click="goProtected('/message')">留言互动</button>
         <button type="button" @click="goProtected('/myCheckins')">我的主页</button>
@@ -39,7 +38,7 @@
           <div class="explore-head">
             <span class="icon-tile icon-tile-accent"><MapPinned :size="24" aria-hidden="true" /></span>
             <div>
-              <p class="card-kicker">CAMPUS ATLAS · 校园图鉴</p>
+              <p class="card-kicker">CAMPUS EXPLORE · 校园探索</p>
               <h2>{{ userInfo ? '继续你的校园探索' : '从第一处校园坐标出发' }}</h2>
             </div>
           </div>
@@ -185,7 +184,6 @@
 
     <nav class="mobile-nav" aria-label="移动端主要导航">
       <RouterLink to="/" aria-current="page"><House :size="21" aria-hidden="true" /><span>首页</span></RouterLink>
-      <RouterLink to="/atlas"><Map :size="21" aria-hidden="true" /><span>图鉴</span></RouterLink>
       <RouterLink to="/map"><MapPinned :size="21" aria-hidden="true" /><span>地图</span></RouterLink>
       <button type="button" @click="goProtected('/message')"><MessageCircleMore :size="21" aria-hidden="true" /><span>互动</span></button>
       <button type="button" @click="goProtected('/myCheckins')"><CircleUserRound :size="21" aria-hidden="true" /><span>我的</span></button>
@@ -204,7 +202,7 @@
         <section ref="welcomeDialog" class="welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-desc" @keydown="handleDialogKeydown">
           <button class="dialog-close" type="button" aria-label="关闭欢迎窗口" @click="dismissWelcome"><X :size="20" aria-hidden="true" /></button>
           <div class="welcome-logo-wrap">
-            <img src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png" alt="校园图鉴活动标志" />
+            <img src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png" alt="校园探索活动标志" />
           </div>
           <p class="welcome-code">WELCOME · CLASS OF 2026</p>
           <h2 id="welcome-title">欢迎来到<br />智能工程学院</h2>
@@ -429,7 +427,7 @@ onBeforeUnmount(() => {
 @keyframes pulse { 50% { opacity: .42; } }
 .load-error { margin-top: 72px; padding: 18px; display: grid; grid-template-columns: 30px 1fr; gap: 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; background: rgba(255,255,255,.07); }.load-error div { display: grid; gap: 4px; }.load-error span { color: rgba(255,255,255,.64); font-size: 13px; }.load-error button { grid-column: 2; width: max-content; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--accent); color: var(--ink); font-weight: 800; }
 
-.feature-card { width: 100%; min-height: 250px; display: flex; flex-direction: column; padding: 20px; text-align: left; color: var(--text); background: var(--surface); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.feature-card { width: 100%; min-height: 250px; display: flex; flex-direction: column; padding: 20px; text-align: left; text-decoration: none; color: var(--text); background: var(--surface); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
 .feature-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transform: translateY(10px); background: linear-gradient(135deg, rgba(199,242,74,.16), transparent 42%); transition: opacity .24s ease, transform .24s ease; }
 .feature-card:hover, .feature-card:focus-visible { transform: translateY(-3px); box-shadow: 0 18px 48px rgba(10,46,59,.08); border-color: #b8cfca; }
 .feature-card:hover::before, .feature-card:focus-visible::before { opacity: 1; transform: none; }.feature-card:active { transform: scale(.99); }
@@ -461,7 +459,7 @@ onBeforeUnmount(() => {
 .utility-row { width: min(100%, 860px); margin: 56px auto 26px; padding: 0; display: grid; gap: 18px; }.section-index { color: var(--primary-dark); font-size: 10px; font-weight: 800; }.utility-row h2 { margin: 7px 0 0; color: var(--ink); font-size: 27px; letter-spacing: 0; }.support-copy { max-width: 360px; margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }.utility-links { display: grid; gap: 10px; }.utility-links a { min-height: 76px; display: grid; grid-template-columns: 24px 1fr 20px; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; color: var(--ink); background: rgba(255,255,255,.76); text-decoration: none; transition: background .2s ease,border-color .2s ease,transform .2s ease; }.utility-links a:hover { transform: translateY(-2px); background: #fff; border-color: #afc9c2; }.utility-links span { display: grid; }.utility-links small { margin-top: 2px; color: var(--muted); font-size: 12px; }
 .site-footer { min-height: 90px; display: flex; flex-direction: column; justify-content: center; gap: 5px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }.footer-code { font-family: "SFMono-Regular", Menlo, monospace; color: var(--primary-dark); letter-spacing: 0; }
 
-.mobile-nav { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: 66px; display: grid; grid-template-columns: repeat(5,1fr); padding: 6px; border: 1px solid rgba(255,255,255,.65); border-radius: 20px; background: rgba(10,46,59,.94); box-shadow: 0 14px 40px rgba(10,46,59,.28); backdrop-filter: blur(14px); }
+.mobile-nav { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: 66px; display: grid; grid-template-columns: repeat(4,1fr); padding: 6px; border: 1px solid rgba(255,255,255,.65); border-radius: 20px; background: rgba(10,46,59,.94); box-shadow: 0 14px 40px rgba(10,46,59,.28); backdrop-filter: blur(14px); }
 .mobile-nav a, .mobile-nav button { min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 14px; color: rgba(255,255,255,.65); text-decoration: none; font-size: 10px; }.mobile-nav a[aria-current="page"] { color: var(--accent); background: rgba(255,255,255,.08); }
 
 .coming-toast { position: fixed; z-index: 120; left: 16px; right: 16px; bottom: calc(90px + env(safe-area-inset-bottom,0px)); min-height: 62px; display: grid; grid-template-columns: 24px 1fr 44px; align-items: center; gap: 10px; padding: 10px 8px 10px 16px; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; color: #fff; background: var(--ink); box-shadow: 0 18px 50px rgba(10,46,59,.28); }.coming-toast span { font-size: 13px; line-height: 1.45; }.coming-toast button { width: 44px; height: 44px; display: grid; place-items: center; color: #fff; border-radius: 50%; }.toast-enter-active,.toast-leave-active { transition: opacity .2s ease,transform .2s ease; }.toast-enter-from,.toast-leave-to { opacity: 0; transform: translateY(10px); }

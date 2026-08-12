@@ -5,7 +5,7 @@
     <header class="profile-nav">
       <button class="profile-brand" type="button" aria-label="返回校园首页" @click="router.push('/')">
         <span class="profile-brand-mark">SYSU</span>
-        <span class="profile-brand-name">笃行校园图鉴</span>
+        <span class="profile-brand-name">笃行校园探索</span>
       </button>
       <button
         class="command-trigger"
@@ -97,7 +97,7 @@
             <small>当前积分</small>
           </div>
           <div>
-            <span>ATLAS</span>
+            <span>PROGRESS</span>
             <strong>{{ unlockedCount }}<i>/{{ totalBadges }}</i></strong>
             <small>地点已解锁</small>
           </div>
@@ -118,10 +118,10 @@
             <section class="profile-section atlas-section" aria-labelledby="atlas-title">
               <div class="section-heading section-heading-split">
                 <div>
-                  <h2 id="atlas-title">图鉴进度与打卡记录</h2>
+                  <h2 id="atlas-title">探索进度与打卡记录</h2>
                 </div>
-                <button class="text-link" type="button" @click="router.push('/atlas')">
-                  打开完整图鉴
+                <button class="text-link" type="button" @click="router.push('/map')">
+                  打开校园地图
                   <ChevronRight :size="16" aria-hidden="true" />
                 </button>
               </div>
@@ -134,7 +134,7 @@
                 <div
                   class="atlas-signal"
                   role="progressbar"
-                  aria-label="校园图鉴完成度"
+                  aria-label="校园探索进度"
                   aria-valuemin="0"
                   aria-valuemax="100"
                   :aria-valuenow="atlasProgress"
@@ -484,7 +484,7 @@
     </main>
 
     <footer class="profile-footer">
-      <span>SYSU ISE CAMPUS ATLAS</span>
+      <span>SYSU ISE CAMPUS EXPLORE</span>
       <span>学生个人空间</span>
       <button type="button" @click="openCommandPalette">快速导航</button>
     </footer>
@@ -833,7 +833,7 @@ const filteredSubmissions = computed(() => {
 const achievements = computed(() => [
   {
     id: 'first-checkin',
-    name: '图鉴启程',
+    name: '探索启程',
     condition: '解锁第 1 个校园地点',
     achieved: unlockedCount.value >= 1
   },
@@ -863,7 +863,7 @@ const achievements = computed(() => [
   },
   {
     id: 'contributor',
-    name: '图鉴共建者',
+    name: '探索共建者',
     condition: '有 1 件投稿作品通过审核',
     achieved: submissionCounts.value.approved >= 1
   }
@@ -886,7 +886,7 @@ const profileButtonCopy = computed(() => ({
 
 const commands = [
   { label: '校园首页', hint: '返回功能总览', keywords: '首页 home', icon: Home, run: () => router.push('/') },
-  { label: '校园图鉴', hint: '查看全部地点与解锁状态', keywords: '图鉴 地点 atlas', icon: Map, run: () => router.push('/atlas') },
+  { label: '校园地图', hint: '查看全部地点与解锁状态', keywords: '地图 地点 map', icon: Map, run: () => router.push('/map') },
   { label: '校园地图', hint: '定位地点并发起打卡', keywords: '地图 打卡 map', icon: MapPin, run: () => router.push('/map') },
   { label: 'ISETI 测试', hint: '查看或更新校园人格', keywords: '人格 测试 place iseti', icon: Compass, run: () => router.push('/place') },
   { label: '投稿活动', hint: '提交或查看校园作品', keywords: '投稿 作品 award', icon: Trophy, run: () => router.push('/award') },
@@ -1341,7 +1341,7 @@ function onGlobalKeydown(event) {
 }
 
 onMounted(() => {
-  document.title = '个人主页｜笃行校园图鉴'
+  document.title = '个人主页｜笃行校园探索'
   window.addEventListener('keydown', onGlobalKeydown)
   fetchDashboard()
 })
