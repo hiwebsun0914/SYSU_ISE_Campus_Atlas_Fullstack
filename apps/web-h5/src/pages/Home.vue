@@ -429,7 +429,7 @@ onBeforeUnmount(() => {
 @keyframes pulse { 50% { opacity: .42; } }
 .load-error { margin-top: 72px; padding: 18px; display: grid; grid-template-columns: 30px 1fr; gap: 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; background: rgba(255,255,255,.07); }.load-error div { display: grid; gap: 4px; }.load-error span { color: rgba(255,255,255,.64); font-size: 13px; }.load-error button { grid-column: 2; width: max-content; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--accent); color: var(--ink); font-weight: 800; }
 
-.feature-card { width: 100%; min-height: 250px; display: flex; flex-direction: column; padding: 20px; text-align: left; color: var(--text); background: var(--surface); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.feature-card { width: 100%; min-height: 250px; display: flex; flex-direction: column; padding: 20px; text-align: left; text-decoration: none; color: var(--text); background: var(--surface); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
 .feature-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transform: translateY(10px); background: linear-gradient(135deg, rgba(199,242,74,.16), transparent 42%); transition: opacity .24s ease, transform .24s ease; }
 .feature-card:hover, .feature-card:focus-visible { transform: translateY(-3px); box-shadow: 0 18px 48px rgba(10,46,59,.08); border-color: #b8cfca; }
 .feature-card:hover::before, .feature-card:focus-visible::before { opacity: 1; transform: none; }.feature-card:active { transform: scale(.99); }
