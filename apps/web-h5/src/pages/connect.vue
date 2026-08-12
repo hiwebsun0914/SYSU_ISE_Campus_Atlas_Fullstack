@@ -44,7 +44,7 @@
       <div>项目将于每日凌晨2:00-3:00定时维护</div>
       <div class="spacer" aria-hidden="true"></div>
       <div>愿每一次点击都是发现，每一步前行都有惊喜</div>
-      <div>智工迎新活动组校园图鉴开发团队</div>
+      <div>智工迎新活动组校园探索开发团队</div>
       <div>2025.08.25</div>
     </section>
 

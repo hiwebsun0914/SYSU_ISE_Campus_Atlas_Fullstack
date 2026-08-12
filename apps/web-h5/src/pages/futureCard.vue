@@ -3,7 +3,7 @@
     <img class="page-bg" :src="PAGE_BACKGROUND" alt="" aria-hidden="true" />
 
     <header class="site-header">
-      <button class="back-button" type="button" @click="router.push('/')">‹ 返回图鉴</button>
+      <button class="back-button" type="button" @click="router.push('/')">‹ 返回首页</button>
       <img class="site-logo" :src="SITE_LOGO" alt="中山大学智能工程学院" />
       <span class="user-chip">{{ currentUser?.username || '智工新生' }}</span>
     </header>
@@ -791,7 +791,7 @@ watch(activeMode, () => {
 })
 
 onMounted(async () => {
-  document.title = '时光信笺｜笃行校园图鉴'
+  document.title = '时光信笺｜笃行校园探索'
   if (!auth.isLoggedIn()) {
     router.push({ path: '/signin', query: { redirect: '/future-card' } })
     return

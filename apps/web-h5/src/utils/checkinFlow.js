@@ -1,14 +1,14 @@
 /**
- * 统一打卡流程（/atlas 与 隐藏打卡点 共用）
+ * 共享拍照打卡流程
  *
- * 该模块完整复用 /atlas 的拍照 → 预签名 → 直传 COS → 提交绑定 流程，
+ * 该模块统一封装拍照 → 预签名 → 直传 COS → 提交绑定 流程，
  * 不新建任何接口 / 上传逻辑 / 审核逻辑，仅作为公共入口被两个页面调用。
  */
 import { request as _reqNamed } from '@/utils/request'
 
 const request = _reqNamed
 
-/* ===== 鉴权判定（与 /atlas 一致） ===== */
+/* ===== 共享拍照打卡流程：鉴权判定 ===== */
 import auth from '@/utils/auth'
 
 function isAuthed() {
@@ -21,7 +21,7 @@ function isAuthed() {
   }
 }
 
-/* ===== 统一的错误/步骤提示（与 /atlas 一致） ===== */
+/* ===== 共享拍照打卡流程：错误/步骤提示 ===== */
 function showStepError(step, errOrMsg, extra = {}) {
   const msg = typeof errOrMsg === 'string' ? errOrMsg : (errOrMsg?.message || '未知错误')
   console.groupCollapsed(`[checkin] ❌ ${step} 失败：${msg}`)
@@ -31,7 +31,7 @@ function showStepError(step, errOrMsg, extra = {}) {
   alert(`${step} 失败：${msg}`)
 }
 
-/* ===== 选图（与原 /atlas pickImageOnce 完全一致） ===== */
+/* ===== 共享拍照打卡流程：选图 ===== */
 function pickImageOnce() {
   return new Promise((resolve) => {
     const input = document.createElement('input')
@@ -49,7 +49,7 @@ function pushOrRedirect(path, route, router) {
   else window.location.href = `${path}?redirect=${redirect}`
 }
 
-/* ===== 统一打卡主流程（与 /atlas checkIn 内部逻辑一一对应） ===== */
+/* ===== 共享拍照打卡流程：统一打卡主流程 ===== */
 async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
   if (!isAuthed()) {
     if (onError) onError('unauthorized')
@@ -128,7 +128,7 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
     const photoUrl = commit?.data?.url || ''
     const awardedPoints = Number(commit?.data?.awardedPoints) || 0
 
-    /* 4) 本地记录（与 /atlas 一致，写入 localStorage） */
+    /* 4) 共享拍照打卡流程的本地记录（写入 localStorage） */
     const nowISO = new Date().toISOString()
     const records = JSON.parse(localStorage.getItem('checkinRecords') || '[]')
     records.push({ locationId, time: nowISO, photo: photoUrl })

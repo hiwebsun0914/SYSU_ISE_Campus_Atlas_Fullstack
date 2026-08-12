@@ -78,7 +78,7 @@ const place = computed(() =>
   campusLocations.find(p => String(p.id) === String(route.params.id))
 )
 
-// 后端数字 locationId（与 /atlas 完全一致，由同一张映射表转换）
+// 后端数字 locationId（共享拍照打卡流程，由同一张映射表转换）
 const backendLocationId = computed(() => {
   const pid = place.value?.id
   return pid != null ? placeIdToBackend[pid] : undefined
@@ -93,7 +93,7 @@ async function onStartCheckin(p) {
     return
   }
 
-  // 复用与 /atlas 完全一致的拍照→上传→审核打卡流程
+  // 共享拍照打卡流程：拍照→上传→审核
   if (!checkinFlow.isAuthed()) {
     checkinFlow.pushOrRedirect('/signin', route, router)
     return

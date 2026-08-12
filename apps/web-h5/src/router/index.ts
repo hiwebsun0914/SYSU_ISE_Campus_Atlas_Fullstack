@@ -6,7 +6,6 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', component: () => import('../pages/Home.vue') },
-    { path: '/atlas', component: () => import('../pages/Index.vue') },
     { path: '/map', component: () => import('../pages/Map.vue') },
     { path: '/place', component: () => import('../pages/PlaceTest.vue') },
     { path: '/profile', redirect: '/myCheckins' },

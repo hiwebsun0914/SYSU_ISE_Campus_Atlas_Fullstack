@@ -5,7 +5,7 @@
     <aside class="admin-rail" aria-label="管理员导航">
       <button class="admin-rail-brand" type="button" aria-label="返回管理总览" @click="goSection('overview')">
         <span>SYSU</span>
-        <strong>ATLAS<br />CONTROL</strong>
+        <strong>EXPLORE<br />CONTROL</strong>
       </button>
       <nav class="admin-rail-nav">
         <button
@@ -515,7 +515,7 @@
         </section>
 
         <footer class="admin-footer">
-          <p>SYSU CAMPUS ATLAS · ADMIN CONTROL · 数据来自当前用户、打卡与投稿存储 · {{ currentYear }}</p>
+          <p>SYSU CAMPUS EXPLORE · ADMIN CONTROL · 数据来自当前用户、打卡与投稿存储 · {{ currentYear }}</p>
         </footer>
       </template>
     </main>
@@ -567,7 +567,7 @@
         <div class="admin-form-grid">
           <label for="location-name">地点名称</label>
           <input id="location-name" ref="locationNameInput" v-model.trim="locationForm.name" maxlength="80" required />
-          <small>显示在地图、图鉴、投稿和管理员统计中。</small>
+          <small>显示在地图、探索进度、投稿和管理员统计中。</small>
 
           <label for="location-position">校园位置</label>
           <input id="location-position" v-model.trim="locationForm.position" maxlength="120" placeholder="例如：南校园 335 号" />
@@ -839,7 +839,7 @@ async function fetchUsers() {
 }
 
 async function loadAdminSpace() {
-  document.title = '管理员空间｜笃行校园图鉴'
+  document.title = '管理员空间｜笃行校园探索'
   initialLoading.value = true
   fatalError.value = ''
   try {

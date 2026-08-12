@@ -3,18 +3,18 @@
     <div class="paper-grain" aria-hidden="true"></div>
 
     <header class="place-nav">
-      <button class="brand-lockup" type="button" @click="goHome" aria-label="返回校园图鉴">
+      <button class="brand-lockup" type="button" @click="goHome" aria-label="返回校园探索首页">
         <span class="brand-mark">P</span>
         <span>
           <b>PLACE @ SYSU</b>
-          <small>Personal Lifestyle Atlas for Campus Exploration</small>
+          <small>Personal Lifestyle Explorer for Campus Discovery</small>
         </span>
       </button>
       <div v-if="stage !== 'intro' && stage !== 'result'" class="nav-progress" aria-live="polite">
         <span>{{ progressLabel }}</span>
         <div class="progress-track"><i :style="{ width: `${progressPercent}%` }"></i></div>
       </div>
-      <button class="nav-exit" type="button" @click="goHome">校园图鉴 ↗</button>
+      <button class="nav-exit" type="button" @click="goHome">校园探索首页 ↗</button>
     </header>
 
     <section v-if="stage === 'intro'" class="intro-shell">
@@ -191,7 +191,7 @@
 
       <div class="result-actions">
         <button class="secondary-action" type="button" @click="restart">再测一次</button>
-        <button class="secondary-action" type="button" @click="goHome">回到校园图鉴 ↗</button>
+        <button class="secondary-action" type="button" @click="goHome">返回校园探索首页 ↗</button>
       </div>
       <p class="result-save-status" role="status" aria-live="polite">{{ resultSaveCopy }}</p>
     </section>
@@ -218,7 +218,7 @@
 
     <footer class="place-footer">
       <span>PLACE @ SYSU</span>
-      <span>笃行校园图鉴 · 南校园首发版</span>
+      <span>笃行校园探索 · 南校园首发版</span>
     </footer>
   </main>
 </template>
@@ -609,7 +609,7 @@ function restart() {
 }
 
 function goHome() {
-  router.push('/atlas')
+  router.push('/')
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {
@@ -784,7 +784,7 @@ async function makeShareCard() {
 
   ctx.fillStyle = '#1A1A1A'
   ctx.font = '600 18px Georgia, serif'
-  ctx.fillText('PLACE @ SYSU · 笃行校园图鉴', 66, 1166)
+  ctx.fillText('PLACE @ SYSU · 笃行校园探索', 66, 1166)
 
   return canvas.toDataURL('image/png')
 }
@@ -1176,7 +1176,7 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(140,21,21,.22);
   .nav-progress { position: absolute; left: 0; right: 0; bottom: -13px; }
   .nav-progress span { display: none; }
   .nav-exit { font-size: 0; }
-  .nav-exit::after { content: '图鉴 ↗'; font-size: 12px; }
+  .nav-exit::after { content: '校园探索 ↗'; font-size: 12px; }
   .intro-shell { width: min(100% - 36px, 1120px); padding: 54px 0 74px; grid-template-columns: 1fr; gap: 60px; }
   .intro-copy h1 { font-size: clamp(74px, 27vw, 116px); }
   .intro-lead { font-size: 24px; }
