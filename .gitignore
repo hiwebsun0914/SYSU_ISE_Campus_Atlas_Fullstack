@@ -33,6 +33,7 @@ apps/android/android/capacitor-cordova-android-plugins/
 # IDE / OS files
 **/.idea/
 **/.vscode/
+.worktrees/
 **/.DS_Store
 **/Thumbs.db
 **/*.swp
