@@ -106,10 +106,12 @@ router.put('/profile', auth, (req, res) => {
 
     if (Object.prototype.hasOwnProperty.call(payload, 'realName')) {
       const realName = normalizedText(payload.realName);
-      if (visibleLength(realName) > 30) {
-        return sendValidation(res, 'realName', '姓名最多 30 个字符。');
+      const users = readUsers();
+      const currentUser = users.find(user => String(user.id) === String(req.userId));
+      if (!currentUser) return res.status(404).json({ code: 1, message: '用户不存在' });
+      if (realName !== normalizedText(currentUser.realName)) {
+        return sendValidation(res, 'realName', '姓名已在注册时确认，无法在个人主页修改。', 'REAL_NAME_LOCKED');
       }
-      updates.realName = realName;
     }
 
     if (Object.prototype.hasOwnProperty.call(payload, 'studentId')) {

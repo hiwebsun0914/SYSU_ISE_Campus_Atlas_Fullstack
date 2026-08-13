@@ -69,3 +69,18 @@ test('creates a scoped avatar upload URL without exposing the server secret key'
   assert.ok(body.data.putUrl.includes(encodeURIComponent(cosSecretId)) || body.data.putUrl.includes(cosSecretId));
   assert.equal(serialized.includes(cosSecretKey), false);
 });
+
+test('rejects non-image bytes before attempting a COS upload', async () => {
+  const form = new FormData();
+  form.append('avatar', new Blob(['not an image'], { type: 'image/webp' }), 'avatar.webp');
+  const response = await fetch(`${baseUrl}/avatar/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.code, 1);
+  assert.match(body.message, /JPG、PNG 或 WebP/);
+});
