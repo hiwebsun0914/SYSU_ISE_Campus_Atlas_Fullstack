@@ -204,6 +204,13 @@ import { useRouter } from 'vue-router'
 import { ArrowLeft, ArrowUpRight, Download, Home, RotateCcw, Share2, X } from '@lucide/vue'
 import QRCode from 'qrcode'
 import { request } from '@/utils/request'
+import {
+  clearAnonymousPersonality,
+  currentAccountId,
+  discardLegacyPersonality,
+  saveAccountPersonality,
+  saveAnonymousPersonality
+} from '@/utils/personalityStorage'
 import doneVisual from '../assets/place/main/done.webp'
 import ddlVisual from '../assets/place/main/ddl.webp'
 import growVisual from '../assets/place/main/grow.webp'
@@ -460,18 +467,22 @@ function personalityPayload(card) {
 
 async function persistPersonality(card) {
   const payload = personalityPayload(card)
-  localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(payload))
+  discardLegacyPersonality()
 
   if (!localStorage.getItem('token')) {
+    saveAnonymousPersonality(payload)
     resultSaveState.value = 'local'
     return
   }
 
+  const accountId = currentAccountId()
+  if (accountId) saveAccountPersonality(accountId, payload)
   resultSaveState.value = 'saving'
   const response = await request('/user/personality', 'PUT', payload)
   if (response.ok && response.data?.code === 0) {
     resultSaveState.value = 'saved'
-    localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(response.data.data.personality))
+    if (accountId) saveAccountPersonality(accountId, response.data.data.personality)
+    clearAnonymousPersonality()
     return
   }
   resultSaveState.value = 'error'

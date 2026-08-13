@@ -812,6 +812,13 @@ import '@fontsource/jetbrains-mono/latin-500.css'
 import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import { request } from '@/utils/request'
+import {
+  clearAnonymousPersonality,
+  discardLegacyPersonality,
+  readAccountPersonality,
+  readAnonymousPersonality,
+  saveAccountPersonality
+} from '@/utils/personalityStorage'
 import { badgeCatalog, badgeThumb, getBadge } from '@/data/badgeCatalog'
 import ddlPersonalityScene from '../assets/place/main/ddl.webp'
 import donePersonalityScene from '../assets/place/main/done.webp'
@@ -870,7 +877,7 @@ const personalitySyncMessage = ref('')
 const submissionFilter = ref('all')
 const collectionTab = ref('badges')
 const personalityFigure = computed(() => {
-  const localPersonality = safeJsonParse(localStorage.getItem('ISETI_PERSONALITY_V1'), null)
+  const localPersonality = readAccountPersonality(userInfo.value.id)
   const mainCode = userInfo.value.personality?.mainCode || localPersonality?.mainCode
   const rawSubCode = userInfo.value.personality?.subCode || localPersonality?.subCode
   const subCode = rawSubCode === 'TREE' ? 'STAY' : rawSubCode
@@ -1126,15 +1133,27 @@ async function fetchDashboard() {
 }
 
 async function syncLocalPersonality() {
-  const localResult = safeJsonParse(localStorage.getItem('ISETI_PERSONALITY_V1'), null)
-  if (!localResult?.mainCode || !localResult?.subCode) return
+  discardLegacyPersonality()
+  const accountId = userInfo.value.id
+  if (!accountId) return
+
+  const accountResult = readAccountPersonality(accountId)
+  const anonymousResult = readAnonymousPersonality()
+  const localResult = [accountResult, anonymousResult]
+    .filter(item => item?.mainCode && item?.subCode)
+    .sort((a, b) => (Number(b.completedAt) || 0) - (Number(a.completedAt) || 0))[0]
+  if (!localResult) {
+    if (userInfo.value.personality) saveAccountPersonality(accountId, userInfo.value.personality)
+    return
+  }
 
   const cloudResult = userInfo.value.personality
   const localCompletedAt = Number(localResult.completedAt) || 0
   const cloudCompletedAt = Number(cloudResult?.completedAt) || 0
 
   if (cloudResult && (localCompletedAt === 0 || localCompletedAt <= cloudCompletedAt)) {
-    localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(cloudResult))
+    saveAccountPersonality(accountId, cloudResult)
+    clearAnonymousPersonality()
     return
   }
 
@@ -1149,7 +1168,8 @@ async function syncLocalPersonality() {
   const response = await request('/user/personality', 'PUT', payload)
   if (responseOkay(response)) {
     userInfo.value = { ...userInfo.value, personality: response.data.data.personality }
-    localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(response.data.data.personality))
+    saveAccountPersonality(accountId, response.data.data.personality)
+    clearAnonymousPersonality()
     personalitySyncMessage.value = '本机的 ISETI 结果已同步到当前账户。'
   } else {
     personalitySyncMessage.value = '本机结果暂时无法同步，请稍后在测试页重试。'
