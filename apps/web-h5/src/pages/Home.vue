@@ -114,9 +114,9 @@
             <span class="coming-label coming-label-dark">立即进入</span>
           </span>
           <span class="feature-copy">
-            <small>PLACE @ SYSU / 校园人格</small>
+            <small>PLACE / 校园人格</small>
             <strong>测测你的校园类型</strong>
-            <span>从 28 个选择里找到你的校园人格与今日去处</span>
+            <span>从 28 个选择里找到你的校园人格与探索偏好</span>
           </span>
           <span class="scan-line" aria-hidden="true"></span>
         </button>

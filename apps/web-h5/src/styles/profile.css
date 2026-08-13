@@ -1922,10 +1922,40 @@ body {
 }
 
 .profile-personality-space {
+  position: relative;
   grid-column: 3;
   grid-row: 1 / span 2;
   min-width: 0;
   min-height: 9rem;
+  overflow: visible;
+}
+
+.profile-personality-space img {
+  position: absolute;
+  display: block;
+  max-width: none;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.profile-personality-main {
+  right: -6%;
+  bottom: -4%;
+  z-index: 0;
+  width: 105%;
+  max-height: 11rem;
+  opacity: 0.24;
+  object-position: right bottom;
+}
+
+.profile-personality-sub {
+  right: 2%;
+  bottom: -3%;
+  z-index: 1;
+  width: 86%;
+  max-height: 12rem;
+  object-position: center bottom;
+  filter: drop-shadow(0 0.8rem 1rem rgb(16 52 59 / 0.14));
 }
 
 .hero-edit {
@@ -2386,6 +2416,20 @@ body {
     grid-column: 3;
     grid-row: 1 / span 2;
     min-height: 8.5rem;
+  }
+
+  .profile-personality-main {
+    right: -20%;
+    bottom: -5%;
+    width: 150%;
+    max-height: 9.5rem;
+  }
+
+  .profile-personality-sub {
+    right: -9%;
+    bottom: -4%;
+    width: 122%;
+    max-height: 10.5rem;
   }
 
   .profile-identifiers dd {
