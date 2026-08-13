@@ -383,12 +383,23 @@
               </div>
             </section>
 
-            <section id="feedback" class="side-panel feedback-panel" aria-labelledby="feedback-title">
-              <div class="section-heading">
-                <h2 id="feedback-title">意见反馈</h2>
-                <p>告诉我们遇到的问题或希望增加的功能。</p>
-              </div>
+            <section id="feedback" :class="['side-panel', 'feedback-panel', { expanded: feedbackExpanded }]" aria-labelledby="feedback-title">
+              <button
+                class="feedback-toggle"
+                type="button"
+                :aria-expanded="feedbackExpanded"
+                aria-controls="feedback-body"
+                @click="feedbackExpanded = !feedbackExpanded"
+              >
+                <span class="feedback-toggle-icon" aria-hidden="true"><MessageSquareText :size="20" /></span>
+                <span>
+                  <strong id="feedback-title">意见反馈</strong>
+                  <small>{{ feedbackExpanded ? '收起反馈表单' : '遇到问题或有建议时，在这里告诉我们' }}</small>
+                </span>
+                <ChevronDown :size="19" aria-hidden="true" />
+              </button>
 
+              <div v-show="feedbackExpanded" id="feedback-body" class="feedback-body">
               <form novalidate @submit.prevent="submitFeedback">
                 <div class="form-field">
                   <label for="feedback-category">反馈类型</label>
@@ -432,14 +443,16 @@
                 </div>
 
                 <div class="form-field">
-                  <label for="feedback-contact">联系方式 <span>选填</span></label>
+                  <label for="feedback-contact">联系方式</label>
                   <input
                     id="feedback-contact"
                     v-model="feedbackForm.contact"
                     type="text"
                     maxlength="100"
-                    autocomplete="email"
-                    placeholder="邮箱或其他便于联系的方式"
+                    autocomplete="off"
+                    placeholder="请输入微信号"
+                    required
+                    aria-required="true"
                     :aria-invalid="Boolean(feedbackErrors.contact)"
                     @input="onFeedbackInput('contact')"
                     @blur="validateFeedbackField('contact')"
@@ -479,24 +492,16 @@
                   </li>
                 </ol>
               </div>
+              </div>
             </section>
           </aside>
         </div>
 
-        <section v-if="isAdmin" class="profile-admin-entry" aria-labelledby="profile-admin-title">
-          <div class="profile-admin-mark" aria-hidden="true">
-            <ShieldCheck :size="24" />
-          </div>
-          <div class="profile-admin-copy">
-            <p class="eyebrow">ADMIN ACCESS / 管理权限</p>
-            <h2 id="profile-admin-title">进入管理员模式</h2>
-            <p>保留当前账号与普通功能，切换到审核、数据和权限管理空间。</p>
-          </div>
-          <button class="profile-admin-button" type="button" @click="router.push('/admin')">
-            进入管理员模式
-            <ChevronRight :size="18" aria-hidden="true" />
-          </button>
-        </section>
+        <button v-if="isAdmin" class="profile-admin-entry" type="button" @click="router.push('/admin')">
+          <ShieldCheck :size="20" aria-hidden="true" />
+          <span>进入管理员模式</span>
+          <ChevronRight :size="18" aria-hidden="true" />
+        </button>
 
         <section class="profile-session" aria-labelledby="profile-session-title">
           <div class="profile-session-copy">
@@ -779,6 +784,7 @@ import {
   AlertCircle,
   Award,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock3,
   Command,
@@ -826,6 +832,7 @@ const userInfo = ref({})
 const submissions = ref([])
 const failedSubmissionImages = ref(new Set())
 const feedbackHistory = ref([])
+const feedbackExpanded = ref(false)
 const checkinsExpanded = ref(false)
 const avatarFailed = ref(false)
 const personalitySyncMessage = ref('')
@@ -1029,10 +1036,10 @@ async function fetchDashboard() {
 
   try {
     const [meResponse, statusResponse, submissionsResponse, feedbackResponse] = await Promise.all([
-      request('/auth/me'),
-      request('/checkin/status'),
-      request('/submissions/mine'),
-      request('/feedback/mine')
+      request('/auth/me', 'GET', null, { cacheBust: true }),
+      request('/checkin/status', 'GET', null, { cacheBust: true }),
+      request('/submissions/mine', 'GET', null, { cacheBust: true }),
+      request('/feedback/mine', 'GET', null, { cacheBust: true })
     ])
 
     if (meResponse.status === 401) {
@@ -1061,7 +1068,7 @@ async function fetchDashboard() {
       failedSubmissionImages.value = new Set()
     } else {
       submissions.value = []
-      pageNotice.value = pageNotice.value || '投稿状态暂时无法读取，其他个人数据仍可正常使用。'
+      pageNotice.value = pageNotice.value || `投稿记录暂时未同步：${responseMessage(submissionsResponse, '服务暂时不可用。')}`
     }
 
     if (responseOkay(feedbackResponse)) {
@@ -1553,6 +1560,9 @@ function validateFeedbackField(field) {
   if (field === 'content' && Array.from(value).length > 1000) {
     message = '反馈内容最多 1000 个字符。'
   }
+  if (field === 'contact' && !value) {
+    message = '请填写微信号。'
+  }
   if (field === 'contact' && Array.from(value).length > 100) {
     message = '联系方式最多 100 个字符。'
   }
@@ -1567,7 +1577,7 @@ function onFeedbackInput(field) {
 }
 
 async function submitFeedback() {
-  const valid = ['category', 'content', 'contact'].every(validateFeedbackField)
+  const valid = ['category', 'content', 'contact'].map(validateFeedbackField).every(Boolean)
   if (!valid) {
     feedbackMessage.value = '请先修正标记的反馈内容。'
     feedbackSaveState.value = 'error'
@@ -1639,6 +1649,7 @@ function openProfileFromCommand() {
 }
 
 function focusFeedbackFromCommand() {
+  feedbackExpanded.value = true
   document.getElementById('feedback')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
   nextTick(() => document.getElementById('feedback-content')?.focus({ preventScroll: true }))
 }

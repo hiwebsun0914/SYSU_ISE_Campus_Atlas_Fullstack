@@ -201,12 +201,19 @@ test('submits feedback and keeps each user history private', async () => {
   assert.equal(tooShort.response.status, 400);
   assert.equal(tooShort.body.errorCode, 'FEEDBACK_CONTENT_SHORT');
 
+  const missingContact = await api(101, '/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ category: 'bug', content: '页面按钮无法点击' })
+  });
+  assert.equal(missingContact.response.status, 400);
+  assert.equal(missingContact.body.errorCode, 'FEEDBACK_CONTACT_REQUIRED');
+
   const created = await api(101, '/feedback', {
     method: 'POST',
     body: JSON.stringify({
       category: 'suggestion',
       content: '希望图鉴支持按建筑年代筛选。',
-      contact: 'sysu-student@example.com'
+      contact: 'sysu_student_wechat'
     })
   });
   assert.equal(created.response.status, 201);
