@@ -112,7 +112,7 @@ const bucketBaseUrl = (COS_BUCKET && COS_REGION)
 const validLocationIds = () => {
   const ids = new Set();
   getLocations().forEach(l => {
-    const n = Number(l.id);
+    const n = Number(l.backendId);
     if (Number.isInteger(n)) ids.add(n);
   });
   return ids;

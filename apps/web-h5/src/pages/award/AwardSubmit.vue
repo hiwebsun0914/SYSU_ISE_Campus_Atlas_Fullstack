@@ -48,7 +48,7 @@
             <span>对应打卡点</span>
             <select v-model.number="form.locationId">
               <option :value="0" disabled>请选择打卡点</option>
-              <option v-for="loc in locations" :key="loc.id" :value="Number(loc.id)">{{ loc.name }}</option>
+              <option v-for="loc in locations" :key="loc.backendId" :value="Number(loc.backendId)">{{ loc.name }}</option>
             </select>
           </label>
         </section>

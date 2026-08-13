@@ -66,7 +66,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@lucide/vue'
 import { campusLocations } from '@/data/campusPlaces'
 import { isPlaceChecked, fetchUserProgress } from '@/stores/userProgress'
-import { placeIdToBackend } from '@/data/locationMap'
+import { placeIdToBackend } from '@/data/campusPlaces'
 import { checkinFlow } from '@/utils/checkinFlow'
 
 document.title = '隐藏打卡点详情'

@@ -52,7 +52,7 @@
 
       <!-- 打卡点卡片列表（仅渲染可见子集） -->
       <div class="card-list">
-        <div v-for="item in shownLocations" :key="item.id">
+        <div v-for="item in shownLocations" :key="item.backendId">
           <div class="card-horizontal">
             <!-- 左图（骨架 -> 淡入；点击在 viewer 内查看） -->
             <div class="card-img-wrap">
@@ -73,21 +73,21 @@
             <!-- 右侧信息 -->
             <div class="card-info">
               <div class="card-title">{{ item.name }}</div>
-              <div class="card-meta">编号：{{ item.id }}</div>
+              <div class="card-meta">编号：{{ item.backendId }}</div>
               <div class="card-meta">位置：{{ item.position }}</div>
 
               <div class="btn-group">
                 <button class="checkin-btn" type="button"
                         v-if="item.status === 'normal'"
-                        @click="checkIn(item.id)">📍 打卡</button>
+                        @click="checkIn(item.backendId)">📍 打卡</button>
                 <button class="checkin-btn" type="button"
                         v-else-if="item.status === 'pending'"
-                        @click="checkIn(item.id)">⏳ 审核中</button>
+                        @click="checkIn(item.backendId)">⏳ 审核中</button>
                 <button class="checkin-btn" type="button"
                         v-else-if="item.status === 'done'"
-                        @click="checkIn(item.id)">✅ 已打卡</button>
+                        @click="checkIn(item.backendId)">✅ 已打卡</button>
                 <button class="detail-btn" type="button"
-                        @click="toggleDescription(item.id)">
+                        @click="toggleDescription(item.backendId)">
                   {{ item.expanded ? "收起详情" : "展开详情" }}
                 </button>
               </div>
@@ -280,8 +280,8 @@ async function ensureThumbsForRange(start = 0, end = 0){
       imgCache.warmup?.([src])
       const cached = await imgCache.getOrNet(src)
       // 写回 rawLocations，并合并到展示数组
-      const id = it.id
-      const idx = rawLocations.value.findIndex(x => x.id === id)
+      const id = it.backendId
+      const idx = rawLocations.value.findIndex(x => x.backendId === id)
       if (idx !== -1) {
         rawLocations.value[idx] = { ...rawLocations.value[idx], image: cached }
         mergeStatusToLocal()
@@ -351,8 +351,8 @@ function mergeStatusToLocal() {
   const locking  = new Set(lockingLocations.value  || [])
   locations.value = (rawLocations.value || []).map(it => {
     let status = 'normal'
-    if (unlocked.has(it.id)) status = 'done'
-    else if (locking.has(it.id)) status = 'pending'
+    if (unlocked.has(it.backendId)) status = 'done'
+    else if (locking.has(it.backendId)) status = 'pending'
     return { ...it, status }
   })
 }
@@ -509,7 +509,7 @@ function onKeydown(e){
 /* ===== 列表交互 ===== */
 function toggleDescription(id){
   locations.value = locations.value.map(item =>
-    item.id === id ? { ...item, expanded: !item.expanded } : item
+    item.backendId === id ? { ...item, expanded: !item.expanded } : item
   )
 }
 
@@ -548,7 +548,7 @@ function pickImageOnce() {
 }
 
 async function checkIn(id) {
-  const loc = (locations.value || []).find(l => l.id === id)
+  const loc = (locations.value || []).find(l => l.backendId === id)
   if (loc && (loc.status === 'pending' || loc.status === 'done')) {
     await previewExistingPhoto(id)
     return
@@ -601,7 +601,7 @@ async function checkIn(id) {
     localStorage.setItem('checkinRecords', JSON.stringify(records))
 
     locations.value = (locations.value || []).map(it =>
-      it.id === id ? { ...it, status: 'pending' } : it
+      it.backendId === id ? { ...it, status: 'pending' } : it
     )
 
     alert('打卡成功，等待审核')

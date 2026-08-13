@@ -20,6 +20,7 @@ export const MAP_CONFIG = {
 export const campusLocations = [
   {
     id: "he-er-da-house",
+    backendId: 1,
     name: "何尔达屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_001_he_er_da_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -35,6 +36,7 @@ export const campusLocations = [
   },
   {
     id: "gao-li-shi-house",
+    backendId: 2,
     name: "高利士屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_002_gao_lishi_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -50,6 +52,7 @@ export const campusLocations = [
   },
   {
     id: "pennsylvania-school-house",
+    backendId: 3,
     name: "宾省校屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_003_pennsylvania_school_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -65,6 +68,7 @@ export const campusLocations = [
   },
   {
     id: "duanmu-zheng-statue",
+    backendId: 4,
     name: "端木正教授像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_004_prof_duanmu_zheng_statue.jpg",
     lnglat: [113.303943,23.094742],
@@ -80,6 +84,7 @@ export const campusLocations = [
   },
   {
     id: "wei-ye-xiao-shi-house",
+    backendId: 5,
     name: "韦耶孝实屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_005_wei_yexiaoshi_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -95,6 +100,7 @@ export const campusLocations = [
   },
   {
     id: "london-missionary-house",
+    backendId: 6,
     name: "伦敦会屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_006_london_missionary_society_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -110,6 +116,7 @@ export const campusLocations = [
   },
   {
     id: "meichen-house-1",
+    backendId: 7,
     name: "美臣屋一号",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_007_meichen_house_no1.jpg",
     lnglat: [113.303943,23.094742],
@@ -125,6 +132,7 @@ export const campusLocations = [
   },
   {
     id: "bai-de-li-house",
+    backendId: 8,
     name: "白德理屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_008_bai_deli_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -140,6 +148,7 @@ export const campusLocations = [
   },
   {
     id: "qu-lin-bin-house",
+    backendId: 9,
     name: "屈林宾屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_009_qu_linbin_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -155,6 +164,7 @@ export const campusLocations = [
   },
   {
     id: "hui-shi-li-house",
+    backendId: 10,
     name: "惠师礼屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_010_hui_shili_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -170,6 +180,7 @@ export const campusLocations = [
   },
   {
     id: "ma-gang-hall",
+    backendId: 11,
     name: "马岗堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_011_magang_hall.jpg",
     lnglat: [113.303943,23.094742],
@@ -185,6 +196,7 @@ export const campusLocations = [
   },
   {
     id: "south-library-main",
+    backendId: 12,
     name: "图书馆",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_012_library.jpg",
     lnglat: [113.300065,23.097802],
@@ -200,6 +212,7 @@ export const campusLocations = [
   },
   {
     id: "huang-huan-qiu-statue",
+    backendId: 13,
     name: "黄焕秋校长像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_013_zou_lu_president_statue.jpg",
     lnglat: [113.303943,23.094742],
@@ -215,6 +228,7 @@ export const campusLocations = [
   },
   {
     id: "gran-hall",
+    backendId: 14,
     name: "格兰堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_014_gelan_hall.jpg",
     lnglat: [113.299631,23.097032],
@@ -230,6 +244,7 @@ export const campusLocations = [
   },
   {
     id: "liao-cheng-zhi-statue",
+    backendId: 15,
     name: "廖承志像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_015_liao_chengzhi_statue.jpg",
     lnglat: [113.303943,23.094742],
@@ -245,6 +260,7 @@ export const campusLocations = [
   },
   {
     id: "martin-hall",
+    backendId: 16,
     name: "马丁堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_016_martin_hall.jpg",
     lnglat: [113.298799,23.097101],
@@ -260,6 +276,7 @@ export const campusLocations = [
   },
   {
     id: "primary-school-complex",
+    backendId: 17,
     name: "附属小学建筑群",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_017_affiliated_primary_school_complex.jpg",
     lnglat: [113.303943,23.094742],
@@ -275,6 +292,7 @@ export const campusLocations = [
   },
   {
     id: "south-lawn-dining",
+    backendId: 18,
     name: "南草坪餐厅",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_018_south_lawn_dining_hall.jpg",
     lnglat: [113.2993,23.099018],
@@ -290,6 +308,7 @@ export const campusLocations = [
   },
   {
     id: "teaching-bldg-1",
+    backendId: 19,
     name: "第一教学楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_019_teaching_building_1.jpg",
     lnglat: [113.299514,23.099305],
@@ -305,6 +324,7 @@ export const campusLocations = [
   },
   {
     id: "primary-school-pavilion",
+    backendId: 20,
     name: "附属小学方亭",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_020_affiliated_primary_school_pavilion.jpg",
     lnglat: [113.290511,23.094417],
@@ -320,6 +340,7 @@ export const campusLocations = [
   },
   {
     id: "rong-guang-hall",
+    backendId: 21,
     name: "荣光堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_021_rongguang_hall.jpg",
     lnglat: [113.29933,23.099652],
@@ -335,6 +356,7 @@ export const campusLocations = [
   },
   {
     id: "south-gate",
+    backendId: 22,
     name: "中山大学南门",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_022_sysu_south_gate.jpg",
     lnglat: [113.297053,23.091143],
@@ -350,6 +372,7 @@ export const campusLocations = [
   },
   {
     id: "life-sciences-bldg",
+    backendId: 23,
     name: "生命科学楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_023_life_sciences_building.jpg",
     lnglat: [113.296123,23.092676],
@@ -365,6 +388,7 @@ export const campusLocations = [
   },
   {
     id: "sericulture-breeding-room",
+    backendId: 24,
     name: "蚕丝学院制种室",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_024_sericulture_institute_breeding_room.jpg",
     lnglat: [113.303943,23.094742],
@@ -380,9 +404,10 @@ export const campusLocations = [
   },
   {
     id: "biology-bldg",
+    backendId: 25,
     name: "生物楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_025_biology_building.jpg",
-    lnglat: [113.295642,23.092523],
+    lnglat: [113.296701,23.092816],
     isHidden: 0,
     category: "teaching",
     position: "南校园415号",
@@ -395,9 +420,10 @@ export const campusLocations = [
   },
   {
     id: "darwin-sculpture",
+    backendId: 26,
     name: "达尔文雕塑",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_026_charles_darwin_sculpture.jpg",
-    lnglat: [113.296065,23.092694],
+    lnglat: [113.296616,23.092475],
     isHidden: 0,
     category: "landscape",
     position: "南校园生物楼正前方",
@@ -410,6 +436,7 @@ export const campusLocations = [
   },
   {
     id: "zeng-xian-zi-hall",
+    backendId: 27,
     name: "曾宪梓堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_027_zeng_xianzhi_hall.jpg",
     lnglat: [113.295771,23.093017],
@@ -425,6 +452,7 @@ export const campusLocations = [
   },
   {
     id: "pu-zhe-long-sculpture",
+    backendId: 28,
     name: "蒲蛰龙雕塑",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_028_pu_zhelong_sculpture.jpg",
     lnglat: [113.303943,23.094742],
@@ -440,6 +468,7 @@ export const campusLocations = [
   },
   {
     id: "ma-wen-hui-hall",
+    backendId: 29,
     name: "马文辉堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_029_ma_wenhui_hall.jpg",
     lnglat: [113.296311,23.093431],
@@ -455,6 +484,7 @@ export const campusLocations = [
   },
   {
     id: "he-dan-qing-hall",
+    backendId: 30,
     name: "贺丹青堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_030_he_danqing_hall.jpg",
     lnglat: [113.296412,23.093766],
@@ -470,6 +500,7 @@ export const campusLocations = [
   },
   {
     id: "test-bldg",
+    backendId: 31,
     name: "测试大楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_031_test_building.jpg",
     lnglat: [113.297191,23.09347],
@@ -485,6 +516,7 @@ export const campusLocations = [
   },
   {
     id: "bamboo-garden",
+    backendId: 32,
     name: "竹种标本园",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_032_bamboo_grove.jpg",
     lnglat: [113.295861,23.094018],
@@ -500,10 +532,11 @@ export const campusLocations = [
   },
   {
     id: "zhong-shan-bldg",
+    backendId: 33,
     name: "中山楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_033_zhongshan_building.jpg",
-    lnglat: [113.303943,23.094742],
-    isHidden: 1,
+    lnglat: [113.297205,23.09417],
+    isHidden: 0,
     category: "landmark",
     position: "南校园474号",
     tags: ["宿舍区"],
@@ -515,6 +548,7 @@ export const campusLocations = [
   },
   {
     id: "liang-qiu-ju-hall",
+    backendId: 34,
     name: "梁銶琚堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_034_liang_xiju_hall.jpg",
     lnglat: [113.297225,23.095115],
@@ -530,6 +564,7 @@ export const campusLocations = [
   },
   {
     id: "grad-school",
+    backendId: 35,
     name: "研究生院",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_035_yanjiushengyuan.jpg",
     lnglat: [113.297173,23.095674],
@@ -545,6 +580,7 @@ export const campusLocations = [
   },
   {
     id: "zhang-bi-shi-hall",
+    backendId: 36,
     name: "张弼士堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_036_zhang_bishi_hall.jpg",
     lnglat: [113.29664,23.094973],
@@ -560,6 +596,7 @@ export const campusLocations = [
   },
   {
     id: "yifu-bldg",
+    backendId: 37,
     name: "逸夫楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_037_yifu_building.jpg",
     lnglat: [113.296393,23.095685],
@@ -575,6 +612,7 @@ export const campusLocations = [
   },
   {
     id: "west-field",
+    backendId: 38,
     name: "西大操场",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_038_west_field.jpg",
     lnglat: [113.295287,23.095282],
@@ -590,6 +628,7 @@ export const campusLocations = [
   },
   {
     id: "xian-wei-jian-hall",
+    backendId: 39,
     name: "冼为坚堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_039_xi_weijian_hall.jpg",
     lnglat: [113.298067,23.092955],
@@ -605,6 +644,7 @@ export const campusLocations = [
   },
   {
     id: "bauhinia-dining",
+    backendId: 40,
     name: "紫荆园餐厅",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_040_bauhinia_garden_dining_hall.jpg",
     lnglat: [113.2987,23.092829],
@@ -620,6 +660,7 @@ export const campusLocations = [
   },
   {
     id: "union-theological-complex",
+    backendId: 41,
     name: "协和神学院建筑群",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_041_union_theological_seminary_complex.jpg",
     lnglat: [113.303943,23.094742],
@@ -635,6 +676,7 @@ export const campusLocations = [
   },
   {
     id: "fu-lan-hall",
+    backendId: 42,
     name: "芙兰堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_042_teaching_building_3.jpg",
     lnglat: [113.303943,23.094742],
@@ -650,6 +692,7 @@ export const campusLocations = [
   },
   {
     id: "xi-chang-hall",
+    backendId: 43,
     name: "锡昌堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_043_xichang_hall.jpg",
     lnglat: [113.299332,23.093951],
@@ -665,6 +708,7 @@ export const campusLocations = [
   },
   {
     id: "si-dun-bldg",
+    backendId: 44,
     name: "四墩楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_044_sidun_building.jpg",
     lnglat: [113.303943,23.094742],
@@ -680,6 +724,7 @@ export const campusLocations = [
   },
   {
     id: "residence-8",
+    backendId: 45,
     name: "8号住宅",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_045_residence_no8.jpg",
     lnglat: [113.303943,23.094742],
@@ -695,6 +740,7 @@ export const campusLocations = [
   },
   {
     id: "twin-house-2",
+    backendId: 46,
     name: "孖屋二",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_046_twin_house_no2.jpg",
     lnglat: [113.303943,23.094742],
@@ -710,6 +756,7 @@ export const campusLocations = [
   },
   {
     id: "tan-li-ting-house",
+    backendId: 47,
     name: "谭礼庭屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_047_tan_liting_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -725,6 +772,7 @@ export const campusLocations = [
   },
   {
     id: "ma-ying-biao-convalescent",
+    backendId: 48,
     name: "马应彪夫人护养院",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_048_madam_ma_yingbiao_convalescent_home.jpg",
     lnglat: [113.299172,23.095521],
@@ -740,6 +788,7 @@ export const campusLocations = [
   },
   {
     id: "ma-jin-mo-house-2",
+    backendId: 49,
     name: "麻金墨屋二号",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_049_ma_jinmo_house_no2.jpg",
     lnglat: [113.303943,23.094742],
@@ -755,6 +804,7 @@ export const campusLocations = [
   },
   {
     id: "swasey-hall",
+    backendId: 50,
     name: "怀士堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_050_huaishi_hall.jpg",
     lnglat: [113.298076,23.095542],
@@ -770,6 +820,7 @@ export const campusLocations = [
   },
   {
     id: "lu-xun-statue",
+    backendId: 51,
     name: "鲁迅先生像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_051_lu_xun_statue.jpg",
     lnglat: [113.303943,23.094742],
@@ -785,6 +836,7 @@ export const campusLocations = [
   },
   {
     id: "motto-statue",
+    backendId: 52,
     name: "校训雕像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_052_school_motto_stone_carving.jpg",
     lnglat: [113.303943,23.094742],
@@ -800,6 +852,7 @@ export const campusLocations = [
   },
   {
     id: "xi-lun-gao-house",
+    backendId: 53,
     name: "希伦高屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_053_xi_lungao_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -815,6 +868,7 @@ export const campusLocations = [
   },
   {
     id: "blackstone-house",
+    backendId: 54,
     name: "黑石屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_054_blackstone_house.jpg",
     lnglat: [113.298742,23.096131],
@@ -830,6 +884,7 @@ export const campusLocations = [
   },
   {
     id: "ma-jin-mo-house-1",
+    backendId: 55,
     name: "麻金墨屋一号",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_055_ma_jinmo_house_no1.jpg",
     lnglat: [113.303943,23.094742],
@@ -845,6 +900,7 @@ export const campusLocations = [
   },
   {
     id: "meichen-house-2",
+    backendId: 56,
     name: "美臣屋二号",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_056_meichen_house_no2.jpg",
     lnglat: [113.303943,23.094742],
@@ -860,6 +916,7 @@ export const campusLocations = [
   },
   {
     id: "priest-house",
+    backendId: 57,
     name: "神甫屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_057_priest_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -875,6 +932,7 @@ export const campusLocations = [
   },
   {
     id: "ji-chen-house",
+    backendId: 58,
     name: "积臣屋",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_058_jichen_house.jpg",
     lnglat: [113.303943,23.094742],
@@ -890,6 +948,7 @@ export const campusLocations = [
   },
   {
     id: "ying-dong-stadium",
+    backendId: 59,
     name: "英东体育馆",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_059_yingdong_stadium.jpg",
     lnglat: [113.301008,23.096314],
@@ -905,6 +964,7 @@ export const campusLocations = [
   },
   {
     id: "new-womens-school",
+    backendId: 60,
     name: "新女学",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_060_new_womens_school.jpg",
     lnglat: [113.302728,23.094903],
@@ -920,6 +980,7 @@ export const campusLocations = [
   },
   {
     id: "loc-------",
+    backendId: 61,
     name: "“摇篮”铜像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_061_cradle_bronze_statue.jpg",
     lnglat: [113.30267,23.095664],
@@ -935,6 +996,7 @@ export const campusLocations = [
   },
   {
     id: "xian-xing-hai-bust",
+    backendId: 62,
     name: "冼星海半身铜像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_062_xian_xinghai_bust.jpg",
     lnglat: [113.303943,23.094742],
@@ -950,6 +1012,7 @@ export const campusLocations = [
   },
   {
     id: "qiao-shen-wen-hu-hall",
+    backendId: 63,
     name: "翘燊堂、文虎堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_063_qiaoshen_hall_and_wenhu_hall.jpg",
     lnglat: [113.303943,23.094742],
@@ -965,6 +1028,7 @@ export const campusLocations = [
   },
   {
     id: "song-tao-garden",
+    backendId: 64,
     name: "松涛园",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_064_songtao_garden.jpg",
     lnglat: [113.30191,23.099879],
@@ -980,6 +1044,7 @@ export const campusLocations = [
   },
   {
     id: "new-gym",
+    backendId: 65,
     name: "新体育馆",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_065_new_gymnasium.jpg",
     lnglat: [113.302117,23.100898],
@@ -995,6 +1060,7 @@ export const campusLocations = [
   },
   {
     id: "song-yuan-lake",
+    backendId: 66,
     name: "松园湖",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_066_songyuan_lake.jpg",
     lnglat: [113.300637,23.100115],
@@ -1010,6 +1076,7 @@ export const campusLocations = [
   },
   {
     id: "loc------",
+    backendId: 67,
     name: "第二教学楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_067_teaching_building_2.jpg",
     lnglat: [113.300065,23.10109],
@@ -1025,6 +1092,7 @@ export const campusLocations = [
   },
   {
     id: "carpenter-bldg",
+    backendId: 68,
     name: "卡彭特楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_068_carpenter_building.jpg",
     lnglat: [113.293999,23.095719],
@@ -1040,6 +1108,7 @@ export const campusLocations = [
   },
   {
     id: "lin-hu-hall-complex",
+    backendId: 69,
     name: "林护堂、黄铭衍堂、黄传经堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_069_linhu_hall_huang_mingyan_hall_huang_chuanjing_hall.jpg",
     lnglat: [113.300167,23.101816],
@@ -1055,6 +1124,7 @@ export const campusLocations = [
   },
   {
     id: "ye-bao-ding-hall",
+    backendId: 70,
     name: "叶葆定堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_070_ye_baoding_hall.jpg",
     lnglat: [113.300379,23.102318],
@@ -1070,6 +1140,7 @@ export const campusLocations = [
   },
   {
     id: "north-gate-arch",
+    backendId: 71,
     name: "中山大学北门牌坊",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_071_north_gate_archway.jpg",
     lnglat: [113.29986,23.103362],
@@ -1085,6 +1156,7 @@ export const campusLocations = [
   },
   {
     id: "wu-zhan-de-hall",
+    backendId: 72,
     name: "伍沾德堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_072_wu_zhande_hall.jpg",
     lnglat: [113.29875,23.101143],
@@ -1100,6 +1172,7 @@ export const campusLocations = [
   },
   {
     id: "feng-sheng-hall",
+    backendId: 73,
     name: "丰盛堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_073_fengsheng_hall.jpg",
     lnglat: [113.298004,23.100864],
@@ -1115,6 +1188,7 @@ export const campusLocations = [
   },
   {
     id: "northwest-gate",
+    backendId: 74,
     name: "中山大学西北门",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_074_northwest_gate.jpg",
     lnglat: [113.297403,23.100661],
@@ -1130,6 +1204,7 @@ export const campusLocations = [
   },
   {
     id: "wu-shun-de-library",
+    backendId: 75,
     name: "伍舜德图书馆",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_075_wu_shunde_library.jpg",
     lnglat: [113.298571,23.100238],
@@ -1145,6 +1220,7 @@ export const campusLocations = [
   },
   {
     id: "ling-nan-hall",
+    backendId: 76,
     name: "岭南堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_076_lingnan_hall.jpg",
     lnglat: [113.299152,23.100493],
@@ -1160,6 +1236,7 @@ export const campusLocations = [
   },
   {
     id: "ma-ying-biao-reception",
+    backendId: 77,
     name: "马应彪招待室",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_077_ma_yingbiao_reception_room.jpg",
     lnglat: [113.303943,23.094742],
@@ -1175,6 +1252,7 @@ export const campusLocations = [
   },
   {
     id: "zhe-sheng-hall",
+    backendId: 78,
     name: "哲生堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_078_zhesheng_hall.jpg",
     lnglat: [113.2985,23.099801],
@@ -1190,6 +1268,7 @@ export const campusLocations = [
   },
   {
     id: "lu-you-hall",
+    backendId: 79,
     name: "陆佑堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_079_lu_you_hall.jpg",
     lnglat: [113.297836,23.099299],
@@ -1205,6 +1284,7 @@ export const campusLocations = [
   },
   {
     id: "java-hall",
+    backendId: 80,
     name: "爪哇堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_080_java_hall.jpg",
     lnglat: [113.297671,23.098753],
@@ -1220,6 +1300,7 @@ export const campusLocations = [
   },
   {
     id: "museum",
+    backendId: 81,
     name: "博物馆",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_081_museum.jpg",
     lnglat: [113.296421,23.097711],
@@ -1235,10 +1316,11 @@ export const campusLocations = [
   },
   {
     id: "loc----",
+    backendId: 82,
     name: "八角亭",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_082_octagonal_pavilion.jpg",
-    lnglat: [113.303943,23.094742],
-    isHidden: 1,
+    lnglat: [113.296962,23.09797],
+    isHidden: 0,
     category: "landscape",
     position: "博物馆（543）前",
     tags: ["活动"],
@@ -1250,6 +1332,7 @@ export const campusLocations = [
   },
   {
     id: "yi-chou-jin-shi-arch",
+    backendId: 83,
     name: "乙丑进士牌坊",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_083_yichou_jinshi_archway.jpg",
     lnglat: [113.297868,23.097855],
@@ -1265,6 +1348,7 @@ export const campusLocations = [
   },
   {
     id: "xing-pavilion",
+    backendId: 84,
     name: "惺亭",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_084_xing_pavilion.jpg",
     lnglat: [113.298498,23.097577],
@@ -1280,6 +1364,7 @@ export const campusLocations = [
   },
   {
     id: "sun-yat-sen-bronze-statue",
+    backendId: 85,
     name: "孙中山先生铜像",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_085_sun_yat_sen_bronze_statue.jpg",
     lnglat: [113.298396,23.096886],
@@ -1295,6 +1380,7 @@ export const campusLocations = [
   },
   {
     id: "shi-da-li-hall",
+    backendId: 86,
     name: "史达理堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_086_shidali_hall.jpg",
     lnglat: [113.303943,23.094742],
@@ -1310,10 +1396,11 @@ export const campusLocations = [
   },
   {
     id: "laser-optics-bldg",
+    backendId: 87,
     name: "激光光学大楼",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_087_long_kanghou_sculpture.jpg",
-    lnglat: [113.303943,23.094742],
-    isHidden: 1,
+    lnglat: [113.298441,23.098915],
+    isHidden: 0,
     category: "teaching",
     position: "南校园558号",
     tags: ["上课"],
@@ -1325,6 +1412,7 @@ export const campusLocations = [
   },
   {
     id: "shi-you-hall",
+    backendId: 88,
     name: "十友堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_088_shiyou_hall.jpg",
     lnglat: [113.297204,23.097465],
@@ -1340,6 +1428,7 @@ export const campusLocations = [
   },
   {
     id: "model-village",
+    backendId: 89,
     name: "模范村",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_089_model_village.jpg",
     lnglat: [113.295981,23.097106],
@@ -1355,6 +1444,7 @@ export const campusLocations = [
   },
   {
     id: "law-school",
+    backendId: 90,
     name: "法学院",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_090_law_college.jpg",
     lnglat: [113.296932,23.096685],
@@ -1370,6 +1460,7 @@ export const campusLocations = [
   },
   {
     id: "yong-fang-hall",
+    backendId: 91,
     name: "永芳堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_091_yongfang_hall.jpg",
     lnglat: [113.296571,23.096386],
@@ -1385,6 +1476,7 @@ export const campusLocations = [
   },
   {
     id: "population-research",
+    backendId: 92,
     name: "人口研究所",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_092_people_research_academic.jpg",
     lnglat: [113.296814,23.096003],
@@ -1400,10 +1492,11 @@ export const campusLocations = [
   },
   {
     id: "scholar-bookstore",
+    backendId: 93,
     name: "学人书境",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_093_SYSU_publishinghouse.jpg",
-    lnglat: [113.303943,23.094742],
-    isHidden: 1,
+    lnglat: [113.295811,23.096179],
+    isHidden: 0,
     category: "service",
     position: "南校园517号",
     tags: ["自习","藏书","餐饮","上课","活动"],
@@ -1415,6 +1508,7 @@ export const campusLocations = [
   },
   {
     id: "humanities-institute",
+    backendId: 94,
     name: "中山大学人文高等研究院",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_094_deng_shichang_navy_statue.jpg",
     lnglat: [113.297428,23.096827],
@@ -1430,6 +1524,7 @@ export const campusLocations = [
   },
   {
     id: "kang-le-dining",
+    backendId: 95,
     name: "康乐园餐厅",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_095_kangle_garden_dining_hall.jpg",
     lnglat: [113.293495,23.093266],
@@ -1445,6 +1540,7 @@ export const campusLocations = [
   },
   {
     id: "yuan-xi-lake",
+    backendId: 96,
     name: "园西湖",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_096_yuanxi_lake.jpg",
     lnglat: [113.293461,23.093855],
@@ -1460,6 +1556,7 @@ export const campusLocations = [
   },
   {
     id: "pu-yuan-canteen",
+    backendId: 97,
     name: "蒲园食堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_097_puyuan_canteen.jpg",
     lnglat: [113.303943,23.094742],
@@ -1475,6 +1572,7 @@ export const campusLocations = [
   },
   {
     id: "west-gate",
+    backendId: 98,
     name: "中山大学西门",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_098_west_gate.jpg",
     lnglat: [113.29145,23.093171],
@@ -1490,6 +1588,7 @@ export const campusLocations = [
   },
   {
     id: "small-west-gate",
+    backendId: 99,
     name: "中山大学小西门",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_099_small_west_gate.jpg",
     lnglat: [113.293917,23.097404],
@@ -1505,6 +1604,7 @@ export const campusLocations = [
   },
   {
     id: "zhen-huan-hall",
+    backendId: 100,
     name: "震寰堂",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_100_zhenhuan_hall.jpg",
     lnglat: [113.292433,23.093194],
@@ -1520,6 +1620,7 @@ export const campusLocations = [
   },
   {
     id: "your-observations",
+    backendId: 101,
     name: "你的见闻",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_101_your_observations.jpg",
     lnglat: [113.303943,23.094742],
@@ -1532,8 +1633,163 @@ export const campusLocations = [
     checkinStatus: "unchecked",
     popularity: 18,
     isRecommended: false,
+  },
+  {
+    id: "chun-hui-yuan",
+    backendId: 102,
+    name: "春晖园",
+    image: "https://store.is.autonavi.com/showpic/44bdf82bf5b58a2a50a2a07abe4d4510",
+    lnglat: [113.302611,23.099569],
+    isHidden: 0,
+    category: "canteen",
+    position: "东北区353号",
+    tags: ["餐饮","景观","拍照","宿舍区","活动"],
+    shortDesc: "春晖园，位于中山大学南校园东北区353号，毗邻东区宿舍，与松涛园一墙之隔，是南校园师生日常就餐的主要场所之一。食堂由中厅与东厅两部分构成，共一至二楼，菜品以粤菜为主，兼有湘菜、川菜。",
+    description: "<p><strong>春晖园</strong>，位于<strong>中山大学南校园东北区353号</strong>，毗邻东区宿舍，与松涛园一墙之隔，是南校园师生日常就餐的主要场所之一。食堂由<strong>中厅</strong>与<strong>东厅</strong>两部分构成，共<strong>一至二楼</strong>。</p>\n\n<p><strong>菜品与特色：</strong></p>\n<ul>\n  <li>一楼设有自选与小炒窗口，早餐面食与点心品种丰富，约有<strong>50多款</strong>；午晚餐菜式多达<strong>120款</strong>，以粤菜为主，兼有湘菜、川菜。</li>\n  <li>二楼设有西北风味餐厅，提供小火锅、西北面食，以及麻辣香锅、番茄牛腩面、酸菜鱼面等特色菜品。</li>\n  <li>推荐广式煲仔饭、隆江猪脚饭、滑蛋饭、香锅等，人均消费较为实惠。</li>\n</ul>\n\n<p><strong>功能与意义：</strong></p>\n<p>春晖园紧邻东区生活区，是附近师生就餐与休憩的便捷去处。其丰富的菜式与实惠的价格，使其成为康乐园内广受学生欢迎的食堂之一。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "xiong-de-long-student-center",
+    backendId: 103,
+    name: "熊德龙学生活动中心",
+    image: "https://store.is.autonavi.com/showpic/3caa396ee13252602a9061b1c24d6578",
+    lnglat: [113.303456,23.096455],
+    isHidden: 0,
+    category: "service",
+    position: "南校园东区",
+    tags: ["活动","社团","校园"],
+    shortDesc: "熊德龙学生活动中心，位于中山大学南校园东区、东湖之滨，由爱国侨领熊德龙先生捐资兴建，是南校园学生课外活动与社团文化的核心场所。",
+    description: "<p><strong>熊德龙学生活动中心</strong>，位于<strong>中山大学南校园东区、东湖之滨</strong>，坐西向东，是南校园学生课外活动与社团文化的核心场所。该中心由爱国华侨、著名侨领<strong>熊德龙先生</strong>捐资兴建。</p>\n\n<p><strong>历史沿革：</strong></p>\n<ul>\n  <li><strong>1993年</strong>：熊德龙先生捐资<strong>30万美元</strong>启动建设。</li>\n  <li><strong>1994年</strong>：于校庆日落成。</li>\n  <li><strong>1995年</strong>：正式投入使用，此后取代怀士堂成为南校园核心课外活动场所。</li>\n</ul>\n\n<p><strong>建筑与功能：</strong></p>\n<ul>\n  <li>主体建筑共<strong>五层</strong>，建筑面积约<strong>6800平方米</strong>。</li>\n  <li>内设讲学厅、音乐厅、多功能厅、舞蹈室、画室、乐室等设施。</li>\n  <li>是校团委、学生会等机构的办公驻地，也是各类学生社团活动、文艺演出与文化交流的重要依托。</li>\n</ul>\n\n<p>📖 <strong>熊德龙</strong>，印度尼西亚华侨，著名爱国侨领，长期关心支持祖国教育事业，曾多次捐资助学，为中大校园文化建设作出重要贡献。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "xue-wu-canteen",
+    backendId: 104,
+    name: "学五食堂",
+    image: "https://store.is.autonavi.com/showpic/b18da5a0f569a020ed1b3aa7d909c9ae",
+    lnglat: [113.304469,23.096871],
+    isHidden: 0,
+    category: "canteen",
+    position: "园东区109号",
+    tags: ["餐饮","景观","拍照","宿舍区","活动"],
+    shortDesc: "学五食堂，位于中山大学南校园园东区109号，临近东门，是距离东区生活区最近、规模最大的食堂，被誉为校园“性价比之王”。",
+    description: "<p><strong>学五食堂</strong>，位于<strong>中山大学南校园园东区109号</strong>，临近东门，是距离东区生活区最近、规模最大的食堂，被誉为校园“性价比之王”。食堂共<strong>两层</strong>。</p>\n\n<p><strong>菜品与特色：</strong></p>\n<ul>\n  <li>一楼为自选与特色窗口，提供隆江猪脚饭、广式汤面、东北水饺、云南米线等；自选菜价格实惠，品种丰富。</li>\n  <li>二楼为地方特色美食窗口，有芝士焗饭、咖喱蛋包饭、黄焖鸡米饭、重庆鸡公煲、上海小馄饨、烧肉饭，以及麻辣烫、啫啫煲等。</li>\n  <li>设有免费微波炉，方便师生加热餐食。</li>\n</ul>\n\n<p><strong>功能与意义：</strong></p>\n<p>学五食堂凭借丰富的品种与实惠的价格，成为东区师生日常就餐的热门选择，是康乐园校园生活的重要组成部分。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "building-106-computer-room",
+    backendId: 105,
+    name: "106栋机房",
+    image: "",
+    lnglat: [113.30412,23.095864],
+    isHidden: 0,
+    category: "teaching",
+    position: "南校园106栋",
+    tags: ["上课","自习","活动"],
+    shortDesc: "106栋机房，位于中山大学南校园106栋，是学校集中提供计算机教学与实践的机房所在楼栋，主要承担计算机类课程的上机教学与日常自习服务。",
+    description: "<p><strong>106栋机房</strong>，位于<strong>中山大学南校园106栋</strong>，是学校集中提供计算机教学与实践的机房所在楼栋。</p>\n\n<p><strong>功能与用途：</strong></p>\n<ul>\n  <li>主要承担计算机类课程的上机教学任务，为程序设计、信息类公共课程等提供实践场所。</li>\n  <li>同时也是学生日常上机自习与作业完成的重要去处。</li>\n</ul>\n\n<p><strong>环境与设施：</strong>机房内配备多台计算机终端，环境整洁，空调与网络设施齐全，为师生提供稳定的上机条件。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "ying-dong-sports-field",
+    backendId: 106,
+    name: "英东体育场",
+    image: "",
+    lnglat: [113.301331,23.095207],
+    isHidden: 0,
+    category: "sports",
+    position: "英东体育中心",
+    tags: ["运动","上课","活动"],
+    shortDesc: "英东体育场，又称东区运动场，位于中山大学南校园英东体育中心内，由霍英东先生捐资兴建的英东体育中心的一部分，建有400米标准塑胶跑道与草皮足球场。",
+    description: "<p><strong>英东体育场</strong>，又称<strong>东区运动场</strong>，位于<strong>中山大学南校园英东体育中心</strong>内，是校园内重要的室外体育运动场所。该体育场由香港著名实业家、慈善家<strong>霍英东先生</strong>捐资兴建的英东体育中心的一部分。</p>\n\n<p><strong>场地与设施：</strong></p>\n<ul>\n  <li>建有<strong>400米标准塑胶跑道</strong>，内设<strong>草皮足球场</strong>，可满足田径与足球等运动需求。</li>\n  <li>与英东体育馆、网球场、综合球类场、游泳场等共同构成英东体育中心建筑群。</li>\n</ul>\n\n<p><strong>历史沿革：</strong></p>\n<ul>\n  <li><strong>1984年11月</strong>：英东体育馆奠基。</li>\n  <li><strong>1987年</strong>：英东体育中心建筑群建成启用。</li>\n  <li><strong>1990年</strong>：国家教委在此设立中国内地第一个“中国大学生体育训练基地”。</li>\n</ul>\n\n<p><strong>功能与意义：</strong>英东体育场是学校体育教学、师生日常锻炼与校园体育赛事的重要场地，见证了中大学子拼搏进取的体育精神。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "zhong-wen-hall",
+    backendId: 107,
+    name: "中文堂",
+    image: "https://store.is.autonavi.com/showpic/b64edd73df52b617bffa4d5e4a6bfd4c",
+    lnglat: [113.299189,23.094595],
+    isHidden: 0,
+    category: "teaching",
+    position: "东南区274号",
+    tags: ["上课","人文","活动"],
+    shortDesc: "中文堂，位于中山大学南校园东南区274号，建成于2006年11月，楼高9层，是国内楼层最高的中文系楼，为中山大学中国语言文学系所在地，楼东侧立有鲁迅雕像。",
+    description: "<p><strong>中文堂</strong>，位于<strong>中山大学南校园东南区274号</strong>，建成于<strong>2006年11月</strong>，楼高<strong>9层</strong>，是国内楼层最高的中文系楼，为中山大学中国语言文学系的所在地。</p>\n\n<p><strong>建筑与特色：</strong></p>\n<ul>\n  <li>楼东侧立有<strong>鲁迅雕像</strong>，与中文系的学术传统相映成辉。</li>\n  <li>中文系系史馆位于中文堂二楼，于<strong>2024年10月</strong>正式揭牌开放。</li>\n</ul>\n\n<p><strong>学科与功能：</strong></p>\n<ul>\n  <li>中国语言文学系是中山大学历史最悠久的学系之一，主要建设<strong>中国语言文学、民俗学、国际中文教育</strong>三个学科。</li>\n  <li>拥有本硕博完整的人才培养体系，是南校园人文教育的重要阵地。</li>\n</ul>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "wen-ke-building",
+    backendId: 108,
+    name: "文科楼",
+    image: "https://store.is.autonavi.com/showpic/cf2a2f5151871ca557809cc5a21e8f39",
+    lnglat: [113.298405,23.09458],
+    isHidden: 0,
+    category: "teaching",
+    position: "西北区550号",
+    tags: ["上课","人文","活动"],
+    shortDesc: "文科楼，位于中山大学南校园西北区550号，是南校园人文社会科学相关院系教学与办公的重要场所。",
+    description: "<p><strong>文科楼</strong>，位于<strong>中山大学南校园西北区550号</strong>，是南校园人文社会科学相关院系教学与办公的重要场所。</p>\n\n<p><strong>功能与用途：</strong></p>\n<ul>\n  <li>承担人文社会科学类课程的教学任务，是南校园文科教学的重要阵地。</li>\n  <li>为相关院系提供办公、教研与学术交流空间。</li>\n</ul>\n\n<p><strong>环境与格局：</strong>文科楼延续康乐园红砖绿瓦的校园建筑风格，与周边教学建筑群相映成趣，营造出浓厚的学术氛围。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "xue-yi-canteen",
+    backendId: 109,
+    name: "学一食堂",
+    image: "https://aos-comment.amap.com/B00140U3D8/comment/content_media_external_file_80752_ss__1759397053156_15905054.jpg",
+    lnglat: [113.295825,23.095949],
+    isHidden: 0,
+    category: "canteen",
+    position: "西南区496号",
+    tags: ["餐饮","景观","拍照","上课","活动"],
+    shortDesc: "学一食堂，位于中山大学南校园西南区496号、逸夫艺术中心西侧，西大球场旁，共三层，是南校园师生日常就餐的主要场所之一。",
+    description: "<p><strong>学一食堂</strong>，位于<strong>中山大学南校园西南区496号</strong>、逸夫艺术中心西侧，西大球场旁，是南校园师生日常就餐的主要场所之一。食堂共<strong>三层</strong>。</p>\n\n<p><strong>菜品与特色：</strong></p>\n<ul>\n  <li>一层提供滑蛋饭、麻辣烫、面食、小炒、螺蛳粉、干锅等。</li>\n  <li>二层为自选菜式，另设糖水窗口、甜点、潮汕烧腊、手撕鸡饭、鸡扒饭等。</li>\n  <li>三层为自选菜式。</li>\n  <li>推荐螺蛳粉、山西刀削面、双皮奶，中间层糖水窗口性价比颇高。</li>\n</ul>\n\n<p><strong>功能与意义：</strong>学一食堂紧邻逸夫艺术中心与西大球场，是师生课后与运动后就餐的便捷去处，价格实惠，深受学生欢迎。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
+  },
+  {
+    id: "teaching-bldg-3",
+    backendId: 110,
+    name: "第三教学楼",
+    image: "",
+    lnglat: [113.298237,23.093702],
+    isHidden: 0,
+    category: "teaching",
+    position: "",
+    tags: ["上课","活动"],
+    shortDesc: "第三教学楼，简称“三教”，位于中山大学南校园，是康乐园内重要的教学建筑之一，主要承担本科生的日常课堂教学任务。",
+    description: "<p><strong>第三教学楼</strong>，简称<strong>“三教”</strong>，位于<strong>中山大学南校园</strong>，是康乐园内重要的教学建筑之一，主要承担本科生的日常课堂教学任务。</p>\n\n<p><strong>功能与用途：</strong></p>\n<ul>\n  <li>设有多间多媒体课室，满足各类课程的教学需求。</li>\n  <li>是南校园文理科教学与考试的重要场所。</li>\n</ul>\n\n<p><strong>环境与格局：</strong>第三教学楼延续岭南校园红砖建筑风格，内部课室明亮整洁，是学子们日常学习与自习的常去之地。</p>",
+    checkinStatus: "unchecked",
+    popularity: 0,
+    isRecommended: false,
   }
 ];
+
+/**
+ * 前端字符串 ID ↔ 后端数字 ID 映射（由 campusLocations 自动生成，单一数据源）
+ */
+export const placeIdToBackend = Object.fromEntries(
+  campusLocations.map(p => [p.id, p.backendId])
+)
+
+export const backendToPlaceId = Object.fromEntries(
+  campusLocations.map(p => [p.backendId, p.id])
+)
 
 export function getPlacesByCategory(category) {
   if (!category || category === "all") return campusLocations;
@@ -1551,5 +1807,13 @@ export function searchPlaces(keyword) {
 }
 
 export function getPlaceById(id) {
-  return campusLocations.find(p => p.id === id) ?? null;
+  // 支持按前端字符串 id 或后端数字 backendId 查找
+  if (id == null) return null;
+  const byFrontend = campusLocations.find(p => p.id === id);
+  if (byFrontend) return byFrontend;
+  const num = Number(id);
+  if (Number.isFinite(num)) {
+    return campusLocations.find(p => p.backendId === num) ?? null;
+  }
+  return null;
 }

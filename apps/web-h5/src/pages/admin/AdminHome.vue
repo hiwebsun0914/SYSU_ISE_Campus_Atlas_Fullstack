@@ -431,8 +431,8 @@
           </div>
 
           <div v-if="visibleLocations.length" class="admin-spec-list">
-            <button v-for="location in visibleLocations" :key="location.id" type="button" @click="openLocationEditor(location)">
-              <span class="admin-spec-id">{{ String(location.id).padStart(3, '0') }}</span>
+            <button v-for="location in visibleLocations" :key="location.backendId" type="button" @click="openLocationEditor(location)">
+              <span class="admin-spec-id">{{ String(location.backendId).padStart(3, '0') }}</span>
               <div>
                 <strong>{{ location.name }}</strong>
                 <small>{{ location.position || '未填写位置' }}</small>
@@ -559,7 +559,7 @@
       <form @submit.prevent="saveLocation">
         <div class="admin-dialog-head">
           <div>
-            <span>地点 #{{ locationForm.id }}</span>
+            <span>地点 #{{ locationForm.backendId }}</span>
             <h2>编辑打卡点</h2>
           </div>
           <button type="button" aria-label="关闭地点编辑窗口" @click="locationDialog?.close()"><X :size="20" aria-hidden="true" /></button>
@@ -710,7 +710,7 @@ const locationLimit = ref(20)
 const userSearch = ref('')
 
 const rejectState = reactive({ kind: '', item: null, note: '', touched: false, error: '', submitting: false })
-const locationForm = reactive({ id: null, name: '', position: '', points: 1, image: '', description: '', saving: false, error: '' })
+const locationForm = reactive({ backendId: null, name: '', position: '', points: 1, image: '', description: '', saving: false, error: '' })
 const previewState = reactive({ url: '', label: '' })
 const toast = reactive({ message: '', tone: 'error', retry: null })
 let toastTimer = 0
@@ -753,7 +753,7 @@ const anomalyFilters = computed(() => [
 const filteredLocations = computed(() => {
   const query = locationSearch.value.toLowerCase()
   if (!query) return locations.value
-  return locations.value.filter(item => `${item.id} ${item.name} ${item.position || ''}`.toLowerCase().includes(query))
+  return locations.value.filter(item => `${item.backendId} ${item.name} ${item.position || ''}`.toLowerCase().includes(query))
 })
 const visibleLocations = computed(() => filteredLocations.value.slice(0, locationLimit.value))
 const filteredUsers = computed(() => {
@@ -979,7 +979,7 @@ function resetRejectDialog() {
 
 function openLocationEditor(location) {
   Object.assign(locationForm, {
-    id: location.id,
+    backendId: location.backendId,
     name: location.name || '',
     position: location.position || '',
     points: Number(location.points || 0),
@@ -1005,7 +1005,7 @@ async function saveLocation() {
 
   locationForm.saving = true
   try {
-    const payload = await api(`/admin/locations/${encodeURIComponent(locationForm.id)}`, 'PATCH', {
+    const payload = await api(`/admin/locations/${encodeURIComponent(locationForm.backendId)}`, 'PATCH', {
       name: locationForm.name,
       position: locationForm.position,
       points: Number(locationForm.points),
@@ -1013,7 +1013,7 @@ async function saveLocation() {
       description: locationForm.description
     })
     const updated = payload.data?.location
-    const index = locations.value.findIndex(item => Number(item.id) === Number(locationForm.id))
+    const index = locations.value.findIndex(item => Number(item.backendId) === Number(locationForm.backendId))
     if (updated && index >= 0) locations.value.splice(index, 1, updated)
     locationDialog.value?.close()
     await fetchDashboard()
@@ -1025,7 +1025,7 @@ async function saveLocation() {
 }
 
 function resetLocationDialog() {
-  Object.assign(locationForm, { id: null, name: '', position: '', points: 1, image: '', description: '', saving: false, error: '' })
+  Object.assign(locationForm, { backendId: null, name: '', position: '', points: 1, image: '', description: '', saving: false, error: '' })
 }
 
 function openPreview(url, label) {

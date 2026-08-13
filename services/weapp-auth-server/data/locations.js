@@ -1,7 +1,7 @@
 module.exports = {
   locations: [
     {
-      id: 1, isHidden: true,
+      backendId: 1, isHidden: true,
       name: '何尔达屋',
       position: '南校园311号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_001_he_er_da_house.jpg',
@@ -15,7 +15,7 @@ module.exports = {
 <p>📖 <strong>富伦（Henry S. Frank）</strong>，岭南大学<strong>化学系</strong>教授，曾任理工学院院长，是岭南大学理科教育的重要推动者之一。他在岭南大学期间积极推动实验教学与科研的发展，对化学学科的建设和人才培养具有重要贡献。</p>`
     },
     {
-      id: 2, isHidden: true,
+      backendId: 2, isHidden: true,
       name: '高利士屋',
       position: '南校园313号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_002_gao_lishi_house.jpg',
@@ -35,7 +35,7 @@ module.exports = {
 <p>📖 <strong>夏书章（1919.01.20–2024.07.24）</strong>，行政学家，江苏高邮人，中山大学行政管理学系教授，有“中国MPA之父”之称，是中国当代行政学的主要奠基人之一。在高利士屋期间，他以严谨刻苦的学风专心治学，潜心推动中国行政学教育与研究。</p>`
     },
     {
-      id: 3, isHidden: true,
+      backendId: 3, isHidden: true,
       name: '宾省校屋',
       position: '南校园317号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_003_pennsylvania_school_house.jpg',
@@ -50,7 +50,7 @@ module.exports = {
 <p>📖 <strong>许崇清（1888–1969）</strong>，字志澄，广州人，中国教育家、哲学家。早年加入同盟会，参与辛亥革命。曾<strong>三度担任中山大学校长</strong>，共计二十年，被视为南中国文化旗手。他倡导工人识字教育，推动师范与职业教育发展，在教育理论上著有《杜威社会改造思想批判》《人类底实践与教育的由来》《人的全面发展的教育任务》等。其教育理念强调教育与国家社会紧密结合。1988年，教育界称其为“新教育学和新中国高等教育的奠基人之一”。</p>`
     },
     {
-      id: 4, isHidden: true,
+      backendId: 4, isHidden: true,
       name: '端木正教授像',
       position: '南校园317栋东南侧',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_004_prof_duanmu_zheng_statue.jpg',
@@ -63,7 +63,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 5, isHidden: true,
+      backendId: 5, isHidden: true,
       name: '韦耶孝实屋',
       position: '南校园318号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_005_wei_yexiaoshi_house.jpg',
@@ -80,7 +80,7 @@ module.exports = {
 `
     },
     {
-      id: 6, isHidden: true,
+      backendId: 6, isHidden: true,
       name: '伦敦会屋',
       position: '南校园316号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_006_london_missionary_society_house.jpg',
@@ -95,7 +95,7 @@ module.exports = {
 <p>📖 <strong>黄焕秋（1916–2010）</strong>，广东惠州人，中国著名教育家。1937年毕业于<strong>中山大学教育系</strong>，后长期任职于中山大学，历任<strong>教务处长、副校长、校长、党委书记</strong>等职。20世纪70年代末，他主持<strong>中山大学院系复办</strong>，顶住压力重建<strong>法律、经济、人类学、社会学、计算机</strong>等专业，使中山大学逐步发展为综合性大学。在恢复文科与引进人才方面勇于突破禁区，被誉为中大“文科复兴”的奠基人。</p>`
     },
     {
-      id: 7, isHidden: true,
+      backendId: 7, isHidden: true,
       name: '美臣屋一号',
       position: '南校园319号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_007_meichen_house_no1.jpg',
@@ -113,7 +113,7 @@ module.exports = {
 <p>📖 <strong>陈序经（1903–1967）</strong>，字怀民，广东文昌人，中国现代著名的<strong>历史学家、社会学家、民族学家与教育家</strong>。曾任岭南大学校长、中山大学副校长。他在1933年的《中国文化的出路》演说中提出<strong>“全盘西化”</strong>主张，引发全国文化论战。在学术研究方面，他通过田野调查，对<strong>疍民、黎族、苗族</strong>等群体展开研究，并在东南亚古史研究中取得重要成就。</p>`
     },
     {
-      id: 8, isHidden: true,
+      backendId: 8, isHidden: true,
       name: '白德理屋',
       position: '南校园324号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_008_bai_deli_house.jpg',
@@ -134,7 +134,7 @@ module.exports = {
 <p>📖 <strong>史托利（Storrie）</strong>，岭南大学外籍教师，活跃于人文学科领域，在课堂教学与学术研究上均有建树，推动了岭南大学学术交流与中西文化沟通。</p>`
     },
     {
-      id: 9, isHidden: true,
+      backendId: 9, isHidden: true,
       name: '屈林宾屋',
       position: '南校园329号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_009_qu_linbin_house.jpg',
@@ -149,7 +149,7 @@ module.exports = {
 <p>📖 <strong>嘉惠林（Dr. William W. Cadbury，1877–1959）</strong>，美国著名医学家和传教士，宾夕法尼亚人。1909年来华，在岭南大学医学院任教，后任<strong>岭南大学医学院院长</strong>，积极推动岭南地区的医学教育和公共卫生事业。他不仅在医学教学与临床工作中贡献突出，还长期服务于中国红十字会，推动公共卫生救护体系建设。在其倡导下，岭南大学医学院逐渐成长为南中国重要的医学教育中心。</p>`
     },
     {
-      id: 10, isHidden: true,
+      backendId: 10, isHidden: true,
       name: '惠师礼屋',
       position: '南校园332号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_010_hui_shili_house.jpg',
@@ -168,7 +168,7 @@ module.exports = {
 `
     },
     {
-      id: 11, isHidden: true,
+      backendId: 11, isHidden: true,
       name: '马岗堂',
       position: '南校园338号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_011_magang_hall.jpg',
@@ -183,7 +183,7 @@ module.exports = {
 `
     },
     {
-      id: 12,
+      backendId: 12,
       name: '图书馆',
       position: '南校园335号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_012_library.jpg',
@@ -212,7 +212,7 @@ module.exports = {
 `
     },
     {
-      id: 13, isHidden: true,
+      backendId: 13, isHidden: true,
       name: '黄焕秋校长像',
       position: '南校园图书馆五楼南区',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_013_zou_lu_president_statue.jpg',
@@ -226,7 +226,7 @@ module.exports = {
 `
     },
     {
-      id: 14,
+      backendId: 14,
       name: '格兰堂',
       position: '南校园333号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_014_gelan_hall.jpg',
@@ -244,7 +244,7 @@ module.exports = {
 `
     },
     {
-      id: 15, isHidden: true,
+      backendId: 15, isHidden: true,
       name: '廖承志像',
       position: '南校园333栋东侧',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_015_liao_chengzhi_statue.jpg',
@@ -261,7 +261,7 @@ module.exports = {
 `
     },
     {
-      id: 16,
+      backendId: 16,
       name: '马丁堂',
       position: '南校园334号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_016_martin_hall.jpg',
@@ -283,7 +283,7 @@ module.exports = {
 <p><strong>建筑趣闻：</strong>堂前石狮为岭南大学首任华人校长<strong>钟荣光先生</strong>从学校附近被拆除的庙宇内寻得，造型独特，是典型的“南狮”，后来成为校园吉祥物“<strong>中大狮</strong>”的灵感起源。</p>`
     },
     {
-      id: 17, isHidden: true,
+      backendId: 17, isHidden: true,
       name: '附属小学建筑群',
       position: '南校园339-346号，341为陈嘉庚堂',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_017_affiliated_primary_school_complex.jpg',
@@ -348,7 +348,7 @@ module.exports = {
 `
     },
     {
-      id: 18,
+      backendId: 18,
       name: '南草坪餐厅',
       position: '南校园347号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_018_south_lawn_dining_hall.jpg',
@@ -366,7 +366,7 @@ module.exports = {
 `
     },
     {
-      id: 19,
+      backendId: 19,
       name: '第一教学楼',
       position: '南校园348号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_019_teaching_building_1.jpg',
@@ -381,7 +381,7 @@ module.exports = {
 `
     },
     {
-      id: 20,
+      backendId: 20,
       name: '附属小学方亭',
       position: '南草坪餐厅后',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_020_affiliated_primary_school_pavilion.jpg',
@@ -395,7 +395,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 21,
+      backendId: 21,
       name: '荣光堂',
       position: '南校园350号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_021_rongguang_hall.jpg',
@@ -430,7 +430,7 @@ module.exports = {
 `
     },
     {
-      id: 22,
+      backendId: 22,
       name: '中山大学南门',
       position: '-',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_022_sysu_south_gate.jpg',
@@ -451,7 +451,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 23,
+      backendId: 23,
       name: '生命科学楼',
       position: '南校园408号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_023_life_sciences_building.jpg',
@@ -487,7 +487,7 @@ module.exports = {
 <p>学院坚持“面向国家战略需求、面向区域经济社会发展、面向学术前沿、面向人民生命健康”的办学理念，聚焦生命健康与种业安全两大领域，打造科研大平台，开展生命组学、免疫与衰老、微生物智造与生物防治、养殖动物健康、植物逆境生物学、生态与进化六大方向的研究。学院在培养原始创新能力、国际视野与服务国家需求的领军人才方面已形成鲜明特色。</p>`
     },
     {
-      id: 24, isHidden: true,
+      backendId: 24, isHidden: true,
       name: '蚕丝学院制种室',
       position: '南校园410号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_024_sericulture_institute_breeding_room.jpg',
@@ -522,7 +522,7 @@ module.exports = {
 `
     },
     {
-      id: 25,
+      backendId: 25,
       name: '生物楼',
       position: '南校园415号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_025_biology_building.jpg',
@@ -543,7 +543,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 26,
+      backendId: 26,
       name: '达尔文雕塑',
       position: '南校园生物楼正前方',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_026_charles_darwin_sculpture.jpg',
@@ -564,7 +564,7 @@ module.exports = {
 <p>📖 <strong>文创延伸：</strong>值此中山大学生物学科百年校庆之际，学院推出以达尔文像为原型的<strong>文创微缩模型</strong>，致敬大师、为母校献礼。</p>`
     },
     {
-      id: 27,
+      backendId: 27,
       name: '曾宪梓堂',
       position: '南校园425、427号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_027_zeng_xianzhi_hall.jpg',
@@ -591,7 +591,7 @@ module.exports = {
 `
     },
     {
-      id: 28, isHidden: true,
+      backendId: 28, isHidden: true,
       name: '蒲蛰龙雕塑',
       position: '曾宪梓堂北侧',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_028_pu_zhelong_sculpture.jpg',
@@ -612,7 +612,7 @@ module.exports = {
 `
     },
     {
-      id: 29,
+      backendId: 29,
       name: '马文辉堂',
       position: '南校园475号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_029_ma_wenhui_hall.jpg',
@@ -630,7 +630,7 @@ module.exports = {
 <p>📖 <strong>马文辉</strong>，为旅居海外的<strong>爱国华侨与慈善家</strong>，生前热心支持岭南教育事业。其捐资建造的<strong>“马文辉堂”</strong>，如今承载着中大生物学科的历史记忆与文化传承。</p>`
     },
     {
-      id: 30,
+      backendId: 30,
       name: '贺丹青堂',
       position: '南校园478号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_030_he_danqing_hall.jpg',
@@ -654,7 +654,7 @@ module.exports = {
 <p>📖 <strong>贺丹青</strong>，早年旅居海外的<strong>爱国华侨</strong>，长期关心岭南地区教育事业，热心捐助岭南大学校舍建设。为纪念其功绩，学校将此楼命名为<strong>“贺丹青堂”</strong>。</p>`
     },
     {
-      id: 31,
+      backendId: 31,
       name: '测试大楼',
       position: '南校园471号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_031_test_building.jpg',
@@ -693,7 +693,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 32,
+      backendId: 32,
       name: '竹种标本园',
       position: '马文辉堂（475）北侧',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_032_bamboo_grove.jpg',
@@ -722,7 +722,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 33, isHidden: true,
+      backendId: 33, isHidden: true,
       name: '中山楼',
       position: '南校园474号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_033_zhongshan_building.jpg',
@@ -745,7 +745,7 @@ module.exports = {
 <p>📖 <strong>曾宪梓博士（1931–2019）</strong>：中山大学1961届生物学系校友，著名<strong>实业家、慈善家</strong>，金利来集团创办人。曾长期担任全国人大常委、中华全国工商业联合会名誉副主席、香港中华总商会会长等职。他心系教育，累计捐建<strong>曾宪梓堂、中山楼、教师住宅</strong>等多项校园建筑。</p>`
     },
     {
-      id: 34,
+      backendId: 34,
       name: '梁銶琚堂',
       position: '南校园487号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_034_liang_xiju_hall.jpg',
@@ -770,7 +770,7 @@ module.exports = {
 `
     },
     {
-      id: 35,
+      backendId: 35,
       name: '研究生院',
       position: '南校园493号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_035_yanjiushengyuan.jpg',
@@ -791,7 +791,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 36,
+      backendId: 36,
       name: '张弼士堂',
       position: '南校园486号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_036_zhang_bishi_hall.jpg',
@@ -812,7 +812,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 37,
+      backendId: 37,
       name: '逸夫楼',
       position: '南校园494号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_037_yifu_building.jpg',
@@ -836,7 +836,7 @@ module.exports = {
 `
     },
     {
-      id: 38,
+      backendId: 38,
       name: '西大操场',
       position: '学一食堂（496）后',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_038_west_field.jpg',
@@ -851,7 +851,7 @@ module.exports = {
 `
     },
     {
-      id: 39,
+      backendId: 39,
       name: '冼为坚堂',
       position: '南校园260号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_039_xi_weijian_hall.jpg',
@@ -873,7 +873,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 40,
+      backendId: 40,
       name: '紫荆园餐厅',
       position: '南校园259号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_040_bauhinia_garden_dining_hall.jpg',
@@ -893,7 +893,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 41, isHidden: true,
+      backendId: 41, isHidden: true,
       name: '协和神学院建筑群',
       position: '南校园261、265、268号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_041_union_theological_seminary_complex.jpg',
@@ -915,7 +915,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 42, isHidden: true,
+      backendId: 42, isHidden: true,
       name: '芙兰堂',
       position: '南校园262号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_042_teaching_building_3.jpg',
@@ -939,7 +939,7 @@ module.exports = {
 <p>📖 <strong>捐赠人</strong>：陈运河先生（化学系1968届）、刘修婉女士（物理系1969届），三十年来累计捐赠超四千万元。他们以“念恩”为初心，支持人才培养与科研发展，被誉为中国高等教育史上的佳话。</p>`
     },
     {
-      id: 43,
+      backendId: 43,
       name: '锡昌堂',
       position: '南校园269号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_043_xichang_hall.jpg',
@@ -955,7 +955,7 @@ module.exports = {
 <p>📖 <strong>捐赠人</strong>：邹锡昌先生，中山大学杰出校友，其慷慨捐资支持学校建设，体现了对母校发展的深厚情谊与对学术文化事业的支持。</p>`
     },
     {
-      id: 44, isHidden: true,
+      backendId: 44, isHidden: true,
       name: '四墩楼',
       position: '南校园234-237号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_044_sidun_building.jpg',
@@ -973,7 +973,7 @@ module.exports = {
 `
     },
     {
-      id: 45, isHidden: true,
+      backendId: 45, isHidden: true,
       name: '8号住宅',
       position: '南校园240号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_045_residence_no8.jpg',
@@ -986,7 +986,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 46, isHidden: true,
+      backendId: 46, isHidden: true,
       name: '孖屋二',
       position: '南校园241号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_046_twin_house_no2.jpg',
@@ -1004,7 +1004,7 @@ module.exports = {
 <p>他在华南地区蠕虫区系调查、寄生虫新种发现及<strong>血吸虫病防治</strong>方面作出卓越贡献，提出<strong>“结合农田基本建设消灭钉螺”</strong>的防治对策，推动血吸虫病防治二十余年。其工作受到国家高度重视，生前多次受到中央领导接见。</p>`
     },
     {
-      id: 47, isHidden: true,
+      backendId: 47, isHidden: true,
       name: '谭礼庭屋',
       position: '南校园278号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_047_tan_liting_house.jpg',
@@ -1026,7 +1026,7 @@ module.exports = {
 <p><strong>建筑意义：</strong>“孖屋”作为岭南校园独特的红楼设计形式，既体现中西合璧的建筑特色，又象征了校董与校友对教育的支持。谭礼庭屋不仅是居所，更是岭南教育精神的见证。</p>`
     },
     {
-      id: 48,
+      backendId: 48,
       name: '马应彪夫人护养院',
       position: '南校园279号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_048_madam_ma_yingbiao_convalescent_home.jpg',
@@ -1046,7 +1046,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 49, isHidden: true,
+      backendId: 49, isHidden: true,
       name: '麻金墨屋二号',
       position: '南校园280号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_049_ma_jinmo_house_no2.jpg',
@@ -1067,7 +1067,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 50,
+      backendId: 50,
       name: '怀士堂',
       position: '南校园492号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_050_huaishi_hall.jpg',
@@ -1087,7 +1087,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 51, isHidden: true,
+      backendId: 51, isHidden: true,
       name: '鲁迅先生像',
       position: '四墩楼前',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_051_lu_xun_statue.jpg',
@@ -1108,7 +1108,7 @@ module.exports = {
 `
     },
     {
-      id: 52, isHidden: true,
+      backendId: 52, isHidden: true,
       name: '校训雕像',
       position: '中轴线上怀士堂（492）旁',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_052_school_motto_stone_carving.jpg',
@@ -1139,7 +1139,7 @@ module.exports = {
 `
     },
     {
-      id: 53, isHidden: true,
+      backendId: 53, isHidden: true,
       name: '希伦高屋',
       position: '南校园305号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_053_xi_lungao_house.jpg',
@@ -1159,7 +1159,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 54,
+      backendId: 54,
       name: '黑石屋',
       position: '南校园306号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_054_blackstone_house.jpg',
@@ -1179,7 +1179,7 @@ module.exports = {
 `
     },
     {
-      id: 55, isHidden: true,
+      backendId: 55, isHidden: true,
       name: '麻金墨屋一号',
       position: '南校园309号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_055_ma_jinmo_house_no1.jpg',
@@ -1205,7 +1205,7 @@ module.exports = {
 `
     },
     {
-      id: 56, isHidden: true,
+      backendId: 56, isHidden: true,
       name: '美臣屋二号',
       position: '南校园304号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_056_meichen_house_no2.jpg',
@@ -1232,7 +1232,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 57, isHidden: true,
+      backendId: 57, isHidden: true,
       name: '神甫屋',
       position: '南校园303号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_057_priest_house.jpg',
@@ -1253,7 +1253,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 58, isHidden: true,
+      backendId: 58, isHidden: true,
       name: '积臣屋',
       position: '南校园308号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_058_jichen_house.jpg',
@@ -1271,7 +1271,7 @@ module.exports = {
 `
     },
     {
-      id: 59,
+      backendId: 59,
       name: '英东体育馆',
       position: '南校园302号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_059_yingdong_stadium.jpg',
@@ -1289,7 +1289,7 @@ module.exports = {
 `
     },
     {
-      id: 60,
+      backendId: 60,
       name: '新女学',
       position: '南校园210号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_060_new_womens_school.jpg',
@@ -1302,7 +1302,7 @@ module.exports = {
 <p>🏫 <strong>现状：</strong>如今，“新女学”作为<strong>研究生宿舍</strong>继续使用，依旧为学子们提供温馨安宁的生活与学习空间。</p>`
     },
     {
-      id: 61,
+      backendId: 61,
       name: '“摇篮”铜像',
       position: '园东湖南岸',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_061_cradle_bronze_statue.jpg',
@@ -1319,7 +1319,7 @@ module.exports = {
 `
     },
     {
-      id: 62, isHidden: true,
+      backendId: 62, isHidden: true,
       name: '冼星海半身铜像',
       position: '园东湖北岸',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_062_xian_xinghai_bust.jpg',
@@ -1339,7 +1339,7 @@ module.exports = {
 <p><strong>精神意义：</strong> 如今，每当东湖的微风拂过雕像的衣角，仿佛仍能听见他指挥乐队时的激昂节奏，仍能感受到他<strong>将个人命运与家国兴衰紧紧相连的滚烫初心</strong>。这尊雕像不仅是对一位音乐大师的纪念，更是康乐园里一处鲜活的精神地标，提醒着每一位中大学子：<em>何为用热爱点亮理想，以赤诚报效家国。</em></p>`
     },
     {
-      id: 63, isHidden: true,
+      backendId: 63, isHidden: true,
       name: '翘燊堂、文虎堂',
       position: '南校园116、118号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_063_qiaoshen_hall_and_wenhu_hall.jpg',
@@ -1359,7 +1359,7 @@ module.exports = {
 `
     },
     {
-      id: 64,
+      backendId: 64,
       name: '松涛园',
       position: '南校园359号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_064_songtao_garden.jpg',
@@ -1384,7 +1384,7 @@ module.exports = {
 <p>松涛园食堂不仅是一处就餐场所，更是展现“<strong>食在中大</strong>”文化的重要窗口。它以合理的空间布局、多元的菜品选择和现代化的管理，充分体现了中大对师生日常生活的用心关怀。</p>`
     },
     {
-      id: 65,
+      backendId: 65,
       name: '新体育馆',
       position: '南校园369号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_065_new_gymnasium.jpg',
@@ -1398,7 +1398,7 @@ module.exports = {
 `
     },
     {
-      id: 66,
+      backendId: 66,
       name: '松园湖',
       position: '善思堂（386）旁',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_066_songyuan_lake.jpg',
@@ -1409,7 +1409,7 @@ module.exports = {
 <p>作为“中大四湖”之一，松园湖与周边的松园建筑群、翠竹绿植相映成趣，湖水清澈，倒影悠然。这里不仅承载了岭南园林的典雅气韵，也是学子散步、交流与静思的理想之所，见证着百年康乐园的历史与人文积淀。</p>`
     },
     {
-      id: 67,
+      backendId: 67,
       name: '第二教学楼',
       position: '南校园389号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_067_teaching_building_2.jpg',
@@ -1433,7 +1433,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 68, isHidden: true,
+      backendId: 68, isHidden: true,
       name: '卡彭特楼',
       position: '南校园378号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_068_carpenter_building.jpg',
@@ -1451,7 +1451,7 @@ module.exports = {
 `
     },
     {
-      id: 69,
+      backendId: 69,
       name: '林护堂、黄铭衍堂、黄传经堂',
       position: '南校园392号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_069_linhu_hall_huang_mingyan_hall_huang_chuanjing_hall.jpg',
@@ -1468,7 +1468,7 @@ module.exports = {
 `
     },
     {
-      id: 70,
+      backendId: 70,
       name: '叶葆定堂',
       position: '南校园394号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_070_ye_baoding_hall.jpg',
@@ -1481,7 +1481,7 @@ module.exports = {
 <p>叶葆定一生简朴，热心教育，被誉为<strong>“岭南姑爷”</strong>，他将一生的财富与心血倾注于教育事业。叶葆定堂的存在，不仅纪念了这位百岁老人的赤子之心，更成为岭南学院学子不断追求卓越、放眼世界的精神地标。</p>`
     },
     {
-      id: 71,
+      backendId: 71,
       name: '中山大学北门牌坊',
       position: '-',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_071_north_gate_archway.jpg',
@@ -1492,7 +1492,7 @@ module.exports = {
 <p>如今我们所见的中大牌坊建于<strong>2001 年</strong>，是参照五山路旧牌坊复制而成，屹立于南校园北门，与珠江对岸的天际线相呼应。它不仅是校园的重要门户，更承载着中大人对校史的深情记忆。</p>`
     },
     {
-      id: 72,
+      backendId: 72,
       name: '伍沾德堂',
       position: '南校园586号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_072_wu_zhande_hall.jpg',
@@ -1505,7 +1505,7 @@ module.exports = {
 <p>这座建筑不仅是校园的一处地标，也是中大与海外华人情谊的见证。伍博士曾说：<strong>“母校是我的根，能为中大尽力是我最大的心愿。”</strong>伍沾德堂因此成为中山大学校友反哺母校、推动教育兴盛的重要象征。</p>`
     },
     {
-      id: 73,
+      backendId: 73,
       name: '丰盛堂',
       position: '南校园583号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_073_fengsheng_hall.jpg',
@@ -1523,7 +1523,7 @@ module.exports = {
 <p><strong>教育贡献：</strong> 康北笙教授不仅承担本科生专业英语课程，还倾心培养研究生，数百名学生如今已成为高校与研究所的骨干。她先后承担国家与省市科研课题30余项，发表论文300余篇，获多项自然科学奖。刘汉钦教授则以校友身份回馈母校，推动化学院科研与教学条件的改善。</p>`
     },
     {
-      id: 74,
+      backendId: 74,
       name: '中山大学西北门',
       position: '-',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_074_northwest_gate.jpg',
@@ -1532,7 +1532,7 @@ module.exports = {
 <p>西北门不仅连接着校园内部主干道与周边居民区，也通往生活配套设施和邻近商区，因而成为学生日常购物、就餐及出行的常用路径。作为校园的门户之一，西北门既承担了交通功能，也见证了校园生活的便利与开放。</p>`
     },
     {
-      id: 75,
+      backendId: 75,
       name: '伍舜德图书馆',
       position: '南校园576号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_075_wu_shunde_library.jpg',
@@ -1558,7 +1558,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 76,
+      backendId: 76,
       name: '岭南堂',
       position: '南校园577号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_076_lingnan_hall.jpg',
@@ -1575,7 +1575,7 @@ module.exports = {
 <p><strong>结果：</strong> 最终，广州市规委会决定<strong>岭南堂不予拆除</strong>。时任市长<strong>陈建华</strong>表态，岭南堂与科技文化交流中心将一并保留，“已经成为现实，拆确实不合适，留着它可以作为反面教材。”</p>`
     },
     {
-      id: 77, isHidden: true,
+      backendId: 77, isHidden: true,
       name: '马应彪招待室',
       position: '南校园388号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_077_ma_yingbiao_reception_room.jpg',
@@ -1598,7 +1598,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 78,
+      backendId: 78,
       name: '哲生堂',
       position: '南校园571号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_078_zhesheng_hall.jpg',
@@ -1623,7 +1623,7 @@ module.exports = {
 <p>孙科曾以蒋介石特使身份赴莫斯科，与苏联谈判并签署《中苏互不侵犯条约》和《中苏商务条约》，在中外外交史上具有重要地位。</p>`
     },
     {
-      id: 79,
+      backendId: 79,
       name: '陆佑堂',
       position: '南校园565号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_079_lu_you_hall.jpg',
@@ -1647,7 +1647,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 80,
+      backendId: 80,
       name: '爪哇堂',
       position: '南校园555号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_080_java_hall.jpg',
@@ -1662,7 +1662,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 81,
+      backendId: 81,
       name: '博物馆',
       position: '南校园543号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_081_museum.jpg',
@@ -1681,7 +1681,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 82, isHidden: true,
+      backendId: 82, isHidden: true,
       name: '八角亭',
       position: '博物馆（543）前',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_082_octagonal_pavilion.jpg',
@@ -1697,7 +1697,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 83,
+      backendId: 83,
       name: '乙丑进士牌坊',
       position: '八角亭前',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_083_yichou_jinshi_archway.jpg',
@@ -1714,7 +1714,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 84,
+      backendId: 84,
       name: '惺亭',
       position: '中轴线上乙丑进士牌坊旁',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_084_xing_pavilion.jpg',
@@ -1746,7 +1746,7 @@ module.exports = {
 `
     },
     {
-      id: 85,
+      backendId: 85,
       name: '孙中山先生铜像',
       position: '中轴线',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_085_sun_yat_sen_bronze_statue.jpg',
@@ -1782,7 +1782,7 @@ module.exports = {
 `
     },
     {
-      id: 86, isHidden: true,
+      backendId: 86, isHidden: true,
       name: '史达理堂',
       position: '南校园536号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_086_shidali_hall.jpg',
@@ -1802,7 +1802,7 @@ module.exports = {
 <p><strong>历史与价值：</strong> 作为岭南大学理科教育与科研的核心基地，史达理堂不仅见证了岭南大学在自然科学领域的拓展，也成为当时南中国科学教育的重要象征。它体现了中西合璧的建筑风格与岭南大学“实事求是、兼容并包”的教育精神。</p>`
     },
     {
-      id: 87, isHidden: true,
+      backendId: 87, isHidden: true,
       name: '激光光学大楼',
       position: '南校园558号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_087_long_kanghou_sculpture.jpg',
@@ -1820,7 +1820,7 @@ module.exports = {
 `
     },
     {
-      id: 88,
+      backendId: 88,
       name: '十友堂',
       position: '南校园537号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_088_shiyou_hall.jpg',
@@ -1840,7 +1840,7 @@ module.exports = {
 <p><strong>题匾者容庚：</strong> 容庚（1894–1983），原名容肇庚，字希白，号颂斋，广东东莞人。著名古文字学家、考古学家、书法家，其代表作《金文编》《商周彝器通考》在古文字与青铜器研究领域具有经典地位。容庚一生将大量青铜器、书画、古籍等珍贵文物捐赠国家，以<strong>挽救文物流失</strong>，展现出深厚的爱国情怀与学术精神。</p>`
     },
     {
-      id: 89,
+      backendId: 89,
       name: '模范村',
       position: '南校园509、510、513-515、517-524号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_089_model_village.jpg',
@@ -1861,7 +1861,7 @@ module.exports = {
 <p><strong>修缮与再利用：</strong> 由于建筑老化与结构问题，中山大学自<strong>2007年</strong>起启动模范村整体修缮计划，拟在保留历史风貌的基础上，使其重新焕发活力并发挥新的功能。</p>`
     },
     {
-      id: 90,
+      backendId: 90,
       name: '法学院',
       position: '南校园505号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_090_law_college.jpg',
@@ -1874,7 +1874,7 @@ module.exports = {
 <p><strong>现状与特色：</strong> 该建筑如今为<strong>中山大学法学院</strong>的所在地。院门口立有象征法学精神的<strong>“獬豸”</strong>[xiè zhì]雕塑，象征公正、威严与守护，成为学院标志性文化符号，提醒学子秉承法律人的责任与使命。</p>`
     },
     {
-      id: 91,
+      backendId: 91,
       name: '永芳堂',
       position: '南校园503号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_091_yongfang_hall.jpg',
@@ -1899,7 +1899,7 @@ module.exports = {
 </ul>`
     },
     {
-      id: 92,
+      backendId: 92,
       name: '人口研究所',
       position: '南校园501号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_092_people_research_academic.jpg',
@@ -1912,7 +1912,7 @@ module.exports = {
 <p><strong>现状用途：</strong> 如今，该建筑作为<strong>中山大学人口研究所</strong>所在地，延续其在教育与科研领域的功能属性，继续在校园学术体系中发挥作用。</p>`
     },
     {
-      id: 93, isHidden: true,
+      backendId: 93, isHidden: true,
       name: '学人书境',
       position: '南校园517号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_093_SYSU_publishinghouse.jpg',
@@ -1930,7 +1930,7 @@ module.exports = {
 <p><strong>文化交流平台：</strong> 二楼规划为复合型文化交流空间，未来将开放为学术沙龙、小型会议室与观影室，定期举办文化讲座、学术讨论及党建与思想政治教育活动，促进师生互动与学科交流，打造中大校园的文化新地标。</p>`
     },
     {
-      id: 94,
+      backendId: 94,
       name: '中山大学人文高等研究院',
       position: '南校园507号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_094_deng_shichang_navy_statue.jpg',
@@ -1944,7 +1944,7 @@ module.exports = {
 `
     },
     {
-      id: 95,
+      backendId: 95,
       name: '康乐园餐厅',
       position: '南校园609号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_095_kangle_garden_dining_hall.jpg',
@@ -1964,7 +1964,7 @@ module.exports = {
 `
     },
     {
-      id: 96,
+      backendId: 96,
       name: '园西湖',
       position: '康乐园餐厅后',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_096_yuanxi_lake.jpg',
@@ -1973,7 +1973,7 @@ module.exports = {
 <p><strong>景观特色：</strong> 湖面开阔，四季水色各具韵味：春日新绿倒映湖中，夏季荷叶田田、花香四溢，秋来芦花摇曳、波光潋滟，冬时则有白鹭掠影与清风相伴。湖畔林木繁茂，步道环绕，既是散步、慢跑的天然路线，也是学生课余休憩与社团活动的热门场所。小亭与小桥点缀湖边，为师生提供了眺望与小憩的绝佳空间。</p>`
     },
     {
-      id: 97, isHidden: true,
+      backendId: 97, isHidden: true,
       name: '蒲园食堂',
       position: '南校园722号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_097_puyuan_canteen.jpg',
@@ -1982,7 +1982,7 @@ module.exports = {
 <p><strong>环境与格局：</strong> 食堂外观延续红砖绿瓦的岭南校园风格，内部空间宽敞明亮，设有多处分区，有600个餐位。内部装修以实用为主，配备空调与通风系统，整体氛围简洁而温馨。</p>`
     },
     {
-      id: 98,
+      backendId: 98,
       name: '中山大学西门',
       position: '-',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_098_west_gate.jpg',
@@ -1991,7 +1991,7 @@ module.exports = {
 <p><strong>地理位置与功能：</strong> 西门位于教职工家属区的必经之路，既是师生进出的通道，也是联系校园与生活区的重要节点。</p>`
     },
     {
-      id: 99,
+      backendId: 99,
       name: '中山大学小西门',
       position: '-',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_099_small_west_gate.jpg',
@@ -2000,7 +2000,7 @@ module.exports = {
 <p>小西门外连接着<strong>中大菜市场</strong>。</p>`
     },
     {
-      id: 100, isHidden: true,
+      backendId: 100, isHidden: true,
       name: '震寰堂',
       position: '南校园629号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_100_zhenhuan_hall.jpg',
@@ -2009,7 +2009,7 @@ module.exports = {
 <p><strong>建筑与功能：</strong> 震寰堂作为数学学院的核心大楼之一，常年承载教学、培训、学术会议与社会服务功能。其庄重的建筑风格与学院整体环境相融合，成为学术交流与校企合作的重要平台。</p>`
     },
     {
-      id: 101, isHidden: true,
+      backendId: 101, isHidden: true,
       name: '你的见闻',
       position: '-',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_101_your_observations.jpg',
@@ -2021,6 +2021,166 @@ module.exports = {
   抑或是心中那段独属于你的校园记忆……
 </p>
 `
+    },
+    {
+      backendId: 102,
+      name: '春晖园',
+      position: '东北区353号',
+      image: 'https://store.is.autonavi.com/showpic/44bdf82bf5b58a2a50a2a07abe4d4510',
+      description: `<p><strong>春晖园</strong>，位于<strong>中山大学南校园东北区353号</strong>，毗邻东区宿舍，与松涛园一墙之隔，是南校园师生日常就餐的主要场所之一。食堂由<strong>中厅</strong>与<strong>东厅</strong>两部分构成，共<strong>一至二楼</strong>。</p>
+
+<p><strong>菜品与特色：</strong></p>
+<ul>
+  <li>一楼设有自选与小炒窗口，早餐面食与点心品种丰富，约有<strong>50多款</strong>；午晚餐菜式多达<strong>120款</strong>，以粤菜为主，兼有湘菜、川菜。</li>
+  <li>二楼设有西北风味餐厅，提供小火锅、西北面食，以及麻辣香锅、番茄牛腩面、酸菜鱼面等特色菜品。</li>
+  <li>推荐广式煲仔饭、隆江猪脚饭、滑蛋饭、香锅等，人均消费较为实惠。</li>
+</ul>
+
+<p><strong>功能与意义：</strong></p>
+<p>春晖园紧邻东区生活区，是附近师生就餐与休憩的便捷去处。其丰富的菜式与实惠的价格，使其成为康乐园内广受学生欢迎的食堂之一。</p>`
+    },
+    {
+      backendId: 103,
+      name: '熊德龙学生活动中心',
+      position: '南校园东区',
+      image: 'https://store.is.autonavi.com/showpic/3caa396ee13252602a9061b1c24d6578',
+      description: `<p><strong>熊德龙学生活动中心</strong>，位于<strong>中山大学南校园东区、东湖之滨</strong>，坐西向东，是南校园学生课外活动与社团文化的核心场所。该中心由爱国华侨、著名侨领<strong>熊德龙先生</strong>捐资兴建。</p>
+
+<p><strong>历史沿革：</strong></p>
+<ul>
+  <li><strong>1993年</strong>：熊德龙先生捐资<strong>30万美元</strong>启动建设。</li>
+  <li><strong>1994年</strong>：于校庆日落成。</li>
+  <li><strong>1995年</strong>：正式投入使用，此后取代怀士堂成为南校园核心课外活动场所。</li>
+</ul>
+
+<p><strong>建筑与功能：</strong></p>
+<ul>
+  <li>主体建筑共<strong>五层</strong>，建筑面积约<strong>6800平方米</strong>。</li>
+  <li>内设讲学厅、音乐厅、多功能厅、舞蹈室、画室、乐室等设施。</li>
+  <li>是校团委、学生会等机构的办公驻地，也是各类学生社团活动、文艺演出与文化交流的重要依托。</li>
+</ul>
+
+<p>📖 <strong>熊德龙</strong>，印度尼西亚华侨，著名爱国侨领，长期关心支持祖国教育事业，曾多次捐资助学，为中大校园文化建设作出重要贡献。</p>`
+    },
+    {
+      backendId: 104,
+      name: '学五食堂',
+      position: '园东区109号',
+      image: 'https://store.is.autonavi.com/showpic/b18da5a0f569a020ed1b3aa7d909c9ae',
+      description: `<p><strong>学五食堂</strong>，位于<strong>中山大学南校园园东区109号</strong>，临近东门，是距离东区生活区最近、规模最大的食堂，被誉为校园“性价比之王”。食堂共<strong>两层</strong>。</p>
+
+<p><strong>菜品与特色：</strong></p>
+<ul>
+  <li>一楼为自选与特色窗口，提供隆江猪脚饭、广式汤面、东北水饺、云南米线等；自选菜价格实惠，品种丰富。</li>
+  <li>二楼为地方特色美食窗口，有芝士焗饭、咖喱蛋包饭、黄焖鸡米饭、重庆鸡公煲、上海小馄饨、烧肉饭，以及麻辣烫、啫啫煲等。</li>
+  <li>设有免费微波炉，方便师生加热餐食。</li>
+</ul>
+
+<p><strong>功能与意义：</strong></p>
+<p>学五食堂凭借丰富的品种与实惠的价格，成为东区师生日常就餐的热门选择，是康乐园校园生活的重要组成部分。</p>`
+    },
+    {
+      backendId: 105,
+      name: '106栋机房',
+      position: '南校园106栋',
+      image: '',
+      description: `<p><strong>106栋机房</strong>，位于<strong>中山大学南校园106栋</strong>，是学校集中提供计算机教学与实践的机房所在楼栋。</p>
+
+<p><strong>功能与用途：</strong></p>
+<ul>
+  <li>主要承担计算机类课程的上机教学任务，为程序设计、信息类公共课程等提供实践场所。</li>
+  <li>同时也是学生日常上机自习与作业完成的重要去处。</li>
+</ul>
+
+<p><strong>环境与设施：</strong>机房内配备多台计算机终端，环境整洁，空调与网络设施齐全，为师生提供稳定的上机条件。</p>`
+    },
+    {
+      backendId: 106,
+      name: '英东体育场',
+      position: '英东体育中心',
+      image: '',
+      description: `<p><strong>英东体育场</strong>，又称<strong>东区运动场</strong>，位于<strong>中山大学南校园英东体育中心</strong>内，是校园内重要的室外体育运动场所。该体育场由香港著名实业家、慈善家<strong>霍英东先生</strong>捐资兴建的英东体育中心的一部分。</p>
+
+<p><strong>场地与设施：</strong></p>
+<ul>
+  <li>建有<strong>400米标准塑胶跑道</strong>，内设<strong>草皮足球场</strong>，可满足田径与足球等运动需求。</li>
+  <li>与英东体育馆、网球场、综合球类场、游泳场等共同构成英东体育中心建筑群。</li>
+</ul>
+
+<p><strong>历史沿革：</strong></p>
+<ul>
+  <li><strong>1984年11月</strong>：英东体育馆奠基。</li>
+  <li><strong>1987年</strong>：英东体育中心建筑群建成启用。</li>
+  <li><strong>1990年</strong>：国家教委在此设立中国内地第一个“中国大学生体育训练基地”。</li>
+</ul>
+
+<p><strong>功能与意义：</strong>英东体育场是学校体育教学、师生日常锻炼与校园体育赛事的重要场地，见证了中大学子拼搏进取的体育精神。</p>`
+    },
+    {
+      backendId: 107,
+      name: '中文堂',
+      position: '东南区274号',
+      image: 'https://store.is.autonavi.com/showpic/b64edd73df52b617bffa4d5e4a6bfd4c',
+      description: `<p><strong>中文堂</strong>，位于<strong>中山大学南校园东南区274号</strong>，建成于<strong>2006年11月</strong>，楼高<strong>9层</strong>，是国内楼层最高的中文系楼，为中山大学中国语言文学系的所在地。</p>
+
+<p><strong>建筑与特色：</strong></p>
+<ul>
+  <li>楼东侧立有<strong>鲁迅雕像</strong>，与中文系的学术传统相映成辉。</li>
+  <li>中文系系史馆位于中文堂二楼，于<strong>2024年10月</strong>正式揭牌开放。</li>
+</ul>
+
+<p><strong>学科与功能：</strong></p>
+<ul>
+  <li>中国语言文学系是中山大学历史最悠久的学系之一，主要建设<strong>中国语言文学、民俗学、国际中文教育</strong>三个学科。</li>
+  <li>拥有本硕博完整的人才培养体系，是南校园人文教育的重要阵地。</li>
+</ul>`
+    },
+    {
+      backendId: 108,
+      name: '文科楼',
+      position: '西北区550号',
+      image: 'https://store.is.autonavi.com/showpic/cf2a2f5151871ca557809cc5a21e8f39',
+      description: `<p><strong>文科楼</strong>，位于<strong>中山大学南校园西北区550号</strong>，是南校园人文社会科学相关院系教学与办公的重要场所。</p>
+
+<p><strong>功能与用途：</strong></p>
+<ul>
+  <li>承担人文社会科学类课程的教学任务，是南校园文科教学的重要阵地。</li>
+  <li>为相关院系提供办公、教研与学术交流空间。</li>
+</ul>
+
+<p><strong>环境与格局：</strong>文科楼延续康乐园红砖绿瓦的校园建筑风格，与周边教学建筑群相映成趣，营造出浓厚的学术氛围。</p>`
+    },
+    {
+      backendId: 109,
+      name: '学一食堂',
+      position: '西南区496号',
+      image: 'https://aos-comment.amap.com/B00140U3D8/comment/content_media_external_file_80752_ss__1759397053156_15905054.jpg',
+      description: `<p><strong>学一食堂</strong>，位于<strong>中山大学南校园西南区496号</strong>、逸夫艺术中心西侧，西大球场旁，是南校园师生日常就餐的主要场所之一。食堂共<strong>三层</strong>。</p>
+
+<p><strong>菜品与特色：</strong></p>
+<ul>
+  <li>一层提供滑蛋饭、麻辣烫、面食、小炒、螺蛳粉、干锅等。</li>
+  <li>二层为自选菜式，另设糖水窗口、甜点、潮汕烧腊、手撕鸡饭、鸡扒饭等。</li>
+  <li>三层为自选菜式。</li>
+  <li>推荐螺蛳粉、山西刀削面、双皮奶，中间层糖水窗口性价比颇高。</li>
+</ul>
+
+<p><strong>功能与意义：</strong>学一食堂紧邻逸夫艺术中心与西大球场，是师生课后与运动后就餐的便捷去处，价格实惠，深受学生欢迎。</p>`
+    },
+    {
+      backendId: 110,
+      name: '第三教学楼',
+      position: '',
+      image: '',
+      description: `<p><strong>第三教学楼</strong>，简称<strong>“三教”</strong>，位于<strong>中山大学南校园</strong>，是康乐园内重要的教学建筑之一，主要承担本科生的日常课堂教学任务。</p>
+
+<p><strong>功能与用途：</strong></p>
+<ul>
+  <li>设有多间多媒体课室，满足各类课程的教学需求。</li>
+  <li>是南校园文理科教学与考试的重要场所。</li>
+</ul>
+
+<p><strong>环境与格局：</strong>第三教学楼延续岭南校园红砖建筑风格，内部课室明亮整洁，是学子们日常学习与自习的常去之地。</p>`
     }
   ]
 };
