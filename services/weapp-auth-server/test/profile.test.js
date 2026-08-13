@@ -184,13 +184,28 @@ test('persists the PLACE result as the ISETI personality shown on the profile', 
     })
   });
   assert.equal(saved.response.status, 200);
-  assert.equal(saved.body.data.personality.mainName, '长线练级人');
-  assert.equal(saved.body.data.personality.subName, '建筑考古学家');
+  assert.equal(saved.body.data.personality.mainName, '长期积累型');
+  assert.equal(saved.body.data.personality.subName, '维基百科型');
   assert.deepEqual(saved.body.data.personality.badges.map(item => item.code), ['aiVerifier', 'photoKeeper']);
 
+  const latest = await api(101, '/user/personality', {
+    method: 'PUT',
+    body: JSON.stringify({
+      mainCode: 'SYNC',
+      subCode: 'STAY',
+      badges: ['groupStarter']
+    })
+  });
+  assert.equal(latest.response.status, 200);
+  assert.equal(latest.body.data.personality.mainName, '同伴同行型');
+  assert.equal(latest.body.data.personality.subName, '慢节奏停留型');
+
   const me = await api(101, '/auth/me');
-  assert.equal(me.body.userInfo.personality.testId, 'PLACE_AT_SYSU');
-  assert.equal(me.body.userInfo.personality.placeName, '图书馆');
+  assert.equal(me.body.userInfo.personality.testId, 'PLACE');
+  assert.equal(me.body.userInfo.personality.version, 2);
+  assert.equal(me.body.userInfo.personality.mainCode, 'SYNC');
+  assert.equal(me.body.userInfo.personality.subCode, 'STAY');
+  assert.equal(me.body.userInfo.personality.placeId, null);
 });
 
 test('submits feedback and keeps each user history private', async () => {

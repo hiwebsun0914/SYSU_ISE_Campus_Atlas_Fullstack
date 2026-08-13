@@ -6,113 +6,104 @@
       <button class="brand-lockup" type="button" @click="goHome" aria-label="返回校园探索首页">
         <span class="brand-mark">P</span>
         <span>
-          <b>PLACE @ SYSU</b>
-          <small>Personal Lifestyle Explorer for Campus Discovery</small>
+          <b>P · L · A · C · E</b>
+          <small>Personal Lifestyle Atlas for Campus Exploration</small>
         </span>
       </button>
       <div v-if="stage !== 'intro' && stage !== 'result'" class="nav-progress" aria-live="polite">
-        <span>{{ progressLabel }}</span>
+        <div><span>FIELD LOG</span><b>{{ String(questionIndex + 1).padStart(2, '0') }}/{{ questions.length }}</b></div>
         <div class="progress-track"><i :style="{ width: `${progressPercent}%` }"></i></div>
       </div>
-      <button class="nav-exit" type="button" @click="goHome">校园探索首页 ↗</button>
+      <button class="nav-exit" type="button" aria-label="返回校园探索首页" @click="goHome">
+        <Home :size="16" aria-hidden="true" />
+        <span>校园探索</span>
+        <ArrowUpRight :size="15" aria-hidden="true" />
+      </button>
     </header>
 
     <section v-if="stage === 'intro'" class="intro-shell">
-      <div class="intro-copy">
-        <p class="eyebrow">A CAMPUS PERSONALITY FIELD TEST · 2026</p>
-        <h1>PLACE<br><em>@ SYSU</em></h1>
-        <p class="intro-lead">你在大学里怎么推进事情、怎么和人连接，又会被校园里的什么吸引？</p>
+      <article class="intro-copy">
+        <div class="intro-coordinates" aria-hidden="true">
+          <span>N23°05'56.4"</span><span>E113°17'58.8"</span>
+        </div>
+        <h1><span>P · L · A · C · E</span></h1>
+        <p class="intro-full-name">Personal Lifestyle Atlas for Campus Exploration</p>
+        <p class="intro-lead">找到你在校园里的行动方式：怎么推进事情、怎么和人连接，又会被什么吸引。</p>
 
-        <button class="primary-action" type="button" @click="startTest">
-          <span>开始测试</span>
-          <i>约 5 分钟</i>
-        </button>
-      </div>
+        <div class="intro-actions">
+          <button class="primary-action" type="button" @click="startTest">
+            <span>开始测试</span>
+            <ArrowUpRight :size="19" aria-hidden="true" />
+          </button>
+          <p class="intro-duration">约 3 分钟</p>
+        </div>
+        <div class="route-line" aria-hidden="true"><i></i><i></i><i></i></div>
+      </article>
 
       <aside class="specimen-card" aria-label="结果卡示意">
-        <div class="specimen-topline"><span>TYPE SPECIMEN</span><span>NO. 01</span></div>
-        <div class="specimen-code">GROW</div>
-        <div class="specimen-cn">长线练级人</div>
-        <p>这条技能树不急着满级，<br>但我会一直点下去。</p>
-        <div class="specimen-place">
-          <small>TODAY'S PLACE</small>
-          <b>竹种标本园</b>
-          <span>这片竹林的技能树，已经点了近百年。</span>
+        <div class="specimen-topline"><span>TYPE PREVIEW</span><span>PLACE / 01</span></div>
+        <div class="specimen-map" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="specimen-visual" aria-hidden="true">
+          <img :src="growVisual" alt="">
+          <img :src="wikiVisual" alt="">
         </div>
-        <div class="specimen-seal">SYSU<br>PLACE</div>
+        <div class="specimen-code">GROW</div>
+        <div class="specimen-cn">长期积累型</div>
+        <p>这条技能树不急着满级，<br>但会一直点下去。</p>
+        <div class="specimen-subtype">
+          <small>EXPLORATION STYLE</small>
+          <b>WIKI · 维基百科型</b>
+          <span>一栋楼叫什么、以前做什么，会直接决定它在你眼里的清晰度。</span>
+        </div>
+        <div class="specimen-seal"><span></span>LIVE SAMPLE</div>
       </aside>
     </section>
 
     <section v-else-if="stage === 'questions'" class="question-shell">
-      <div class="question-meta">
-        <span>LONG-TERM PATTERN</span>
-        <b>{{ String(questionIndex + 1).padStart(2, '0') }} / {{ questions.length }}</b>
+      <div class="question-panel">
+        <aside class="question-meta">
+          <p class="panel-label">FIELD LOG / 2026</p>
+          <div class="question-count"><strong>{{ String(questionIndex + 1).padStart(2, '0') }}</strong><span>/ {{ questions.length }}</span></div>
+          <p>沿着第一反应作答，我们会逐步定位你的校园人格坐标。</p>
+          <div class="question-route" aria-hidden="true"><i :style="{ width: `${progressPercent}%` }"></i><b></b></div>
+          <small>SOUTH CAMPUS · FIELD STATION 01</small>
+        </aside>
+
+        <article class="question-card" :key="currentQuestion.id">
+          <div class="question-card-head">
+            <p class="question-number">Q{{ String(currentQuestion.id).padStart(2, '0') }}</p>
+            <span>选择最接近第一反应的一项</span>
+          </div>
+          <h2 ref="questionHeading" tabindex="-1" aria-live="polite">{{ currentQuestion.prompt }}</h2>
+
+          <div class="answer-list" role="group" :aria-label="currentQuestion.prompt">
+            <button
+              v-for="(item, index) in currentQuestion.options"
+              :key="item.label"
+              class="answer-option"
+              :class="{ selected: answers[questionIndex] === index }"
+              type="button"
+              :aria-pressed="answers[questionIndex] === index"
+              @click="selectAnswer(index)"
+            >
+              <span class="answer-letter">{{ String.fromCharCode(65 + index) }}</span>
+              <span>{{ item.label }}</span>
+              <ArrowUpRight :size="18" aria-hidden="true" />
+            </button>
+          </div>
+        </article>
       </div>
 
-      <article class="question-card" :key="currentQuestion.id">
-        <p class="question-number">Q{{ String(currentQuestion.id).padStart(2, '0') }}</p>
-        <h2>{{ currentQuestion.prompt }}</h2>
-
-        <div class="answer-list" role="group" :aria-label="currentQuestion.prompt">
-          <button
-            v-for="(item, index) in currentQuestion.options"
-            :key="item.label"
-            class="answer-option"
-            :class="{ selected: answers[questionIndex] === index }"
-            type="button"
-            :aria-pressed="answers[questionIndex] === index"
-            @click="selectAnswer(index)"
-          >
-            <span class="answer-letter">{{ String.fromCharCode(65 + index) }}</span>
-            <span>{{ item.label }}</span>
-            <i aria-hidden="true">↗</i>
-          </button>
-        </div>
-      </article>
-
       <div class="question-footer">
-        <button type="button" class="text-action" @click="previousStep">← 上一题</button>
+        <button type="button" class="text-action" @click="previousStep"><ArrowLeft :size="16" aria-hidden="true" />上一题</button>
         <span>凭第一反应选就好，不用寻找“正确答案”。</span>
-      </div>
-    </section>
-
-    <section v-else-if="stage === 'today'" class="question-shell today-shell">
-      <div class="question-meta">
-        <span>TODAY'S STATUS</span>
-        <b>{{ String(todayIndex + 1).padStart(2, '0') }} / {{ todayFields.length }}</b>
-      </div>
-
-      <article class="question-card today-card" :key="currentTodayField.id">
-        <p class="question-number">{{ currentTodayField.eyebrow }}</p>
-        <h2>{{ currentTodayField.prompt }}</h2>
-        <p v-if="currentTodayField.note" class="field-note">{{ currentTodayField.note }}</p>
-
-        <div class="today-options" :class="{ compact: currentTodayField.id === 'origin' }" role="group" :aria-label="currentTodayField.prompt">
-          <button
-            v-for="item in currentTodayField.options"
-            :key="item.value"
-            class="today-option"
-            :class="{ selected: todayAnswers[currentTodayField.id] === item.value }"
-            type="button"
-            :aria-pressed="todayAnswers[currentTodayField.id] === item.value"
-            @click="selectToday(item.value)"
-          >
-            <b>{{ item.label }}</b>
-            <span>{{ item.note }}</span>
-            <i aria-hidden="true"></i>
-          </button>
-        </div>
-      </article>
-
-      <div class="question-footer">
-        <button type="button" class="text-action" @click="previousStep">← 上一步</button>
-        <span>今日状态只影响地点推荐，不会改变你的类型。</span>
       </div>
     </section>
 
     <section v-else-if="stage === 'result' && result" class="result-shell">
       <div class="result-heading">
         <p class="eyebrow">YOUR PLACE TYPE · SOUTH CAMPUS EDITION</p>
+        <div><h2>你的校园人格坐标已生成</h2><span>SPECIMEN / {{ result.mainCode }}-{{ result.subCode }}</span></div>
       </div>
 
       <div class="result-grid">
@@ -129,9 +120,9 @@
             <img class="result-type-visual-sub" :src="resultVisual.sub" alt="">
           </div>
           <p class="panel-label">YOUR CAMPUS TYPE</p>
-          <p class="result-kicker">你的校园类型组合</p>
+          <p class="result-kicker"><span></span>PERSONALITY COORDINATE</p>
           <div class="type-code-lockup">
-            <strong :style="{ color: result.main.color }">{{ result.main.displayCode || result.mainCode }}</strong>
+            <strong>{{ result.main.displayCode || result.mainCode }}</strong>
             <span>/</span>
             <b>{{ result.subCode }}</b>
           </div>
@@ -144,80 +135,64 @@
           </div>
         </article>
 
-        <article class="place-panel">
-          <p class="panel-label">TODAY'S PLACE</p>
-          <div class="place-title-row">
-            <div>
-              <span>南校园 · NO. {{ String(result.place.id).padStart(3, '0') }}</span>
-              <h3>{{ result.place.name }}</h3>
-            </div>
-            <div class="place-stamp">GO<br>TODAY</div>
-          </div>
-          <p class="culture-line">{{ result.line }}</p>
-          <div class="visit-meta">
-            <span>{{ result.distanceLabel }}</span>
-            <span>{{ result.place.access }}</span>
-          </div>
-          <div class="micro-task">
-            <small>到达以后，顺手做一件小事</small>
-            <p>{{ result.task }}</p>
-          </div>
-        </article>
       </div>
 
-      <section v-if="result.badges.length" class="badge-section">
-        <div>
-          <p class="panel-label">SIDE BADGES</p>
-          <h3>你还掉落了这些校园徽章</h3>
-        </div>
-        <div class="badge-list">
-          <article v-for="badge in result.badges" :key="badge.name" class="badge-item">
-            <img :src="badge.icon" alt="" aria-hidden="true">
-            <span>{{ badge.name }}</span>
-          </article>
-        </div>
-      </section>
+      <aside class="result-sidebar">
+        <section v-if="result.badges.length" class="badge-section">
+          <div>
+            <p class="panel-label">SIDE BADGES</p>
+            <h3>沿途点亮的校园徽章</h3>
+            <p>这些小坐标记录了你的日常行动偏好。</p>
+          </div>
+          <div class="badge-list">
+            <article v-for="badge in result.badges" :key="badge.name" class="badge-item">
+              <img :src="badge.icon" alt="" aria-hidden="true">
+              <span>{{ badge.name }}</span>
+            </article>
+          </div>
+        </section>
 
-      <section class="share-section">
-        <div>
-          <p class="panel-label">SHARE YOUR SPECIMEN</p>
-          <h3>把今天的校园样本收进相册</h3>
-          <p>分享卡不会包含起点、同行状态、体力或步行范围。</p>
-        </div>
-        <button class="primary-action compact-action" type="button" @click="openShareCard">
-          <span>生成我的校园卡片</span><i>3:4</i>
-        </button>
-      </section>
+        <section class="share-section">
+          <div>
+            <p class="panel-label">SHARE YOUR SPECIMEN</p>
+            <h3>把你的校园人格样本收进相册</h3>
+            <p>分享卡仅展示你的类型组合与校园徽章。</p>
+          </div>
+          <button ref="shareTrigger" class="primary-action compact-action" type="button" @click="openShareCard">
+            <span>生成校园卡片</span><ArrowUpRight :size="18" aria-hidden="true" />
+          </button>
+        </section>
+      </aside>
 
       <div class="result-actions">
-        <button class="secondary-action" type="button" @click="restart">再测一次</button>
-        <button class="secondary-action" type="button" @click="goHome">返回校园探索首页 ↗</button>
+        <button class="secondary-action" type="button" @click="restart"><RotateCcw :size="16" aria-hidden="true" />再测一次</button>
+        <button class="secondary-action" type="button" @click="goHome"><Home :size="16" aria-hidden="true" />返回校园探索</button>
       </div>
       <p class="result-save-status" role="status" aria-live="polite">{{ resultSaveCopy }}</p>
     </section>
 
     <div v-if="shareCardVisible" class="share-modal" role="dialog" aria-modal="true" aria-label="分享卡预览" @click.self="closeShareCard">
-      <div class="share-dialog">
+      <div ref="shareDialog" class="share-dialog">
         <div class="share-dialog-head">
-          <div><small>PLACE @ SYSU</small><b>校园样本卡已经生成</b></div>
-          <button type="button" @click="closeShareCard" aria-label="关闭">×</button>
+          <div><small>PLACE / EXPORT</small><b>校园样本卡已经生成</b></div>
+          <button ref="shareClose" type="button" @click="closeShareCard" aria-label="关闭"><X :size="19" aria-hidden="true" /></button>
         </div>
         <div class="share-image-wrap">
           <div v-if="!shareImage" class="share-loading">正在排版…</div>
-          <img v-else :src="shareImage" alt="PLACE @ SYSU 测试分享卡">
+          <img v-else :src="shareImage" alt="PLACE 测试分享卡">
         </div>
         <p class="share-tip">手机端可以长按图片保存。</p>
         <div class="share-buttons">
-          <button type="button" class="secondary-action" @click="downloadShareCard">保存图片</button>
+          <button type="button" class="secondary-action" @click="downloadShareCard"><Download :size="16" aria-hidden="true" />保存图片</button>
           <button v-if="canNativeShare" type="button" class="primary-action compact-action" @click="nativeShare">
-            <span>分享</span><i>↗</i>
+            <span>分享</span><Share2 :size="17" aria-hidden="true" />
           </button>
         </div>
       </div>
     </div>
 
     <footer class="place-footer">
-      <span>PLACE @ SYSU</span>
+      <span>P · L · A · C · E</span>
       <span>笃行校园探索 · 南校园首发版</span>
     </footer>
   </main>
@@ -226,6 +201,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ArrowLeft, ArrowUpRight, Download, Home, RotateCcw, Share2, X } from '@lucide/vue'
 import QRCode from 'qrcode'
 import { request } from '@/utils/request'
 import doneVisual from '../assets/place/main/done.webp'
@@ -252,29 +228,25 @@ import photoKeeperBadge from '../assets/place/badges/photo-keeper.webp'
 import {
   SIGNALS,
   badgeDefs,
-  fallbackClosers,
   mainTypes,
-  origins,
-  places,
   questions,
-  recommendations,
   signalWeights,
-  subTypes,
-  todayFields,
-  zonePoints
+  subTypes
 } from '@/data/placeTest'
 
 const router = useRouter()
 const stage = ref('intro')
 const questionIndex = ref(0)
-const todayIndex = ref(0)
 const answers = ref(Array(questions.length).fill(null))
-const todayAnswers = ref({})
 const result = ref(null)
 const advancing = ref(false)
 const shareCardVisible = ref(false)
 const shareImage = ref('')
 const resultSaveState = ref('idle')
+const shareDialog = ref(null)
+const shareClose = ref(null)
+const shareTrigger = ref(null)
+const questionHeading = ref(null)
 
 const mainVisuals = {
   GROW: growVisual,
@@ -288,7 +260,7 @@ const mainVisuals = {
 }
 
 const subtypeVisuals = {
-  TREE: treeVisual,
+  STAY: treeVisual,
   MAPS: mapsVisual,
   RUN: runVisual,
   LENS: lensVisual,
@@ -307,7 +279,6 @@ const badgeVisuals = {
 }
 
 const currentQuestion = computed(() => questions[questionIndex.value])
-const currentTodayField = computed(() => todayFields[todayIndex.value])
 const canNativeShare = computed(() => typeof navigator !== 'undefined' && typeof navigator.share === 'function')
 const resultVisual = computed(() => {
   const mainCode = result.value?.mainCode
@@ -321,26 +292,26 @@ const resultVisual = computed(() => {
   }
 })
 const progressPercent = computed(() => {
-  if (stage.value === 'questions') return ((questionIndex.value + 1) / questions.length) * 82
-  if (stage.value === 'today') return 82 + ((todayIndex.value + 1) / todayFields.length) * 18
+  if (stage.value === 'questions') return ((questionIndex.value + 1) / questions.length) * 100
   return 0
 })
-const progressLabel = computed(() => stage.value === 'questions' ? '长期倾向' : '今日状态')
 const resultSaveCopy = computed(() => ({
   idle: '测试完成后，结果会同步到个人主页。',
   saving: '正在同步到个人主页…',
-  saved: 'ISETI 结果已同步到个人主页。',
+  saved: 'PLACE 结果已同步到个人主页。',
   local: '结果已保存在本机，登录后会同步到个人主页。',
   error: '结果已保存在本机，进入个人主页后可重新同步。'
 }[resultSaveState.value] || ''))
 
 onMounted(() => {
-  document.title = 'PLACE @ SYSU｜你的校园类型'
+  document.title = 'PLACE｜你的校园类型'
   window.scrollTo({ top: 0, left: 0 })
+  window.addEventListener('keydown', handleDialogKeydown)
 })
 
 onBeforeUnmount(() => {
   document.body.classList.remove('dialog-open')
+  window.removeEventListener('keydown', handleDialogKeydown)
 })
 
 function scrollTop() {
@@ -351,7 +322,10 @@ function scrollTop() {
 function startTest() {
   stage.value = 'questions'
   questionIndex.value = 0
-  scrollTop()
+  nextTick(() => {
+    scrollTop()
+    questionHeading.value?.focus({ preventScroll: true })
+  })
 }
 
 function selectAnswer(index) {
@@ -361,41 +335,22 @@ function selectAnswer(index) {
   window.setTimeout(() => {
     if (questionIndex.value < questions.length - 1) {
       questionIndex.value += 1
+      nextTick(() => questionHeading.value?.focus({ preventScroll: true }))
     } else {
-      stage.value = 'today'
-      todayIndex.value = 0
+      buildResult()
     }
     advancing.value = false
     scrollTop()
   }, 170)
 }
 
-function selectToday(value) {
-  if (advancing.value) return
-  const field = currentTodayField.value
-  todayAnswers.value = { ...todayAnswers.value, [field.id]: value }
-  advancing.value = true
-  window.setTimeout(() => {
-    if (todayIndex.value < todayFields.length - 1) {
-      todayIndex.value += 1
-      advancing.value = false
-      scrollTop()
-      return
-    }
-    buildResult()
-    advancing.value = false
-  }, 170)
-}
-
 function previousStep() {
   if (stage.value === 'questions') {
     if (questionIndex.value === 0) stage.value = 'intro'
-    else questionIndex.value -= 1
-  } else if (stage.value === 'today') {
-    if (todayIndex.value === 0) {
-      stage.value = 'questions'
-      questionIndex.value = questions.length - 1
-    } else todayIndex.value -= 1
+    else {
+      questionIndex.value -= 1
+      nextTick(() => questionHeading.value?.focus({ preventScroll: true }))
+    }
   }
   scrollTop()
 }
@@ -478,88 +433,16 @@ function chooseBadges(mainCode) {
   return selected
 }
 
-function zoneDistance(a, b) {
-  const p1 = zonePoints[a] || zonePoints.center
-  const p2 = zonePoints[b] || zonePoints.center
-  return Math.ceil((Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1])) / 2)
-}
-
-function choosePlace(mainCode, subCode) {
-  const today = todayAnswers.value
-  const origin = origins.find(item => item.id === today.origin) || origins[3]
-  const preferred = recommendations[mainCode][subCode]
-  const rangeCaps = { near: 0, detour: 1, walk: 2, any: 99 }
-  const rangeCap = rangeCaps[today.range] ?? 2
-
-  const ranked = places.map(place => {
-    const distance = zoneDistance(origin.zone, place.zone)
-    let score = 0
-    if (place.id === preferred.placeId) score += 42
-    if (place.tags.includes(subCode)) score += 30
-    if (place.mains.includes(mainCode)) score += 14
-    if (place.experiences.includes(today.experience)) score += 18
-    if (place.energy.includes(today.energy)) score += 8
-    if (place.company.includes(today.company)) score += 5
-    if (place.times.includes(today.time)) score += 7
-    else score -= 24
-    if (distance <= rangeCap) score += 14 - distance * 4
-    else score -= 28 + (distance - rangeCap) * 7
-    return { place, score, distance }
-  }).sort((a, b) => b.score - a.score)
-
-  const picked = ranked[0]
-  const isPreferred = picked.place.id === preferred.placeId
-  return {
-    ...picked,
-    line: isPreferred ? preferred.line : `${picked.place.fact}${fallbackClosers[mainCode]}`,
-    task: isPreferred ? preferred.task : genericTask(mainCode, subCode, picked.place)
-  }
-}
-
-function genericTask(mainCode, subCode, place) {
-  const bySub = {
-    TREE: '找个不挡路的位置，安静待五分钟。',
-    MAPS: '找到门额、门牌或地点编号，把这一格收进地图。',
-    RUN: '到达后再挑一个看得见的方向，多走一小段。',
-    LENS: '不拍全景，只拍一个屋顶、窗户或倒影。',
-    WIKI: '找一个年份、人名或碑刻，再回头看一遍这里。',
-    BASE: '选一个愿意下次再来的位置，坐一会儿。'
-  }
-  const prefix = {
-    GROW: '带走一个以前不知道的点：',
-    SIDE: '追着最感兴趣的细节去：',
-    DONE: '给自己一个明确的小目标：',
-    DDL: '控制在十分钟内：',
-    HOST: '把它变成一句开场白：',
-    SYNC: '和搭子各做一半：',
-    TRY: '做一件以前路过时没做过的事：',
-    PING: '不查攻略，让现场决定：'
-  }
-  return `${prefix[mainCode]}${bySub[subCode] || `认真看一眼${place.name}。`}`
-}
-
-function distanceCopy(distance) {
-  if (distance === 0) return '就在你选的起点附近'
-  if (distance === 1) return '需要稍微绕一点路'
-  if (distance === 2) return '适合慢慢走过去'
-  return '今天可以把它当成一次小远征'
-}
-
 function buildResult() {
   const values = normalizedSignals()
   const main = chooseMainType(values)
   const subCode = chooseSubType()
-  const picked = choosePlace(main.code, subCode)
   result.value = {
     mainCode: main.code,
     main: main.type,
     subCode,
     sub: subTypes[subCode],
-    badges: chooseBadges(main.code),
-    place: picked.place,
-    line: picked.line,
-    task: picked.task,
-    distanceLabel: distanceCopy(picked.distance)
+    badges: chooseBadges(main.code)
   }
   stage.value = 'result'
   persistPersonality(result.value)
@@ -571,10 +454,7 @@ function personalityPayload(card) {
     mainCode: card.mainCode,
     subCode: card.subCode,
     badges: card.badges.map(item => item.code),
-    placeId: card.place.id,
-    placeName: card.place.name,
-    line: card.line,
-    task: card.task
+    completedAt: Date.now()
   }
 }
 
@@ -599,11 +479,9 @@ async function persistPersonality(card) {
 
 function restart() {
   answers.value = Array(questions.length).fill(null)
-  todayAnswers.value = {}
   result.value = null
   resultSaveState.value = 'idle'
   questionIndex.value = 0
-  todayIndex.value = 0
   stage.value = 'intro'
   scrollTop()
 }
@@ -630,8 +508,13 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
   chars.forEach(char => {
     const next = current + char
     if (ctx.measureText(next).width > maxWidth && current) {
-      lines.push(current)
-      current = char
+      if ('，。！？；：、'.includes(char)) {
+        lines.push(next)
+        current = ''
+      } else {
+        lines.push(current)
+        current = char
+      }
     } else current = next
   })
   if (current) lines.push(current)
@@ -657,12 +540,18 @@ async function makeShareCard() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return ''
 
-  ctx.fillStyle = '#FCF9F8'
+  ctx.fillStyle = '#F3F7F5'
   ctx.fillRect(0, 0, 900, 1200)
-  ctx.fillStyle = '#FDECEC'
-  ctx.beginPath(); ctx.arc(780, 70, 220, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = '#E8F5E9'
-  ctx.beginPath(); ctx.arc(40, 1120, 190, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = 'rgba(10, 46, 59, .055)'
+  ctx.lineWidth = 1
+  for (let x = 0; x <= 900; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1200); ctx.stroke() }
+  for (let y = 0; y <= 1200; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(900, y); ctx.stroke() }
+  ctx.fillStyle = '#0A2E3B'
+  ctx.beginPath(); ctx.arc(790, 70, 210, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = 'rgba(199, 242, 74, .25)'
+  ctx.beginPath(); ctx.arc(790, 70, 150, 0, Math.PI * 2); ctx.stroke()
+  ctx.fillStyle = '#C7F24A'
+  ctx.beginPath(); ctx.arc(36, 1120, 180, 0, Math.PI * 2); ctx.fill()
 
   if (resultVisual.value) {
     try {
@@ -677,59 +566,56 @@ async function makeShareCard() {
     }
   }
 
-  ctx.fillStyle = '#8C1515'
-  ctx.fillRect(64, 58, 52, 52)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = '600 30px Georgia, serif'
+  ctx.fillStyle = '#0A2E3B'
+  roundedRect(ctx, 64, 58, 52, 52, 14); ctx.fill()
+  ctx.fillStyle = '#C7F24A'
+  ctx.font = '800 28px "Avenir Next", Arial, sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText('P', 90, 94)
   ctx.textAlign = 'left'
-  ctx.fillStyle = '#1A1A1A'
-  ctx.font = '600 25px Georgia, serif'
-  ctx.fillText('PLACE @ SYSU', 136, 82)
-  ctx.fillStyle = '#4A4A4A'
-  ctx.font = '500 14px Arial, sans-serif'
-  ctx.fillText('CAMPUS PERSONALITY SPECIMEN · SOUTH CAMPUS', 136, 106)
+  ctx.fillStyle = '#0A2E3B'
+  ctx.font = '800 25px "Avenir Next", Arial, sans-serif'
+  ctx.fillText('P · L · A · C · E', 136, 82)
+  ctx.fillStyle = '#5E7271'
+  ctx.font = '700 13px Menlo, monospace'
+  ctx.fillText('CAMPUS PERSONALITY FIELD CONSOLE · SOUTH CAMPUS', 136, 106)
 
   const mainDisplayCode = card.main.displayCode || card.mainCode
-  ctx.fillStyle = card.main.color || '#8C1515'
-  ctx.font = '500 124px Georgia, serif'
+  ctx.fillStyle = '#0A2E3B'
+  ctx.font = '800 124px "Avenir Next", Arial, sans-serif'
   ctx.fillText(mainDisplayCode, 62, 272)
   const mainCodeWidth = ctx.measureText(mainDisplayCode).width
   const subCodeX = Math.min(62 + mainCodeWidth + 24, 500)
-  ctx.fillStyle = '#B8C9C6'
-  ctx.font = '400 42px Georgia, serif'
+  ctx.fillStyle = '#AFC4BE'
+  ctx.font = '500 42px "Avenir Next", Arial, sans-serif'
   ctx.fillText('/', subCodeX, 258)
-  ctx.fillStyle = '#2F4F4F'
-  ctx.font = '600 44px Georgia, serif'
+  ctx.fillStyle = '#0D9488'
+  ctx.font = '800 44px "Avenir Next", Arial, sans-serif'
   ctx.fillText(card.subCode, subCodeX + 30, 258)
-  ctx.fillStyle = '#1A1A1A'
+  ctx.fillStyle = '#102A2E'
   ctx.font = '600 36px "PingFang SC", "Microsoft YaHei", sans-serif'
   ctx.fillText(`${card.main.name} · ${card.sub.name}`, 68, 332)
-  ctx.fillStyle = '#4A4A4A'
+  ctx.fillStyle = '#5E7271'
   ctx.font = '500 27px "PingFang SC", "Microsoft YaHei", sans-serif'
   const hookBottom = drawWrappedText(ctx, card.main.hook, 68, 384, 730, 40, 2)
 
   const subtypeY = hookBottom + 8
-  ctx.fillStyle = '#2F4F4F'
+  ctx.fillStyle = '#08766D'
   ctx.font = '600 14px Arial, sans-serif'
   ctx.fillText(`${card.subCode} · EXPLORATION PREFERENCE`, 68, subtypeY)
-  ctx.fillStyle = '#4A4A4A'
+  ctx.fillStyle = '#5E7271'
   ctx.font = '500 23px "PingFang SC", "Microsoft YaHei", sans-serif'
   const subtypeBottom = drawWrappedText(ctx, card.sub.note, 68, subtypeY + 34, 730, 32, 2)
 
-  const placeY = subtypeBottom + 20
-  ctx.fillStyle = '#8C1515'
-  roundedRect(ctx, 64, placeY, 772, 320, 30); ctx.fill()
-  ctx.fillStyle = '#F9D7D7'
-  ctx.font = '600 16px Arial, sans-serif'
-  ctx.fillText('TODAY\'S PLACE', 102, placeY + 50)
+  const profileY = subtypeBottom + 24
+  ctx.fillStyle = '#0A2E3B'
+  roundedRect(ctx, 64, profileY, 772, 230, 30); ctx.fill()
+  ctx.fillStyle = '#C7F24A'
+  ctx.font = '700 15px Menlo, monospace'
+  ctx.fillText('TYPE PROFILE', 102, profileY + 50)
   ctx.fillStyle = '#FFFFFF'
-  ctx.font = '600 50px "PingFang SC", "Microsoft YaHei", sans-serif'
-  ctx.fillText(card.place.name, 102, placeY + 116)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = '400 25px "PingFang SC", "Microsoft YaHei", sans-serif'
-  drawWrappedText(ctx, card.line, 102, placeY + 176, 690, 40, 3)
+  ctx.font = '500 28px "PingFang SC", "Microsoft YaHei", sans-serif'
+  drawWrappedText(ctx, card.main.intro, 102, profileY + 104, 690, 42, 3)
 
   const shareBadges = card.badges.slice(0, 2)
   const badgeImages = await Promise.all(shareBadges.map(async badge => {
@@ -740,16 +626,16 @@ async function makeShareCard() {
       return null
     }
   }))
-  const badgeY = placeY + 370
-  ctx.fillStyle = '#8C1515'
-  ctx.font = '600 13px Arial, sans-serif'
+  const badgeY = profileY + 280
+  ctx.fillStyle = '#08766D'
+  ctx.font = '700 13px Menlo, monospace'
   ctx.fillText('SIDE BADGES', 66, badgeY - 16)
   shareBadges.forEach((badge, index) => {
     const badgeX = 66 + index * 198
-    ctx.fillStyle = '#F7F5F1'
-    roundedRect(ctx, badgeX, badgeY, 184, 144, 24); ctx.fill()
+    ctx.fillStyle = '#FFFFFF'
+    roundedRect(ctx, badgeX, badgeY, 184, 144, 20); ctx.fill()
     if (badgeImages[index]) ctx.drawImage(badgeImages[index], badgeX + 40, badgeY + 2, 104, 104)
-    ctx.fillStyle = '#1A1A1A'
+    ctx.fillStyle = '#102A2E'
     ctx.font = '500 14px "PingFang SC", sans-serif'
     ctx.textAlign = 'center'
     ctx.fillText(badge.name, badgeX + 92, badgeY + 132)
@@ -762,7 +648,7 @@ async function makeShareCard() {
       width: 132,
       margin: 1,
       errorCorrectionLevel: 'M',
-      color: { dark: '#1A1A1A', light: '#FFFFFF' }
+      color: { dark: '#0A2E3B', light: '#FFFFFF' }
     })
     const qrImage = await new Promise((resolve, reject) => {
       const image = new Image()
@@ -774,7 +660,7 @@ async function makeShareCard() {
     roundedRect(ctx, 690, 1004, 146, 146, 14); ctx.fill()
     ctx.drawImage(qrImage, 697, 1011, 132, 132)
     ctx.textAlign = 'right'
-    ctx.fillStyle = '#4A4A4A'
+    ctx.fillStyle = '#5E7271'
     ctx.font = '500 14px "PingFang SC", sans-serif'
     ctx.fillText('扫码测测你的校园类型', 836, 1166)
     ctx.textAlign = 'left'
@@ -782,9 +668,9 @@ async function makeShareCard() {
     console.warn('QR code render failed', error)
   }
 
-  ctx.fillStyle = '#1A1A1A'
-  ctx.font = '600 18px Georgia, serif'
-  ctx.fillText('PLACE @ SYSU · 笃行校园探索', 66, 1166)
+  ctx.fillStyle = '#0A2E3B'
+  ctx.font = '800 18px "Avenir Next", Arial, sans-serif'
+  ctx.fillText('P · L · A · C · E · 笃行校园探索', 66, 1166)
 
   return canvas.toDataURL('image/png')
 }
@@ -795,6 +681,7 @@ async function openShareCard() {
   document.body.classList.add('dialog-open')
   try {
     await nextTick()
+    shareClose.value?.focus()
     const image = await makeShareCard()
     if (!image) throw new Error('Share card rendering is unavailable')
     shareImage.value = image
@@ -808,6 +695,33 @@ function closeShareCard() {
   shareCardVisible.value = false
   shareImage.value = ''
   document.body.classList.remove('dialog-open')
+  nextTick(() => shareTrigger.value?.focus())
+}
+
+function handleDialogKeydown(event) {
+  if (!shareCardVisible.value) return
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeShareCard()
+    return
+  }
+  if (event.key !== 'Tab') return
+  const focusable = [...(shareDialog.value?.querySelectorAll('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])') || [])]
+  if (!focusable.length) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (!shareDialog.value?.contains(document.activeElement)) {
+    event.preventDefault()
+    first.focus()
+    return
+  }
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 
 function downloadShareCard() {
@@ -822,8 +736,8 @@ async function nativeShare() {
   if (!shareImage.value || !navigator.share) return
   try {
     const blob = await (await fetch(shareImage.value)).blob()
-    const file = new File([blob], 'place-at-sysu.png', { type: 'image/png' })
-    await navigator.share({ title: '我的 PLACE @ SYSU 校园类型', text: result.value.main.hook, files: [file] })
+    const file = new File([blob], 'place-campus-type.png', { type: 'image/png' })
+    await navigator.share({ title: '我的 PLACE 校园类型', text: result.value.main.hook, files: [file] })
   } catch (error) {
     if (error?.name !== 'AbortError') downloadShareCard()
   }
@@ -832,20 +746,23 @@ async function nativeShare() {
 
 <style scoped>
 .place-page {
-  --primary: #8c1515;
-  --primary-soft: #fdecec;
-  --ink: #1a1a1a;
-  --body: #4a4a4a;
-  --canvas: #fcf9f8;
-  --surface: #f4f4f2;
-  --hairline: #dadad8;
-  --gold: #b8860b;
-  --teal: #2f4f4f;
+  --ink: #0a2e3b;
+  --primary: #0d9488;
+  --primary-dark: #08766d;
+  --accent: #c7f24a;
+  --canvas: #f3f7f5;
+  --surface: #ffffff;
+  --text: #102a2e;
+  --muted: #5e7271;
+  --border: #d6e4df;
+  --danger: #c2413a;
+  --display: "DIN Alternate", "Avenir Next", "Noto Sans SC", "PingFang SC", sans-serif;
+  --technical: "SFMono-Regular", Menlo, Consolas, monospace;
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
   background: var(--canvas);
-  color: var(--ink);
+  color: var(--text);
   font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -853,22 +770,29 @@ async function nativeShare() {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: .35;
-  background-image: radial-gradient(rgba(26, 26, 26, .06) .6px, transparent .6px);
-  background-size: 5px 5px;
-  mask-image: linear-gradient(to bottom, black, transparent 88%);
+  opacity: .58;
+  background-image:
+    linear-gradient(rgba(10, 46, 59, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 46, 59, .045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.8) 64%, transparent 100%);
 }
 
 .place-nav {
-  position: relative;
-  z-index: 5;
-  width: min(1120px, calc(100% - 48px));
-  margin: 0 auto;
-  min-height: 96px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: min(1240px, calc(100% - 48px));
+  min-height: 78px;
+  margin: 14px auto 0;
+  padding: 0 18px;
   display: grid;
   grid-template-columns: 1fr minmax(180px, 320px) 1fr;
   align-items: center;
-  border-bottom: 1px solid var(--hairline);
+  border: 1px solid rgba(214, 228, 223, .86);
+  border-radius: 20px;
+  background: rgba(243, 247, 245, .88);
+  backdrop-filter: blur(16px);
 }
 
 .brand-lockup {
@@ -880,179 +804,213 @@ async function nativeShare() {
 }
 
 .brand-mark {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
-  color: #fff;
-  background: var(--primary);
-  font: 600 22px Georgia, serif;
+  border-radius: 14px 5px 14px 5px;
+  color: var(--accent);
+  background: var(--ink);
+  font: 800 21px/1 var(--display);
 }
 
 .brand-lockup b,
 .brand-lockup small { display: block; }
-.brand-lockup b { font: 600 14px Georgia, serif; letter-spacing: .06em; }
-.brand-lockup small { margin-top: 2px; color: var(--body); font-size: 10px; letter-spacing: .08em; }
+.brand-lockup b { font: 800 14px/1.1 var(--display); letter-spacing: -.01em; }
+.brand-lockup small { margin-top: 4px; color: var(--muted); font: 700 9px/1.2 var(--technical); }
 
-.nav-progress { display: grid; gap: 8px; color: var(--body); font-size: 12px; text-align: center; }
-.progress-track { height: 2px; overflow: hidden; background: var(--hairline); }
-.progress-track i { display: block; height: 100%; background: var(--primary); transition: width .3s ease; }
-.nav-exit { justify-self: end; color: var(--body); font-size: 13px; }
+.nav-progress { display: grid; gap: 7px; color: var(--muted); font: 700 10px/1 var(--technical); }
+.nav-progress > div:first-child { display: flex; justify-content: space-between; }
+.nav-progress b { color: var(--ink); }
+.progress-track { height: 5px; overflow: hidden; border-radius: 999px; background: var(--border); }
+.progress-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform-origin: left center; transition: width .32s cubic-bezier(.16,1,.3,1); }
+.nav-exit { justify-self: end; min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--ink); background: var(--surface); font-size: 12px; font-weight: 700; }
 
 .intro-shell {
   position: relative;
   z-index: 1;
-  width: min(1120px, calc(100% - 48px));
-  min-height: calc(100vh - 170px);
+  width: min(1240px, calc(100% - 48px));
+  min-height: calc(100vh - 116px);
   margin: 0 auto;
-  padding: 76px 0 88px;
+  padding: 40px 0 72px;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr);
-  gap: 90px;
-  align-items: start;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
 
 .eyebrow,
 .panel-label {
   margin: 0;
-  color: var(--primary);
-  font: 600 12px Georgia, serif;
-  letter-spacing: .13em;
+  color: var(--primary-dark);
+  font: 800 10px/1.2 var(--technical);
+  letter-spacing: .04em;
   text-transform: uppercase;
 }
 
-.intro-copy h1 {
-  margin: 18px 0 24px;
-  font: 500 clamp(76px, 10vw, 142px)/.8 Georgia, "Times New Roman", serif;
-  letter-spacing: -.07em;
+.intro-copy {
+  position: relative;
+  grid-column: span 7;
+  min-height: 610px;
+  padding: clamp(32px, 4.5vw, 64px);
+  overflow: hidden;
+  border-radius: 34px 10px 34px 10px;
+  color: #fff;
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  animation: cardIn .46s cubic-bezier(.16,1,.3,1) both;
 }
-
-.intro-copy h1 em { color: var(--primary); font-style: normal; }
-.intro-lead { max-width: 640px; margin: 0; font-size: clamp(22px, 3vw, 34px); font-weight: 600; line-height: 1.45; letter-spacing: -.03em; }
-
-.intro-copy > .primary-action { margin-top: 32px; }
+.intro-copy::after { content: ''; position: absolute; right: -120px; bottom: -160px; width: 430px; height: 430px; border: 1px solid rgba(199,242,74,.26); border-radius: 50%; box-shadow: 0 0 0 54px rgba(199,242,74,.035), 0 0 0 108px rgba(199,242,74,.025); pointer-events: none; }
+.intro-coordinates { position: absolute; top: 28px; right: 30px; display: grid; gap: 5px; color: rgba(255,255,255,.5); font: 700 9px/1 var(--technical); text-align: right; }
+.intro-copy h1 {
+  margin: 44px 0 14px;
+  font: 800 clamp(64px, 8vw, 112px)/.82 var(--display);
+  letter-spacing: -.075em;
+}
+.intro-copy h1 span { display: block; }
+.intro-full-name { margin: 0; color: var(--accent); font: 800 11px/1.35 var(--technical); letter-spacing: .035em; }
+.intro-lead { max-width: 620px; margin: 28px 0 0; color: rgba(255,255,255,.86); font-size: clamp(18px, 2vw, 25px); font-weight: 650; line-height: 1.55; letter-spacing: -.02em; }
+.intro-actions { position: relative; z-index: 2; margin-top: 46px; display: flex; align-items: center; gap: 24px; }
+.intro-duration { margin: 0; color: rgba(255,255,255,.68); font: 700 12px/1 var(--technical); letter-spacing: .04em; }
+.route-line { position: absolute; left: 64px; right: 64px; bottom: 30px; height: 1px; background: rgba(255,255,255,.17); }
+.route-line i { position: absolute; top: 50%; width: 10px; height: 10px; border: 2px solid var(--ink); border-radius: 50%; background: var(--accent); transform: translate(-50%,-50%); box-shadow: 0 0 0 1px rgba(199,242,74,.5); }
+.route-line i:nth-child(1) { left: 0; }.route-line i:nth-child(2) { left: 48%; }.route-line i:nth-child(3) { left: 100%; }
 
 .primary-action {
-  min-width: 240px;
-  min-height: 58px;
-  padding: 0 18px 0 28px;
+  min-width: 182px;
+  min-height: 54px;
+  padding: 0 18px 0 22px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 28px;
-  color: #fff;
-  background: var(--primary);
-  box-shadow: 0 12px 34px rgba(140, 21, 21, .16);
-  transition: transform .2s ease, box-shadow .2s ease;
+  gap: 20px;
+  color: var(--ink);
+  background: var(--accent);
+  transition: transform .24s cubic-bezier(.16,1,.3,1), filter .24s ease;
 }
-.primary-action:hover { transform: translateY(-2px); box-shadow: 0 16px 38px rgba(140, 21, 21, .22); }
+.primary-action:hover { transform: translateY(-2px); filter: brightness(1.04); }
+.primary-action:active { transform: scale(.99); }
 .primary-action span { font-size: 16px; font-weight: 600; }
-.primary-action i { min-width: 70px; padding: 8px 12px; border-radius: 999px; color: #7d1111; background: #fff; font-size: 11px; font-style: normal; }
 
 .specimen-card {
   position: relative;
+  grid-column: span 5;
   min-height: 610px;
-  padding: 30px;
+  padding: 32px;
   overflow: hidden;
-  border-radius: 26px;
-  color: #fff;
-  background: var(--primary);
-  box-shadow: 0 30px 70px rgba(140, 21, 21, .24);
-  transform: rotate(2deg);
+  border: 1px solid var(--border);
+  border-radius: 10px 34px 10px 34px;
+  color: var(--text);
+  background: rgba(255,255,255,.86);
+  animation: cardIn .46s .08s cubic-bezier(.16,1,.3,1) both;
 }
-.specimen-card::after { content: ''; position: absolute; width: 260px; height: 260px; right: -100px; top: 80px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 0 0 45px rgba(255,255,255,.04), 0 0 0 90px rgba(255,255,255,.03); }
-.specimen-topline { display: flex; justify-content: space-between; color: #f2bcbc; font: 600 11px Georgia, serif; letter-spacing: .12em; }
-.specimen-code { position: relative; z-index: 1; margin-top: 72px; font: 500 clamp(76px, 9vw, 116px)/1 Georgia, serif; letter-spacing: -.06em; }
-.specimen-cn { margin-top: 6px; font-size: 27px; font-weight: 600; }
-.specimen-card > p { margin: 24px 0; color: #ffe9e9; font-size: 17px; line-height: 1.7; }
-.specimen-place { position: absolute; left: 30px; right: 30px; bottom: 30px; padding: 24px; border-radius: 18px; color: var(--ink); background: #fff; }
-.specimen-place small, .specimen-place b, .specimen-place span { display: block; }
-.specimen-place small { color: var(--primary); font: 600 10px Georgia, serif; letter-spacing: .12em; }
-.specimen-place b { margin-top: 10px; font-size: 24px; }
-.specimen-place span { margin-top: 7px; color: var(--body); font-size: 13px; }
-.specimen-seal { position: absolute; right: 22px; top: 24px; width: 68px; height: 68px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.4); border-radius: 50%; color: #f7d1d1; font: 600 11px/1.25 Georgia, serif; text-align: center; transform: rotate(12deg); }
+.specimen-topline { position: relative; z-index: 3; display: flex; justify-content: space-between; color: var(--primary-dark); font: 800 10px/1 var(--technical); }
+.specimen-map { position: absolute; inset: 0; opacity: .42; background-image: linear-gradient(rgba(13,148,136,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(13,148,136,.08) 1px, transparent 1px); background-size: 32px 32px; }
+.specimen-map::after { content:''; position:absolute; right:-70px; top:54px; width:230px; height:230px; border:1px solid rgba(13,148,136,.28); border-radius:50%; box-shadow:0 0 0 38px rgba(13,148,136,.045),0 0 0 76px rgba(13,148,136,.03); }
+.specimen-map i { position:absolute; width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px var(--ink); }
+.specimen-map i:nth-child(1){right:77px;top:110px}.specimen-map i:nth-child(2){right:152px;top:182px}.specimen-map i:nth-child(3){right:92px;top:265px}
+.specimen-visual { position: absolute; z-index: 1; right: -18px; top: 92px; width: 58%; height: 330px; pointer-events: none; }
+.specimen-visual img { position: absolute; right: 0; width: 100%; height: 100%; object-fit: contain; }
+.specimen-visual img:first-child { opacity: .32; transform: translate(6%,-4%) scale(.92); }
+.specimen-visual img:last-child { filter: drop-shadow(0 14px 18px rgba(10,46,59,.16)); }
+.specimen-code { position: relative; z-index: 2; margin-top: 88px; font: 800 clamp(64px, 7vw, 96px)/.88 var(--display); letter-spacing: -.07em; color: var(--ink); }
+.specimen-cn { position: relative; z-index: 2; margin-top: 10px; font-size: 25px; font-weight: 800; }
+.specimen-card > p { position: relative; z-index: 2; max-width: 250px; margin: 24px 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
+.specimen-subtype { position: absolute; z-index: 3; left: 30px; right: 30px; bottom: 30px; padding: 21px; border: 1px solid var(--border); border-radius: 20px 6px 20px 6px; color: var(--text); background: rgba(243,247,245,.94); }
+.specimen-subtype small, .specimen-subtype b, .specimen-subtype span { display: block; }
+.specimen-subtype small { color: var(--primary-dark); font: 800 9px/1 var(--technical); }
+.specimen-subtype b { margin-top: 10px; font-size: 18px; }
+.specimen-subtype span { margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.specimen-seal { position: absolute; z-index:3; right: 24px; top: 64px; padding:7px 10px; display:flex; align-items:center; gap:7px; border:1px solid var(--border); border-radius:999px; color:var(--muted); background:#fff; font:800 9px/1 var(--technical); }
+.specimen-seal span { width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--ink); }
 
 .question-shell {
   position: relative;
   z-index: 1;
-  width: min(880px, calc(100% - 48px));
-  min-height: calc(100vh - 170px);
+  width: min(1240px, calc(100% - 48px));
+  min-height: calc(100vh - 94px);
   margin: 0 auto;
-  padding: 70px 0 100px;
+  padding: 40px 0 72px;
 }
-.question-meta { margin-bottom: 30px; display: flex; justify-content: space-between; color: var(--body); font: 600 12px Georgia, serif; letter-spacing: .12em; }
-.question-meta b { color: var(--primary); font-weight: 600; }
-.question-card { animation: cardIn .35s ease both; }
-@keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-.question-number { margin: 0 0 14px; color: var(--primary); font: 600 13px Georgia, serif; letter-spacing: .1em; }
-.question-card h2 { max-width: 760px; margin: 0 0 42px; font-size: clamp(28px, 5vw, 44px); line-height: 1.35; letter-spacing: -.035em; }
-.field-note { margin: -26px 0 36px; color: var(--body); }
-.answer-list { display: grid; gap: 12px; }
+.question-panel {
+  display: grid;
+  grid-template-columns: repeat(12,minmax(0,1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 30px 9px 30px 9px;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 18px 48px rgba(10,46,59,.08);
+  animation: cardIn .36s cubic-bezier(.16,1,.3,1) both;
+}
+.question-meta { grid-column: span 4; min-height: 540px; padding: 30px; color: #fff; background: var(--ink); }
+.question-count { margin-top: 48px; display:flex; align-items:baseline; gap:8px; }
+.question-count strong { color:var(--accent); font:800 clamp(72px,8vw,118px)/.8 var(--display); letter-spacing:-.07em; }
+.question-count span { color:rgba(255,255,255,.5);font:700 15px/1 var(--technical); }
+.question-meta > p:not(.panel-label) { margin:24px 0 0;max-width:280px;color:rgba(255,255,255,.67);font-size:13px;line-height:1.7; }
+.question-route { position:relative;height:5px;margin-top:38px;border-radius:999px;background:rgba(255,255,255,.15); }
+.question-route i { display:block;height:100%;border-radius:inherit;background:var(--accent);transition:width .32s cubic-bezier(.16,1,.3,1); }
+.question-route b { position:absolute;right:0;top:50%;width:12px;height:12px;border:3px solid var(--ink);border-radius:50%;background:var(--accent);transform:translate(50%,-50%);box-shadow:0 0 0 1px var(--accent); }
+.question-meta > small { display:block;margin-top:18px;color:rgba(255,255,255,.42);font:700 9px/1.4 var(--technical); }
+.question-meta .panel-label { color:var(--accent); }
+.question-card { grid-column: span 8; min-height:540px;padding:clamp(28px,4vw,50px);border-left:1px solid var(--border);background:rgba(255,255,255,.9); }
+@keyframes cardIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.question-card-head { display:flex;align-items:center;justify-content:space-between;gap:16px; }
+.question-card-head > span { color:var(--muted);font-size:11px; }
+.question-number { margin: 0; color: var(--primary-dark); font: 800 11px/1 var(--technical); }
+.question-card h2 { max-width: 760px; margin: 38px 0 34px; font-size: clamp(28px, 3.7vw, 46px); line-height: 1.25; letter-spacing: -.035em; }
+.question-card h2:focus { outline: none; }
+.answer-list { display: grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap: 12px; }
 .answer-option {
   width: 100%;
-  min-height: 78px;
-  padding: 14px 20px;
+  min-height: 112px;
+  padding: 18px;
   display: grid;
-  grid-template-columns: 42px 1fr 24px;
+  grid-template-columns: 42px 1fr 22px;
   gap: 12px;
   align-items: center;
-  border: 1px solid var(--hairline);
-  border-radius: 16px;
-  color: var(--ink);
-  background: rgba(255,255,255,.6);
+  border: 1px solid var(--border);
+  border-radius: 18px 6px 18px 6px;
+  color: var(--text);
+  background: var(--canvas);
   text-align: left;
-  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+  transition: border-color .24s ease, background .24s ease, transform .24s cubic-bezier(.16,1,.3,1);
 }
-.answer-option:hover { border-color: #b7b7b4; transform: translateX(4px); }
-.answer-option.selected { color: #fff; border-color: var(--primary); background: var(--primary); }
-.answer-letter { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; font: 600 13px Georgia, serif; }
-.answer-option > span:nth-child(2) { font-size: 16px; line-height: 1.55; }
-.answer-option i { justify-self: end; color: #9c9c98; font-style: normal; }
-.answer-option.selected i { color: #fff; }
+.answer-option:hover { border-color:var(--primary);transform:translateY(-2px); }
+.answer-option.selected { color: #fff; border-color: var(--ink); background: var(--ink); }
+.answer-letter { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; font: 800 12px/1 var(--technical); }
+.answer-option.selected .answer-letter { color:var(--ink);border-color:var(--accent);background:var(--accent); }
+.answer-option > span:nth-child(2) { font-size: 15px; font-weight:600;line-height: 1.55; }
+.answer-option svg { justify-self: end; color: var(--primary-dark); }
+.answer-option.selected svg { color: var(--accent); }
 
-.question-footer { margin-top: 28px; display: flex; align-items: center; justify-content: space-between; color: #767673; font-size: 12px; }
-.text-action { color: var(--primary); font-weight: 600; }
-
-.today-shell { width: min(920px, calc(100% - 48px)); }
-.today-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.today-options.compact { grid-template-columns: repeat(2, 1fr); }
-.today-option {
-  position: relative;
-  min-height: 104px;
-  padding: 20px 52px 18px 20px;
-  border: 1px solid var(--hairline);
-  border-radius: 16px;
-  background: rgba(255,255,255,.66);
-  text-align: left;
-  transition: border-color .18s ease, background .18s ease;
-}
-.today-option:hover { border-color: #b7b7b4; }
-.today-option b, .today-option span { display: block; }
-.today-option b { font-size: 17px; }
-.today-option span { margin-top: 7px; color: var(--body); font-size: 12px; }
-.today-option i { position: absolute; right: 20px; top: 50%; width: 19px; height: 19px; border: 1px solid #aaa; border-radius: 50%; transform: translateY(-50%); }
-.today-option.selected { border-color: var(--teal); background: #e8f5e9; }
-.today-option.selected i { border: 5px solid var(--teal); background: #fff; }
+.question-footer { width:calc(66.666% - 6px);margin:10px 0 0 auto;padding:4px 8px;display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:11px; }
+.text-action { min-height:44px;display:inline-flex;align-items:center;gap:7px;color:var(--ink);font-weight:700; }
 
 .result-shell {
   position: relative;
   z-index: 1;
-  width: min(1120px, calc(100% - 48px));
+  width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 52px 0 76px;
+  padding: 40px 0 72px;
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  gap:16px;
 }
-.result-heading {
-  margin-bottom: 18px;
-}
-.result-grid { display: grid; grid-template-columns: 1.22fr .78fr; gap: 16px; align-items: stretch; }
-.type-profile, .place-panel { position: relative; min-height: 430px; padding: 30px; overflow: hidden; border-radius: 22px; }
-.type-profile { border: 1px solid rgba(47,79,79,.12); background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(238,243,241,.88)); }
-.place-panel { background: var(--surface); }
-.result-type-visual { position: absolute; inset: 0 0 0 48%; z-index: 0; pointer-events: none; }
+.result-heading { grid-column:1 / -1;margin-bottom:8px; }
+.result-heading > div { margin-top:10px;display:flex;align-items:end;justify-content:space-between;gap:20px; }
+.result-heading h2 { margin:0;font-size:clamp(28px,4vw,48px);line-height:1.05;letter-spacing:-.04em; }
+.result-heading span { color:var(--muted);font:700 10px/1 var(--technical); }
+.result-grid { grid-column:1 / span 8;grid-row:2;display:grid; }
+.type-profile { position: relative; min-height: 590px; padding: clamp(30px,4vw,52px); overflow: hidden; border-radius: 34px 10px 34px 10px; color:#fff;background-color:var(--ink);background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px; }
+.type-profile::after { content:'';position:absolute;right:-120px;bottom:-190px;width:430px;height:430px;border:1px solid rgba(199,242,74,.2);border-radius:50%;box-shadow:0 0 0 56px rgba(199,242,74,.025),0 0 0 112px rgba(199,242,74,.018); }
+.result-type-visual { position: absolute; inset: 0 0 0 44%; z-index: 0; pointer-events: none; }
 .result-type-visual img { position: absolute; display: block; width: auto; height: auto; object-fit: contain; }
-.result-type-visual-main { right: -8%; top: -4%; max-width: 108%; max-height: 108%; opacity: .68; }
-.result-type-visual-sub { right: -3%; bottom: -8%; max-width: 104%; max-height: 104%; filter: drop-shadow(0 10px 16px rgba(16, 48, 47,.18)); }
+.result-type-visual-main { right: -8%; top: -4%; max-width: 112%; max-height: 112%; opacity: .25; }
+.result-type-visual-sub { right: -3%; bottom: -5%; max-width: 108%; max-height: 108%; filter: drop-shadow(0 16px 24px rgba(0,0,0,.24)); }
 .main-visual-sync .result-type-visual-main,
 .main-visual-try .result-type-visual-main { right: -24%; max-width: 132%; }
 .main-visual-grow .result-type-visual-main,
@@ -1061,157 +1019,186 @@ async function nativeShare() {
 .sub-visual-maps .result-type-visual-sub { right: 0; max-width: 88%; max-height: 96%; }
 .sub-visual-lens .result-type-visual-sub,
 .sub-visual-wiki .result-type-visual-sub { right: -2%; max-width: 96%; max-height: 96%; }
-.sub-visual-tree .result-type-visual-sub { right: -8%; max-width: 108%; }
+.sub-visual-stay .result-type-visual-sub { right: -8%; max-width: 108%; }
 .sub-visual-base .result-type-visual-sub { right: -10%; bottom: -8%; max-width: 112%; max-height: 106%; }
 .type-profile.has-type-visual > :not(.result-type-visual) { position: relative; z-index: 1; }
-.type-profile.has-type-visual > :not(.result-type-visual) { max-width: 58%; }
-.type-profile .panel-label { color: var(--primary); }
-.result-kicker { margin: 26px 0 5px; color: var(--body); font-size: 12px; }
-.type-code-lockup { min-height: 92px; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
-.type-code-lockup strong { font: 500 clamp(68px, 7.2vw, 104px)/.88 Georgia, serif; letter-spacing: -.07em; }
-.type-code-lockup span { color: #aab9b6; font: 400 30px Georgia, serif; }
-.type-code-lockup b { color: var(--teal); font: 600 clamp(30px, 3.4vw, 46px)/1 Georgia, serif; letter-spacing: -.04em; }
-.type-profile h1 { margin: 10px 0 16px; font-size: clamp(23px, 2.3vw, 30px); letter-spacing: -.04em; }
-.type-profile.has-type-visual h1 { max-width: 76%; }
-.type-profile h1 i { margin: 0 8px; color: #b7b7b4; font-style: normal; font-weight: 400; }
-.type-profile h1 span { color: var(--teal); }
-.type-profile blockquote { margin: 0; padding-left: 14px; border-left: 3px solid var(--primary); font-size: 18px; font-weight: 600; line-height: 1.55; }
-.result-intro { margin: 12px 0 0; color: var(--body); font-size: 12px; line-height: 1.7; }
-.subtype-note { margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.78); }
-.subtype-note small { color: var(--teal); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
-.subtype-note p { margin: 5px 0 0; color: var(--body); font-size: 11px; line-height: 1.55; }
-.place-title-row { margin-top: 36px; display: flex; justify-content: space-between; gap: 20px; align-items: start; }
-.place-title-row span { color: var(--body); font-size: 11px; letter-spacing: .08em; }
-.place-title-row h3 { margin: 6px 0 0; font-size: clamp(30px, 4vw, 42px); letter-spacing: -.04em; }
-.place-stamp { width: 66px; height: 66px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--primary); border-radius: 50%; color: var(--primary); font: 600 10px/1.2 Georgia, serif; text-align: center; transform: rotate(9deg); }
-.culture-line { max-width: 620px; margin: 18px 0 14px; font-size: 16px; font-weight: 600; line-height: 1.6; }
-.visit-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-.visit-meta span { padding: 7px 12px; border: 1px solid var(--hairline); border-radius: 999px; color: var(--body); background: #fff; font-size: 11px; }
-.micro-task { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hairline); }
-.micro-task small { color: var(--primary); font-size: 11px; font-weight: 600; }
-.micro-task p { margin: 8px 0 0; color: var(--body); font-size: 14px; line-height: 1.7; }
+.type-profile.has-type-visual > :not(.result-type-visual) { max-width: 59%; }
+.type-profile .panel-label { color: var(--accent); }
+.result-kicker { margin: 22px 0 8px; display:flex;align-items:center;gap:9px;color: rgba(255,255,255,.52); font:700 9px/1 var(--technical); }
+.result-kicker span { width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(199,242,74,.18); }
+.type-code-lockup { display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
+.type-code-lockup strong { color:#fff;font: 800 clamp(72px, 7.5vw, 108px)/.9 var(--display); letter-spacing: .015em; }
+.type-code-lockup span { color: rgba(255,255,255,.22); font: 500 32px/1 var(--display); }
+.type-code-lockup b { color: var(--accent); font: 800 clamp(30px, 3.4vw, 46px)/1 var(--display); letter-spacing: -.04em; }
+.type-profile h1 { margin: 8px 0 16px; font-size: clamp(23px, 2.5vw, 31px); letter-spacing: -.04em; }
+.type-profile.has-type-visual h1 { max-width: 84%; }
+.type-profile h1 i { margin: 0 8px; color: rgba(255,255,255,.3); font-style: normal; font-weight: 400; }
+.type-profile h1 span { color: var(--accent); }
+.type-profile blockquote { margin: 0; padding-left: 14px; border-left: 3px solid var(--accent); font-size: 18px; font-weight: 650; line-height: 1.55; }
+.result-intro { margin: 10px 0 0; color: rgba(255,255,255,.67); font-size: 12px; line-height: 1.65; }
+.subtype-note { margin-top: 14px; padding: 14px 16px; border:1px solid rgba(255,255,255,.09);border-radius: 16px 5px 16px 5px; background: rgba(255,255,255,.06); }
+.subtype-note small { color: var(--accent); font:800 12px/1.2 var(--technical); letter-spacing:.02em; }
+.subtype-note p { margin: 9px 0 0; color: rgba(255,255,255,.7); font-size: 11px; line-height: 1.55; }
+.result-sidebar { grid-column:9 / -1;grid-row:2;min-width:0;display:flex;flex-direction:column;gap:16px; }
+.badge-section, .share-section { padding:28px;border-radius:10px 28px 10px 28px;display:flex;flex-direction:column;align-items:stretch;gap:22px; }
+.badge-section { border:1px solid var(--border);background:rgba(255,255,255,.9); }
+.badge-section h3, .share-section h3 { margin: 9px 0 0; font-size: 21px;line-height:1.3; }
+.badge-section > div:first-child > p:last-child { margin:8px 0 0;color:var(--muted);font-size:11px;line-height:1.55; }
+.badge-list { display: grid; gap: 8px; }
+.badge-item { min-height:72px;padding:8px 12px 8px 8px;border:1px solid var(--border);border-radius:16px 5px 16px 5px;display:flex;align-items:center;gap:12px;background:var(--canvas); }
+.badge-item img { width: 54px; height: 54px; flex: 0 0 auto; object-fit: contain; }
+.badge-item span { color:var(--text);font-size:12px;font-weight:700; }
+.share-section { color: #fff; background: var(--primary-dark); }
+.share-section .panel-label { color: var(--accent); }
+.share-section p:last-child { margin: 8px 0 0; color: rgba(255,255,255,.65); font-size: 11px; }
+.share-section .primary-action { width:100%;min-width:0; }
+.compact-action { min-width: 220px; min-height: 52px; }
+.result-actions { grid-column:1 / span 8;align-self:start;display:flex;align-items:center;justify-content:flex-end;gap:8px; }
+.result-save-status { grid-column:1 / span 8;min-height:1.5em;margin:0;color:var(--muted);font-size:11px;text-align:right; }
+.secondary-action { min-height: 46px; padding: 0 18px; border: 1px solid var(--border); border-radius: 999px; display:inline-flex;align-items:center;justify-content:center;gap:7px;background: #fff; color:var(--ink);font-size: 12px; font-weight: 700; }
 
-.badge-section, .share-section { margin-top: 16px; padding: 26px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.badge-section { border: 1px solid var(--hairline); background: rgba(255,255,255,.52); }
-.badge-section h3, .share-section h3 { margin: 8px 0 0; font-size: 22px; }
-.badge-list { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.badge-item { min-width: 152px; padding: 8px 12px 8px 8px; border: 1px solid rgba(140,21,21,.08); border-radius: 18px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.72); }
-.badge-item img { width: 52px; height: 52px; flex: 0 0 auto; object-fit: contain; }
-.badge-item span { color: #5e4610; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.share-section { margin-top: 24px; color: #fff; background: var(--primary); }
-.share-section .panel-label { color: #f1bebe; }
-.share-section p:last-child { margin: 8px 0 0; color: #f6dcdc; font-size: 12px; }
-.share-section .primary-action { color: var(--primary); background: #fff; box-shadow: none; }
-.share-section .primary-action i { color: #fff; background: var(--primary); }
-.compact-action { min-width: 260px; min-height: 54px; }
-.result-actions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px; }
-.result-save-status { min-height: 1.5em; margin: 14px 0 0; color: var(--body); font-size: 12px; text-align: center; }
-.secondary-action { min-height: 48px; padding: 0 20px; border: 1px solid var(--hairline); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; }
-
-.share-modal { position: fixed; inset: 0; z-index: 13000; padding: 24px; overflow-y: auto; display: grid; place-items: center; background: rgba(26,26,26,.72); backdrop-filter: blur(14px); }
-.share-dialog { width: min(480px, 100%); padding: 18px; border-radius: 24px; background: var(--canvas); box-shadow: 0 30px 80px rgba(0,0,0,.25); }
+.share-modal { position: fixed; inset: 0; z-index: 13000; padding: 24px; overflow-y: auto; display: grid; align-items:start;justify-items:center; background: rgba(10,46,59,.78); backdrop-filter: blur(14px); }
+.share-dialog { width: min(480px, 100%); margin:auto 0; padding: 18px; border:1px solid rgba(255,255,255,.35);border-radius: 28px 8px 28px 8px; background: var(--canvas); box-shadow: 0 30px 80px rgba(10,46,59,.28); }
 .share-dialog-head { padding: 4px 4px 14px; display: flex; align-items: center; justify-content: space-between; }
 .share-dialog-head small, .share-dialog-head b { display: block; }
-.share-dialog-head small { color: var(--primary); font: 600 10px Georgia, serif; letter-spacing: .12em; }
+.share-dialog-head small { color: var(--primary-dark); font: 800 9px/1 var(--technical); }
 .share-dialog-head b { margin-top: 4px; font-size: 16px; }
-.share-dialog-head button { width: 34px; height: 34px; border-radius: 50%; background: var(--surface); font-size: 22px; }
-.share-image-wrap { aspect-ratio: 3 / 4; overflow: hidden; border-radius: 16px; background: var(--surface); }
+.share-dialog-head button { width: 40px; height: 40px; display:grid;place-items:center;border-radius: 50%; background: var(--surface); }
+.share-image-wrap { aspect-ratio: 3 / 4; overflow: hidden; border:1px solid var(--border);border-radius: 20px 6px 20px 6px; background: var(--surface); }
 .share-image-wrap img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.share-loading { height: 100%; display: grid; place-items: center; color: var(--body); }
-.share-tip { margin: 12px 0 0; color: var(--body); font-size: 11px; text-align: center; }
+.share-loading { height: 100%; display: grid; place-items: center; color: var(--muted); }
+.share-tip { margin: 12px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
 .share-buttons { margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px; }
 
-.place-footer { position: relative; z-index: 1; width: min(1120px, calc(100% - 48px)); margin: 0 auto; min-height: 74px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--hairline); color: var(--body); font-size: 11px; letter-spacing: .06em; }
+.place-footer { position: relative; z-index: 1; width: min(1240px, calc(100% - 48px)); margin: 0 auto; min-height: 74px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); color: var(--muted); font:700 9px/1 var(--technical); }
 
-button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(140,21,21,.22); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 5px var(--ink); }
 
-@media (min-width: 801px) and (max-height: 850px) {
-  .place-nav { min-height: 78px; }
-  .intro-shell {
-    min-height: calc(100vh - 152px);
-    padding: 24px 0 30px;
-    gap: 70px;
-  }
-  .intro-copy h1 { margin: 18px 0 28px; font-size: clamp(76px, 8vw, 108px); line-height: .88; }
-  .intro-lead { font-size: clamp(22px, 2.4vw, 30px); line-height: 1.5; }
-  .intro-copy > .primary-action { min-height: 56px; margin-top: 38px; }
-  .specimen-card { min-height: 500px; padding: 24px; border-radius: 22px; }
-  .specimen-code { margin-top: 44px; font-size: clamp(72px, 7vw, 92px); }
-  .specimen-cn { margin-top: 4px; font-size: 24px; }
-  .specimen-card > p { margin: 16px 0; font-size: 15px; line-height: 1.55; }
-  .specimen-place { left: 24px; right: 24px; bottom: 24px; padding: 18px; border-radius: 16px; }
-  .specimen-place b { margin-top: 6px; font-size: 20px; }
-  .specimen-place span { margin-top: 4px; font-size: 12px; }
-  .specimen-seal { right: 18px; top: 18px; width: 58px; height: 58px; font-size: 10px; }
-  .question-shell,
-  .today-shell {
-    min-height: calc(100vh - 152px);
-    padding: 24px 0 30px;
-  }
-  .question-meta { margin-bottom: 16px; }
-  .question-number { margin-bottom: 8px; }
-  .question-card h2 { margin-bottom: 20px; font-size: clamp(26px, 3.2vw, 38px); line-height: 1.25; }
-  .field-note { margin: -8px 0 18px; }
-  .answer-list { gap: 8px; }
-  .answer-option {
-    min-height: 60px;
-    padding: 8px 18px;
-    grid-template-columns: 38px 1fr 20px;
-    gap: 10px;
-  }
-  .answer-letter { width: 30px; height: 30px; }
-  .answer-option > span:nth-child(2) { font-size: 15px; }
-  .question-footer { margin-top: 14px; }
-  .today-options { gap: 10px; }
-  .today-option { min-height: 82px; padding: 14px 46px 14px 18px; }
-  .today-options.compact { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .today-options.compact .today-option { min-height: 58px; padding: 8px 40px 8px 14px; }
-  .today-options.compact .today-option b { font-size: 14px; }
-  .today-options.compact .today-option span { margin-top: 2px; font-size: 10px; }
-  .today-options.compact .today-option i { right: 14px; width: 17px; height: 17px; }
+@media (max-width: 1023px) {
+  .place-nav,.intro-shell,.question-shell,.result-shell,.place-footer { width:min(100% - 32px,1240px); }
+  .intro-copy { grid-column:span 7;padding:38px; }
+  .specimen-card { grid-column:span 5;padding:26px; }
+  .intro-actions { align-items:flex-start;flex-direction:column; }
+  .question-meta { grid-column:span 4;padding:24px; }
+  .question-card { grid-column:span 8;padding:30px; }
+  .answer-list { grid-template-columns:1fr; }
+  .answer-option { min-height:78px; }
+  .type-profile.has-type-visual > :not(.result-type-visual) { max-width:66%; }
 }
 
-@media (max-width: 800px) {
-  .place-nav { width: min(100% - 32px, 1120px); min-height: 78px; grid-template-columns: 1fr auto; }
-  .nav-progress { position: absolute; left: 0; right: 0; bottom: -13px; }
-  .nav-progress span { display: none; }
-  .nav-exit { font-size: 0; }
-  .nav-exit::after { content: '校园探索 ↗'; font-size: 12px; }
-  .intro-shell { width: min(100% - 36px, 1120px); padding: 54px 0 74px; grid-template-columns: 1fr; gap: 60px; }
-  .intro-copy h1 { font-size: clamp(74px, 27vw, 116px); }
-  .intro-lead { font-size: 24px; }
-  .specimen-card { min-height: 540px; transform: rotate(0); }
-  .question-shell, .today-shell { width: min(100% - 32px, 920px); padding: 62px 0 80px; }
-  .question-card h2 { margin-bottom: 30px; font-size: 29px; }
-  .answer-option { min-height: 74px; padding: 12px 14px; grid-template-columns: 38px 1fr 18px; }
-  .answer-option > span:nth-child(2) { font-size: 14px; }
-  .question-footer { align-items: flex-start; gap: 20px; }
-  .question-footer > span { max-width: 210px; text-align: right; }
-  .today-options, .today-options.compact { grid-template-columns: 1fr; }
-  .today-option { min-height: 86px; }
-  .result-shell { width: min(100% - 32px, 1120px); padding: 48px 0 72px; }
-  .result-heading { margin-bottom: 18px; }
-  .result-grid { grid-template-columns: 1fr; }
-  .type-profile, .place-panel { min-height: 360px; padding: 26px; }
-  .type-profile.has-type-visual > :not(.result-type-visual) { max-width: 64%; }
-  .result-type-visual { left: 44%; opacity: .82; }
-  .type-code-lockup { min-height: 76px; }
-  .badge-section, .share-section { padding: 26px; align-items: flex-start; flex-direction: column; }
-  .badge-list { justify-content: flex-start; }
-  .share-section .primary-action { width: 100%; }
-  .result-actions { justify-content: stretch; }
-  .result-actions button { flex: 1; }
-  .place-footer { width: min(100% - 32px, 1120px); flex-direction: column; justify-content: center; gap: 4px; align-items: flex-start; }
+@media (max-width: 899px) {
+  .intro-shell,.question-shell,.result-shell { display:block; }
+  .specimen-card,.result-sidebar { margin-top:16px; }
+  .question-panel { display:block; }
+  .question-meta { min-height:auto; }
+  .question-card { min-height:auto;border-top:1px solid var(--border);border-left:0; }
+  .question-footer { margin-top:10px; }
+  .result-actions { margin-top:16px; }
+  .result-save-status { margin-top:10px; }
 }
 
-@media (max-width: 560px) {
-  .type-profile { min-height: 500px; }
-  .type-profile.has-type-visual > :not(.result-type-visual) { max-width: none; }
-  .result-type-visual { inset: auto 0 0 30%; height: 52%; opacity: .34; }
-  .type-code-lockup { gap: 8px; }
-  .type-code-lockup strong { font-size: 64px; }
-  .type-code-lockup b { font-size: 30px; }
-  .type-profile h1 { font-size: 24px; }
+@media (max-width: 699px) {
+  .place-nav { min-height:68px;margin-top:8px;padding:0 12px;grid-template-columns:1fr auto; }
+  .brand-lockup b { font-size:11px;letter-spacing:.02em; }
+  .brand-lockup small { display:block;font-size:7px;white-space:nowrap; }
+  .brand-mark { width:38px;height:38px; }
+  .nav-progress { display:none; }
+  .nav-exit { width:44px;padding:0;justify-content:center; }
+  .nav-exit span,.nav-exit svg:last-child { display:none; }
+  .intro-shell,.question-shell,.result-shell { width:calc(100% - 24px);padding:28px 0 56px;display:block; }
+  .intro-copy { min-height:540px;padding:28px;border-radius:26px 8px 26px 8px; }
+  .intro-coordinates { top:22px;right:22px; }
+  .intro-coordinates { display:none; }
+  .intro-copy h1 { margin-top:46px;font-size:clamp(32px,10vw,50px);letter-spacing:-.04em; }
+  .intro-lead { font-size:18px; }
+  .intro-actions { margin-top:34px; }
+  .intro-duration { font-size:11px; }
+  .route-line { left:28px;right:28px;bottom:22px; }
+  .specimen-card {
+    position:absolute;
+    right:14px;
+    top:348px;
+    bottom:auto;
+    z-index:4;
+    width:48%;
+    min-height:202px;
+    margin:0;
+    padding:14px;
+    border-color:rgba(199,242,74,.28);
+    border-radius:5px 20px 5px 20px;
+    color:#fff;
+    background:rgba(8,48,60,.82);
+    box-shadow:inset 0 1px rgba(255,255,255,.05),0 14px 28px rgba(2,22,29,.18);
+    backdrop-filter:blur(8px);
+  }
+  .specimen-topline { color:var(--accent);font-size:7px; }
+  .specimen-map { opacity:.34;background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:20px 20px; }
+  .specimen-map::after { right:-54px;top:36px;width:150px;height:150px;border-color:rgba(199,242,74,.22);box-shadow:0 0 0 24px rgba(199,242,74,.025),0 0 0 48px rgba(199,242,74,.018); }
+  .specimen-map i { display:none; }
+  .specimen-code { margin-top:36px;color:#fff;font-size:32px;letter-spacing:.01em; }
+  .specimen-cn { margin-top:4px;color:rgba(255,255,255,.82);font-size:13px; }
+  .specimen-card > p { display:none; }
+  .specimen-visual { right:-4px;top:34px;width:62%;height:118px; }
+  .specimen-visual img:first-child { opacity:.12; }
+  .specimen-visual img:last-child { filter:drop-shadow(0 10px 14px rgba(0,0,0,.28)); }
+  .specimen-subtype { left:10px;right:10px;bottom:10px;padding:9px 10px;border-color:rgba(255,255,255,.12);border-radius:10px 3px 10px 3px;color:#fff;background:rgba(255,255,255,.06); }
+  .specimen-subtype small { color:var(--accent);font-size:6px; }
+  .specimen-subtype b { margin-top:5px;color:#fff;font-size:10px; }
+  .specimen-subtype span { display:none; }
+  .specimen-seal { display:none; }
+  .question-panel { border-radius:24px 7px 24px 7px; }
+  .question-meta { min-height:auto;padding:20px 22px 18px;display:grid;grid-template-columns:1fr auto;gap:7px 18px; }
+  .question-meta .panel-label { grid-column:1; }
+  .question-count { grid-column:2;grid-row:1;margin:0;align-self:center; }
+  .question-count strong { font-size:46px; }
+  .question-count span { font-size:12px; }
+  .question-meta > p:not(.panel-label),.question-meta > small { display:none; }
+  .question-route { grid-column:1 / -1;margin-top:10px; }
+  .question-card { min-height:0;margin:0;padding:24px; }
+  .question-card-head > span { display:none; }
+  .question-card h2 { margin:28px 0 26px;font-size:28px; }
+  .answer-option { min-height:76px;padding:14px;grid-template-columns:38px 1fr 18px; }
+  .answer-letter { width:32px;height:32px; }
+  .answer-option > span:nth-child(2) { font-size:14px; }
+  .question-footer { width:100%;margin-top:8px;padding:0 4px;align-items:flex-start;gap:14px; }
+  .question-footer > span { text-align:right;white-space:nowrap;line-height:1.55; }
+  .result-heading { margin-bottom:20px; }
+  .result-heading > div { align-items:flex-start;flex-direction:column; }
+  .result-heading h2 { font-size:32px; }
+  .type-profile { min-height:0;padding:26px;border-radius:26px 8px 26px 8px; }
+  .type-profile.has-type-visual > :not(.result-type-visual) { max-width:none; }
+  .result-kicker { margin-top:14px; }
+  .type-code-lockup strong { font-size:66px; }
+  .type-code-lockup b { font-size:29px; }
+  .type-profile h1 { margin-top:6px;font-size:23px; }
+  .result-type-visual { inset:14px 6px auto auto;width:39%;height:230px;opacity:.92; }
+  .result-type-visual-main { display:none; }
+  .result-type-visual-sub { right:0;top:0;bottom:auto;max-width:100%;max-height:100%; }
+  .result-sidebar { margin-top:12px;display:block; }
+  .badge-section,.share-section { margin-top:12px;padding:24px; }
+  .result-actions,.result-save-status { grid-column:auto;grid-row:auto; }
+  .result-actions { margin-top:12px;display:grid;grid-template-columns:1fr 1fr; }
+  .result-actions button { padding:0 10px; }
+  .result-save-status { margin-top:10px;text-align:center; }
+  .share-modal { padding:12px; }
+  .share-dialog { padding:14px; }
+  .share-buttons > * { flex:1;min-width:0; }
+  .place-footer { width:calc(100% - 24px);min-height:68px;flex-direction:column;justify-content:center;align-items:flex-start;gap:5px; }
+}
+
+@media (max-width: 479px) {
+  .intro-copy { min-height:560px;padding:24px; }
+  .intro-copy h1 { font-size:clamp(29px,9.2vw,42px); }
+  .specimen-card { right:10px;top:348px;bottom:auto;width:49%;min-height:202px; }
+  .question-card { padding:20px; }
+  .question-card h2 { font-size:25px; }
+  .answer-option svg { display:none; }
+  .answer-option { grid-template-columns:36px 1fr; }
+  .type-profile { min-height:0;padding:22px; }
+  .type-code-lockup { min-width:0;max-width:100%;gap:5px; }
+  .type-code-lockup strong { font-size:clamp(46px,16vw,58px); }
+  .type-code-lockup span { font-size:clamp(20px,7vw,26px); }
+  .type-code-lockup b { font-size:clamp(19px,7vw,25px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

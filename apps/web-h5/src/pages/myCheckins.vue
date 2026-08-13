@@ -75,7 +75,27 @@
               </div>
               <p class="profile-bio">{{ userInfo.bio || '记录走过的校园，也记录正在形成的自己。' }}</p>
             </div>
-            <div class="profile-personality-space" aria-hidden="true"></div>
+            <div
+              class="profile-personality-space"
+              :aria-label="personalityFigure ? `${personalityFigure.code} 校园人格形象` : undefined"
+              :aria-hidden="personalityFigure ? undefined : 'true'"
+            >
+              <img
+                v-if="personalityFigure"
+                class="profile-personality-main"
+                :src="personalityFigure.mainSrc"
+                alt=""
+                aria-hidden="true"
+                decoding="async"
+              />
+              <img
+                v-if="personalityFigure"
+                class="profile-personality-sub"
+                :src="personalityFigure.subSrc"
+                :alt="`${personalityFigure.code} 校园人格小人`"
+                decoding="async"
+              />
+            </div>
             <dl class="profile-identifiers">
               <div>
                 <dt>姓名</dt>
@@ -793,6 +813,20 @@ import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import { request } from '@/utils/request'
 import { badgeCatalog, badgeThumb, getBadge } from '@/data/badgeCatalog'
+import ddlPersonalityScene from '../assets/place/main/ddl.webp'
+import donePersonalityScene from '../assets/place/main/done.webp'
+import growPersonalityScene from '../assets/place/main/grow.webp'
+import hostPersonalityScene from '../assets/place/main/host.webp'
+import pingPersonalityScene from '../assets/place/main/ping.webp'
+import sidePersonalityScene from '../assets/place/main/side.webp'
+import syncPersonalityScene from '../assets/place/main/sync.webp'
+import tryPersonalityScene from '../assets/place/main/try.webp'
+import basePersonalityVisual from '../assets/place/subtypes/base.webp'
+import lensPersonalityVisual from '../assets/place/subtypes/lens.webp'
+import mapsPersonalityVisual from '../assets/place/subtypes/maps.webp'
+import runPersonalityVisual from '../assets/place/subtypes/run.webp'
+import stayPersonalityVisual from '../assets/place/subtypes/tree.webp'
+import wikiPersonalityVisual from '../assets/place/subtypes/wiki.webp'
 
 const router = useRouter()
 const totalBadges = badgeCatalog.length
@@ -802,6 +836,26 @@ const firstProfileField = ref(null)
 const commandInput = ref(null)
 const avatarInput = ref(null)
 const cropWorkspace = ref(null)
+
+const mainPersonalityVisuals = {
+  GROW: growPersonalityScene,
+  SIDE: sidePersonalityScene,
+  DONE: donePersonalityScene,
+  DDL: ddlPersonalityScene,
+  HOST: hostPersonalityScene,
+  SYNC: syncPersonalityScene,
+  TRY: tryPersonalityScene,
+  PING: pingPersonalityScene
+}
+
+const subtypePersonalityVisuals = {
+  STAY: stayPersonalityVisual,
+  MAPS: mapsPersonalityVisual,
+  RUN: runPersonalityVisual,
+  LENS: lensPersonalityVisual,
+  WIKI: wikiPersonalityVisual,
+  BASE: basePersonalityVisual
+}
 
 const loading = ref(true)
 const loadError = ref('')
@@ -815,6 +869,15 @@ const avatarFailed = ref(false)
 const personalitySyncMessage = ref('')
 const submissionFilter = ref('all')
 const collectionTab = ref('badges')
+const personalityFigure = computed(() => {
+  const localPersonality = safeJsonParse(localStorage.getItem('ISETI_PERSONALITY_V1'), null)
+  const mainCode = userInfo.value.personality?.mainCode || localPersonality?.mainCode
+  const rawSubCode = userInfo.value.personality?.subCode || localPersonality?.subCode
+  const subCode = rawSubCode === 'TREE' ? 'STAY' : rawSubCode
+  const mainSrc = mainPersonalityVisuals[mainCode]
+  const subSrc = subtypePersonalityVisuals[subCode]
+  return mainSrc && subSrc ? { code: `${mainCode} / ${subCode}`, mainSrc, subSrc } : null
+})
 
 const profileForm = ref({
   username: '',
@@ -1063,20 +1126,25 @@ async function fetchDashboard() {
 }
 
 async function syncLocalPersonality() {
-  if (userInfo.value.personality) return
   const localResult = safeJsonParse(localStorage.getItem('ISETI_PERSONALITY_V1'), null)
-  if (!localResult?.mainCode || !localResult?.subCode || !localResult?.placeId) return
+  if (!localResult?.mainCode || !localResult?.subCode) return
+
+  const cloudResult = userInfo.value.personality
+  const localCompletedAt = Number(localResult.completedAt) || 0
+  const cloudCompletedAt = Number(cloudResult?.completedAt) || 0
+
+  if (cloudResult && (localCompletedAt === 0 || localCompletedAt <= cloudCompletedAt)) {
+    localStorage.setItem('ISETI_PERSONALITY_V1', JSON.stringify(cloudResult))
+    return
+  }
 
   const payload = {
     mainCode: localResult.mainCode,
-    subCode: localResult.subCode,
+    subCode: normalizeSubCode(localResult.subCode),
     badges: Array.isArray(localResult.badges)
       ? localResult.badges.map(item => typeof item === 'string' ? item : item?.code).filter(Boolean)
       : [],
-    placeId: localResult.placeId,
-    placeName: localResult.placeName || localResult.place?.name || '',
-    line: localResult.line || '',
-    task: localResult.task || ''
+    completedAt: localCompletedAt || Date.now()
   }
   const response = await request('/user/personality', 'PUT', payload)
   if (responseOkay(response)) {
@@ -1086,6 +1154,10 @@ async function syncLocalPersonality() {
   } else {
     personalitySyncMessage.value = '本机结果暂时无法同步，请稍后在测试页重试。'
   }
+}
+
+function normalizeSubCode(code) {
+  return code === 'TREE' ? 'STAY' : code
 }
 
 function safeJsonParse(value, fallback) {
