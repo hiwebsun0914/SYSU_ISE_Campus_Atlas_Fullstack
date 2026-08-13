@@ -65,7 +65,7 @@
             <div v-if="nextLocation" class="next-stop">
               <Navigation :size="18" aria-hidden="true" />
               <span><small>建议下一站</small><strong>{{ nextLocation.name }}</strong></span>
-              <em>{{ nextLocation.position || `地点 ${nextLocation.id}` }}</em>
+              <em>{{ nextLocation.position || `地点 ${nextLocation.backendId}` }}</em>
             </div>
           </div>
 
@@ -249,7 +249,7 @@ const progressPercent = computed(() => totalCount.value ? Math.min(100, Math.rou
 const nextLocation = computed(() => {
   const unlocked = new Set(unlockedLocations.value.map(Number))
   const locking = new Set(lockingLocations.value.map(Number))
-  return locations.value.find(item => !unlocked.has(Number(item.id)) && !locking.has(Number(item.id))) || null
+  return locations.value.find(item => !unlocked.has(Number(item.backendId)) && !locking.has(Number(item.backendId))) || null
 })
 
 function isAuthed() {

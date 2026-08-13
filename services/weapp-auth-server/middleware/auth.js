@@ -2,7 +2,6 @@
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
-const { effectiveRole } = require('../lib/roles');
 
 /** ====== 用户库路径：向后兼容 ======
  * 1) 优先环境变量 USERS_FILE
@@ -112,10 +111,9 @@ function auth(req, res, next) {
   if (DEV_BYPASS_AUTH && !token) {
     const user = getUserById(DEV_USER_ID);
     if (user) {
-      const role = effectiveRole(user);
       req.userId = user.id;
-      req.user = { ...user, role };
-      req.role = role;
+      req.user = user;
+      req.role = user.role || 'visitor';
       return next();
     }
     // 测试用户不存在时继续走 401，由 app.js 自动创建
@@ -140,10 +138,9 @@ function auth(req, res, next) {
       return send401(res, '登录状态已变更，请重新登录');
     }
 
-    const role = effectiveRole(user);
     req.userId = user.id;
-    req.user = { ...user, role };
-    req.role = role;
+    req.user = user;
+    req.role = user.role || 'visitor';
     next();
   } catch {
     return send401(res, '登录已过期或无效');
@@ -165,10 +162,9 @@ function optionalAuth(req, res, next) {
     if (uid == null) return next();
     const user = getUserById(uid);
     if (user) {
-      const role = effectiveRole(user);
       req.userId = user.id;
-      req.user = { ...user, role };
-      req.role = role;
+      req.user = user;
+      req.role = user.role || 'visitor';
     }
   } catch {
     // 忽略错误，按未登录处理

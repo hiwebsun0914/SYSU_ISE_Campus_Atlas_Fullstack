@@ -40,11 +40,11 @@ function baseLocations() {
 function getLocations() {
   const settings = readSettings();
   return baseLocations().map(location => {
-    const override = settings[String(location.id)] || {};
+    const override = settings[String(location.backendId)] || {};
     return {
       ...location,
       ...override,
-      id: Number(location.id),
+      backendId: Number(location.backendId),
       points: Number.isInteger(Number(override.points))
         ? Number(override.points)
         : DEFAULT_POINTS
@@ -52,9 +52,9 @@ function getLocations() {
   });
 }
 
-function getLocation(id) {
-  const locationId = Number(id);
-  return getLocations().find(item => Number(item.id) === locationId) || null;
+function getLocation(backendId) {
+  const locationId = Number(backendId);
+  return getLocations().find(item => Number(item.backendId) === locationId) || null;
 }
 
 function stripUnsafeHtml(value) {
@@ -106,9 +106,9 @@ function validatePatch(input = {}) {
   return patch;
 }
 
-function updateLocation(id, input) {
-  const locationId = Number(id);
-  if (!Number.isInteger(locationId) || !baseLocations().some(item => Number(item.id) === locationId)) {
+function updateLocation(backendId, input) {
+  const locationId = Number(backendId);
+  if (!Number.isInteger(locationId) || !baseLocations().some(item => Number(item.backendId) === locationId)) {
     const error = new Error('打卡点不存在');
     error.statusCode = 404;
     throw error;
