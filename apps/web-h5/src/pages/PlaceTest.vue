@@ -3,22 +3,27 @@
     <div class="paper-grain" aria-hidden="true"></div>
 
     <header class="place-nav">
-      <button class="brand-lockup" type="button" @click="goHome" aria-label="返回校园探索首页">
-        <span class="brand-mark">P</span>
+      <button class="nav-back" type="button" aria-label="返回校园探索首页" @click="goHome">
+        <ArrowLeft :size="19" aria-hidden="true" />
+      </button>
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 42 42" fill="none">
+            <path d="M8 29C14 29 14 15 21 15S28 25 34 10" />
+            <circle cx="8" cy="29" r="3" />
+            <circle cx="21" cy="15" r="3" />
+            <circle cx="34" cy="10" r="3" />
+          </svg>
+        </span>
         <span>
           <b>P · L · A · C · E</b>
           <small>Personal Lifestyle Atlas for Campus Exploration</small>
         </span>
-      </button>
+      </div>
       <div v-if="stage !== 'intro' && stage !== 'result'" class="nav-progress" aria-live="polite">
         <div><span>FIELD LOG</span><b>{{ String(questionIndex + 1).padStart(2, '0') }}/{{ questions.length }}</b></div>
         <div class="progress-track"><i :style="{ width: `${progressPercent}%` }"></i></div>
       </div>
-      <button class="nav-exit" type="button" aria-label="返回校园探索首页" @click="goHome">
-        <Home :size="16" aria-hidden="true" />
-        <span>校园探索</span>
-        <ArrowUpRight :size="15" aria-hidden="true" />
-      </button>
     </header>
 
     <section v-if="stage === 'intro'" class="intro-shell">
@@ -95,7 +100,7 @@
       </div>
 
       <div class="question-footer">
-        <button type="button" class="text-action" @click="previousStep"><ArrowLeft :size="16" aria-hidden="true" />上一题</button>
+        <button v-if="questionIndex > 0" type="button" class="text-action" @click="previousStep"><ArrowLeft :size="16" aria-hidden="true" />上一题</button>
         <span>凭第一反应选就好，不用寻找“正确答案”。</span>
       </div>
     </section>
@@ -790,53 +795,70 @@ async function nativeShare() {
 }
 
 .place-nav {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 20;
   width: min(1240px, calc(100% - 48px));
   min-height: 78px;
   margin: 14px auto 0;
   padding: 0 18px;
   display: grid;
-  grid-template-columns: 1fr minmax(180px, 320px) 1fr;
+  grid-template-columns: auto minmax(0, 1fr) minmax(180px, 320px);
   align-items: center;
+  gap: 14px;
   border: 1px solid rgba(214, 228, 223, .86);
   border-radius: 20px;
   background: rgba(243, 247, 245, .88);
   backdrop-filter: blur(16px);
 }
 
+.nav-back {
+  width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+.nav-back:hover { transform: translateX(-2px); border-color: var(--primary); background: #eef7f4; }
+
 .brand-lockup {
   justify-self: start;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
   text-align: left;
 }
+.brand-lockup > span:last-child { min-width: 0; }
 
 .brand-mark {
   width: 42px;
   height: 42px;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
   border-radius: 14px 5px 14px 5px;
-  color: var(--accent);
   background: var(--ink);
-  font: 800 21px/1 var(--display);
+  box-shadow: inset 0 0 0 1px rgba(199,242,74,.12);
 }
+.brand-mark svg { width: 32px; height: 32px; overflow: visible; }
+.brand-mark path { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+.brand-mark circle { fill: var(--ink); stroke: var(--accent); stroke-width: 2; }
+.brand-mark circle:nth-of-type(2) { fill: var(--accent); }
 
 .brand-lockup b,
 .brand-lockup small { display: block; }
 .brand-lockup b { font: 800 14px/1.1 var(--display); letter-spacing: -.01em; }
-.brand-lockup small { margin-top: 4px; color: var(--muted); font: 700 9px/1.2 var(--technical); }
+.brand-lockup small { margin-top: 4px; overflow: hidden; color: var(--muted); font: 700 9px/1.2 var(--technical); text-overflow: ellipsis; }
 
 .nav-progress { display: grid; gap: 7px; color: var(--muted); font: 700 10px/1 var(--technical); }
 .nav-progress > div:first-child { display: flex; justify-content: space-between; }
 .nav-progress b { color: var(--ink); }
 .progress-track { height: 5px; overflow: hidden; border-radius: 999px; background: var(--border); }
 .progress-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform-origin: left center; transition: width .32s cubic-bezier(.16,1,.3,1); }
-.nav-exit { justify-self: end; min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--ink); background: var(--surface); font-size: 12px; font-weight: 700; }
-
 .intro-shell {
   position: relative;
   z-index: 1;
@@ -999,6 +1021,7 @@ async function nativeShare() {
 .answer-option.selected svg { color: var(--accent); }
 
 .question-footer { width:calc(66.666% - 6px);margin:10px 0 0 auto;padding:4px 8px;display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:11px; }
+.question-footer > span { margin-left:auto; }
 .text-action { min-height:44px;display:inline-flex;align-items:center;gap:7px;color:var(--ink);font-weight:700; }
 
 .result-shell {
@@ -1109,14 +1132,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; bo
 }
 
 @media (max-width: 699px) {
-  .place-nav { min-height:68px;margin-top:8px;padding:0 12px;grid-template-columns:1fr auto; }
+  .place-nav { min-height:68px;margin-top:8px;padding:0 12px;grid-template-columns:auto minmax(0,1fr);gap:10px; }
   .brand-lockup b { font-size:11px;letter-spacing:.02em; }
   .brand-lockup small { display:block;font-size:7px;white-space:nowrap; }
   .brand-mark { width:38px;height:38px; }
   .nav-progress { display:none; }
-  .nav-exit { width:44px;padding:0;justify-content:center; }
-  .nav-exit span,.nav-exit svg:last-child { display:none; }
   .intro-shell,.question-shell,.result-shell { width:calc(100% - 24px);padding:28px 0 56px;display:block; }
+  .intro-shell { min-height:auto;padding-bottom:24px; }
   .intro-copy { min-height:540px;padding:28px;border-radius:26px 8px 26px 8px; }
   .intro-coordinates { top:22px;right:22px; }
   .intro-coordinates { display:none; }

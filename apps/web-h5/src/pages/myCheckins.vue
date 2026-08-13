@@ -2,24 +2,6 @@
   <div class="profile-page">
     <a class="profile-skip-link" href="#profile-main">跳到主要内容</a>
 
-    <header class="profile-nav">
-      <button class="profile-brand" type="button" aria-label="返回校园首页" @click="router.push('/')">
-        <span class="profile-brand-mark">SYSU</span>
-        <span class="profile-brand-name">笃行校园探索</span>
-      </button>
-      <button
-        class="command-trigger"
-        type="button"
-        aria-haspopup="dialog"
-        aria-keyshortcuts="Control+K Meta+K"
-        @click="openCommandPalette"
-      >
-        <Command :size="17" aria-hidden="true" />
-        <span>快速前往</span>
-        <kbd>⌘ K</kbd>
-      </button>
-    </header>
-
     <main id="profile-main" class="profile-shell">
       <section v-if="loading" class="profile-loading" aria-busy="true" aria-label="正在加载个人主页">
         <div class="skeleton skeleton-title"></div>
@@ -67,13 +49,18 @@
             <div class="profile-heading">
               <p class="eyebrow">STUDENT PROFILE</p>
               <div class="profile-title-row">
-                <h1 id="profile-title">{{ displayName }}</h1>
-                <button class="button button-secondary hero-edit" type="button" @click="openProfileDialog">
-                  <Pencil :size="16" aria-hidden="true" />
+                <h1 id="profile-title" :title="displayName">{{ displayName }}</h1>
+                <button
+                  class="button button-secondary hero-edit"
+                  type="button"
+                  aria-label="编辑资料"
+                  title="编辑资料"
+                  @click="openProfileDialog"
+                >
+                  <Pencil :size="14" aria-hidden="true" />
                   <span class="hero-edit-label">编辑资料</span>
                 </button>
               </div>
-              <p class="profile-bio">{{ userInfo.bio || '记录走过的校园，也记录正在形成的自己。' }}</p>
             </div>
             <div
               class="profile-personality-space"
@@ -403,12 +390,23 @@
               </div>
             </section>
 
-            <section id="feedback" class="side-panel feedback-panel" aria-labelledby="feedback-title">
-              <div class="section-heading">
-                <h2 id="feedback-title">意见反馈</h2>
-                <p>告诉我们遇到的问题或希望增加的功能。</p>
-              </div>
+            <section id="feedback" :class="['side-panel', 'feedback-panel', { expanded: feedbackExpanded }]" aria-labelledby="feedback-title">
+              <button
+                class="feedback-toggle"
+                type="button"
+                :aria-expanded="feedbackExpanded"
+                aria-controls="feedback-body"
+                @click="feedbackExpanded = !feedbackExpanded"
+              >
+                <span class="feedback-toggle-icon" aria-hidden="true"><MessageSquareText :size="20" /></span>
+                <span>
+                  <strong id="feedback-title">意见反馈</strong>
+                  <small>{{ feedbackExpanded ? '收起反馈表单' : '遇到问题或有建议时，在这里告诉我们' }}</small>
+                </span>
+                <ChevronDown :size="19" aria-hidden="true" />
+              </button>
 
+              <div v-show="feedbackExpanded" id="feedback-body" class="feedback-body">
               <form novalidate @submit.prevent="submitFeedback">
                 <div class="form-field">
                   <label for="feedback-category">反馈类型</label>
@@ -452,14 +450,16 @@
                 </div>
 
                 <div class="form-field">
-                  <label for="feedback-contact">联系方式 <span>选填</span></label>
+                  <label for="feedback-contact">联系方式</label>
                   <input
                     id="feedback-contact"
                     v-model="feedbackForm.contact"
                     type="text"
                     maxlength="100"
-                    autocomplete="email"
-                    placeholder="邮箱或其他便于联系的方式"
+                    autocomplete="off"
+                    placeholder="请输入微信号"
+                    required
+                    aria-required="true"
                     :aria-invalid="Boolean(feedbackErrors.contact)"
                     @input="onFeedbackInput('contact')"
                     @blur="validateFeedbackField('contact')"
@@ -499,21 +499,21 @@
                   </li>
                 </ol>
               </div>
+              </div>
             </section>
           </aside>
         </div>
 
-        <section class="profile-session" aria-labelledby="profile-session-title">
-          <div class="profile-session-copy">
-            <p class="eyebrow">ACCOUNT SESSION / 账户会话</p>
-            <h2 id="profile-session-title">退出当前账号</h2>
-            <p>退出后将清除这台设备上的登录信息，本地未提交的内容不会自动保存。</p>
-          </div>
-          <button class="profile-logout-button" type="button" @click="logout">
-            <LogOut :size="18" aria-hidden="true" />
-            退出登录
-          </button>
-        </section>
+        <button v-if="isAdmin" class="profile-admin-entry" type="button" @click="router.push('/admin')">
+          <ShieldCheck :size="20" aria-hidden="true" />
+          <span>进入管理员模式</span>
+          <ChevronRight :size="18" aria-hidden="true" />
+        </button>
+
+        <button class="profile-logout-button profile-logout-standalone" type="button" @click="logout">
+          <LogOut :size="18" aria-hidden="true" />
+          退出登录
+        </button>
       </template>
     </main>
 
@@ -784,9 +784,9 @@ import {
   AlertCircle,
   Award,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock3,
-  Command,
   Compass,
   Home,
   Image as ImageIcon,
@@ -801,6 +801,7 @@ import {
   RotateCcw,
   Search,
   Send,
+  ShieldCheck,
   Trophy,
   UserRound,
   X,
@@ -871,6 +872,7 @@ const userInfo = ref({})
 const submissions = ref([])
 const failedSubmissionImages = ref(new Set())
 const feedbackHistory = ref([])
+const feedbackExpanded = ref(false)
 const checkinsExpanded = ref(false)
 const avatarFailed = ref(false)
 const personalitySyncMessage = ref('')
@@ -926,6 +928,7 @@ const collectionTabs = computed(() => [
 ])
 
 const displayName = computed(() => userInfo.value.username || userInfo.value.realName || '校园探索者')
+const isAdmin = computed(() => ['admin', 'owner'].includes(String(userInfo.value.role || '')))
 const avatarSrc = computed(() => String(userInfo.value.avatar || '').trim())
 const profileAvatarPreview = computed(() => avatarPreviewUrl.value || avatarSrc.value)
 const cropFrameSize = computed(() => Math.min(cropWorkspaceSize.value.width, cropWorkspaceSize.value.height) * 0.72)
@@ -1082,10 +1085,10 @@ async function fetchDashboard() {
 
   try {
     const [meResponse, statusResponse, submissionsResponse, feedbackResponse] = await Promise.all([
-      request('/auth/me'),
-      request('/checkin/status'),
-      request('/submissions/mine'),
-      request('/feedback/mine')
+      request('/auth/me', 'GET', null, { cacheBust: true }),
+      request('/checkin/status', 'GET', null, { cacheBust: true }),
+      request('/submissions/mine', 'GET', null, { cacheBust: true }),
+      request('/feedback/mine', 'GET', null, { cacheBust: true })
     ])
 
     if (meResponse.status === 401) {
@@ -1114,7 +1117,7 @@ async function fetchDashboard() {
       failedSubmissionImages.value = new Set()
     } else {
       submissions.value = []
-      pageNotice.value = pageNotice.value || '投稿状态暂时无法读取，其他个人数据仍可正常使用。'
+      pageNotice.value = pageNotice.value || `投稿记录暂时未同步：${responseMessage(submissionsResponse, '服务暂时不可用。')}`
     }
 
     if (responseOkay(feedbackResponse)) {
@@ -1628,6 +1631,9 @@ function validateFeedbackField(field) {
   if (field === 'content' && Array.from(value).length > 1000) {
     message = '反馈内容最多 1000 个字符。'
   }
+  if (field === 'contact' && !value) {
+    message = '请填写微信号。'
+  }
   if (field === 'contact' && Array.from(value).length > 100) {
     message = '联系方式最多 100 个字符。'
   }
@@ -1642,7 +1648,7 @@ function onFeedbackInput(field) {
 }
 
 async function submitFeedback() {
-  const valid = ['category', 'content', 'contact'].every(validateFeedbackField)
+  const valid = ['category', 'content', 'contact'].map(validateFeedbackField).every(Boolean)
   if (!valid) {
     feedbackMessage.value = '请先修正标记的反馈内容。'
     feedbackSaveState.value = 'error'
@@ -1714,6 +1720,7 @@ function openProfileFromCommand() {
 }
 
 function focusFeedbackFromCommand() {
+  feedbackExpanded.value = true
   document.getElementById('feedback')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
   nextTick(() => document.getElementById('feedback-content')?.focus({ preventScroll: true }))
 }

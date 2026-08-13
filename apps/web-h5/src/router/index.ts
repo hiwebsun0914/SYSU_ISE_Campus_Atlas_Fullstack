@@ -13,7 +13,6 @@ const router = createRouter({
     { path: '/rank', component: () => import('../pages/rank.vue') },
     { path: '/future-card', component: () => import('../pages/futureCard.vue') },
     { path: '/signin', component: () => import('../pages/signin.vue') },
-    { path: '/connect', component: () => import('../pages/connect.vue') },
     { path: '/hidden-checkpoints', component: () => import('../pages/HiddenCheckpoints.vue') },
     { path: '/hidden-checkpoints/:id', component: () => import('../pages/HiddenCheckpointDetail.vue') },
     { path: '/award', component: () => import('../pages/award/AwardHome.vue') },

@@ -37,45 +37,64 @@
           <div class="explore-head">
             <span class="icon-tile icon-tile-accent"><MapPinned :size="24" aria-hidden="true" /></span>
             <div>
-              <p class="card-kicker">CAMPUS EXPLORE · 校园探索</p>
-              <h2>{{ userInfo ? '继续你的校园探索' : '从第一处校园坐标出发' }}</h2>
+              <p class="card-kicker">MAP ROUTES · 新生路线</p>
+              <h2>从一条新生路线认识校园</h2>
             </div>
           </div>
 
-          <div v-if="loading" class="progress-skeleton" aria-label="正在加载校园进度">
+          <div v-if="loading" class="progress-skeleton" aria-label="正在加载路线进度">
             <span></span><span></span><span></span>
-          </div>
-
-          <div v-else-if="loadError" class="load-error" role="alert">
-            <WifiOff :size="22" aria-hidden="true" />
-            <div><strong>校园数据暂时没有抵达</strong><span>{{ loadError }}</span></div>
-            <button type="button" @click="loadDashboard">重试</button>
           </div>
 
           <div v-else class="progress-content">
             <div class="progress-number">
-              <span>{{ completedCount }}</span><small>/ {{ totalCount || '—' }} 站</small>
+              <span>{{ completedCount }}</span><small>/ {{ totalCount }} 站</small>
             </div>
-            <p>{{ totalCount ? `已完成 ${progressPercent}%` : '打卡点正在整理中' }}</p>
-            <div class="route-progress" role="progressbar" aria-label="校园打卡完成进度" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="progressPercent">
-              <span :style="{ '--progress-scale': progressPercent / 100 }"></span>
-              <i class="route-start"></i><i class="route-end"></i>
+            <p>{{ selectedRoute.name }} · 路线进度 {{ progressPercent }}%</p>
+
+            <div class="route-progress-list" aria-label="选择要查看的路线进度">
+              <button
+                v-for="summary in routeSummaries"
+                :key="summary.route.id"
+                type="button"
+                :class="['route-progress-option', { active: summary.route.id === selectedRoute.id }]"
+                :aria-pressed="summary.route.id === selectedRoute.id"
+                @click="selectRoute(summary.route.id)"
+              >
+                <span class="route-progress-meta">
+                  <strong>{{ summary.route.name }}</strong>
+                  <small>{{ summary.completed }}/{{ summary.total }} · {{ summary.percent }}%</small>
+                </span>
+                <span
+                  class="route-progress-track"
+                  role="progressbar"
+                  :aria-label="`${summary.route.name}路线进度`"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  :aria-valuenow="summary.percent"
+                >
+                  <i :style="{ '--progress-scale': summary.percent / 100 }"></i>
+                </span>
+              </button>
             </div>
+
             <div v-if="nextLocation" class="next-stop">
               <Navigation :size="18" aria-hidden="true" />
-              <span><small>建议下一站</small><strong>{{ nextLocation.name }}</strong></span>
-              <em>{{ nextLocation.position || `地点 ${nextLocation.backendId}` }}</em>
+              <span><small>下一站</small><strong>{{ nextLocation.name }}</strong></span>
+              <em>{{ nextLocationMeta }}</em>
+            </div>
+            <div v-else class="next-stop next-stop-complete">
+              <MapPinned :size="18" aria-hidden="true" />
+              <span><small>路线状态</small><strong>这条路线已经全部打卡</strong></span>
             </div>
           </div>
 
           <div class="explore-actions explore-meta">
-            <span class="primary-action">
-              {{ completedCount ? '下一站已定位' : '第一站已定位' }}
+            <RouterLink class="primary-action" :to="primaryMapTarget">
+              {{ primaryActionLabel }}
               <MapPinned :size="19" aria-hidden="true" />
-            </span>
-            <RouterLink class="text-action" to="/rank">
-              <Trophy :size="18" aria-hidden="true" />查看排行榜
             </RouterLink>
+            <RouterLink class="text-action" to="/map">打开完整地图</RouterLink>
           </div>
         </article>
 
@@ -123,36 +142,11 @@
 
       </section>
 
-      <section class="utility-row" aria-labelledby="utility-title">
-        <div>
-          <p class="section-index">SUPPORT / 反馈入口</p>
-          <h2 id="utility-title">需要帮助时</h2>
-          <p class="support-copy">账号、打卡或页面内容异常，可以直接把问题交给维护同学处理。</p>
-        </div>
-        <div class="utility-links">
-          <RouterLink to="/connect"><LifeBuoy :size="20" aria-hidden="true" /><span><strong>问题反馈</strong><small>遇到问题，告诉维护同学</small></span><ChevronRight :size="19" aria-hidden="true" /></RouterLink>
-        </div>
-      </section>
-
       <footer class="site-footer">
         <span>中山大学智能工程学院 · 2026 级迎新</span>
-        <span class="footer-code">SYSU / ISE / GZ</span>
+        <span class="footer-code">SYSU / ISE / 2026</span>
       </footer>
     </main>
-
-    <nav class="mobile-nav" aria-label="移动端主要导航">
-      <RouterLink to="/" aria-current="page"><House :size="21" aria-hidden="true" /><span>首页</span></RouterLink>
-      <RouterLink to="/map"><MapPinned :size="21" aria-hidden="true" /><span>地图</span></RouterLink>
-      <button type="button" @click="goProtected('/myCheckins')"><CircleUserRound :size="21" aria-hidden="true" /><span>我的</span></button>
-    </nav>
-
-    <Transition name="toast">
-      <div v-if="toastMessage" class="coming-toast" role="status" aria-live="polite">
-        <Clock3 :size="20" aria-hidden="true" />
-        <span><strong>{{ toastMessage }}</strong>正在认真筹备中，开放后会在这里通知你。</span>
-        <button type="button" aria-label="关闭提示" @click="toastMessage = ''"><X :size="18" aria-hidden="true" /></button>
-      </div>
-    </Transition>
 
     <Transition name="welcome">
       <div v-if="welcomeVisible" class="welcome-layer" role="presentation" @mousedown.self="dismissWelcome">
@@ -178,11 +172,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ArrowRight, ChevronRight, CircleUserRound, Clock3, House,
-  LifeBuoy, MapPinned, Navigation, ScanFace,
-  Send, Sparkles, Trophy, WifiOff, X,
+  ArrowRight, MapPinned, Navigation, ScanFace,
+  Send, Sparkles, X,
 } from '@lucide/vue'
-import { request } from '@/utils/request'
+import { CATEGORY_MAP, getPlaceById } from '@/data/campusPlaces'
+import routes from '@/data/routes'
+import { checkedSet, fetchUserProgress, getRouteCheckedCount } from '@/stores/userProgress'
 
 const WELCOME_KEY = 'ise-welcome-2026-v1'
 const router = useRouter()
@@ -190,53 +185,82 @@ const mainContent = ref(null)
 const welcomeDialog = ref(null)
 const welcomeEnter = ref(null)
 const welcomeVisible = ref(false)
-const toastMessage = ref('')
-const loading = ref(true)
-const loadError = ref('')
-const userInfo = ref(null)
-const locations = ref([])
-const unlockedLocations = ref([])
-const lockingLocations = ref([])
-let toastTimer = 0
+const loading = ref(false)
+const selectedRouteId = ref(null)
 
-const totalCount = computed(() => locations.value.length)
-const completedCount = computed(() => unlockedLocations.value.length)
-const pendingCount = computed(() => lockingLocations.value.length)
-const progressPercent = computed(() => totalCount.value ? Math.min(100, Math.round((completedCount.value / totalCount.value) * 100)) : 0)
-const nextLocation = computed(() => {
-  const unlocked = new Set(unlockedLocations.value.map(Number))
-  const locking = new Set(lockingLocations.value.map(Number))
-  return locations.value.find(item => !unlocked.has(Number(item.backendId)) && !locking.has(Number(item.backendId))) || null
+function routeProgress(route) {
+  const total = route?.points?.length || 0
+  const completed = route ? getRouteCheckedCount(route.id) : 0
+  return {
+    completed,
+    total,
+    percent: total ? Math.min(100, Math.round((completed / total) * 100)) : 0,
+  }
+}
+
+const routeSummaries = computed(() => routes.map((route, index) => ({
+  route,
+  index,
+  ...routeProgress(route),
+})))
+const allRoutesComplete = computed(() => routeSummaries.value.every(item => item.total > 0 && item.completed >= item.total))
+const recommendedRouteSummary = computed(() => {
+  const incomplete = routeSummaries.value.filter(item => item.completed < item.total)
+  if (!incomplete.length) return routeSummaries.value.at(-1)
+  return [...incomplete].sort((a, b) => b.percent - a.percent || a.index - b.index)[0]
 })
+const selectedRouteSummary = computed(() => (
+  routeSummaries.value.find(item => item.route.id === selectedRouteId.value)
+  || recommendedRouteSummary.value
+))
+const selectedRoute = computed(() => selectedRouteSummary.value?.route || routes[0])
+const completedCount = computed(() => selectedRouteSummary.value?.completed || 0)
+const totalCount = computed(() => selectedRouteSummary.value?.total || 0)
+const progressPercent = computed(() => selectedRouteSummary.value?.percent || 0)
+const nextLocation = computed(() => {
+  if (allRoutesComplete.value) return null
+  for (const placeId of selectedRoute.value?.points || []) {
+    const place = getPlaceById(placeId)
+    if (place && place.isHidden !== 1 && !checkedSet.value.has(place.id) && !checkedSet.value.has(place.backendId)) return place
+  }
+  return null
+})
+const nextLocationMeta = computed(() => {
+  if (!nextLocation.value) return ''
+  const category = CATEGORY_MAP[nextLocation.value.category]?.label
+  return [category, nextLocation.value.position].filter(Boolean).join(' · ')
+})
+const primaryActionLabel = computed(() => {
+  if (allRoutesComplete.value) return '继续逛校园地图'
+  if (completedCount.value >= totalCount.value) return '打开完整地图'
+  return completedCount.value ? '继续探索' : '在地图中开始'
+})
+const primaryMapTarget = computed(() => {
+  if (allRoutesComplete.value || !nextLocation.value) return '/map'
+  return {
+    path: '/map',
+    query: { route: selectedRoute.value.id, place: nextLocation.value.id },
+  }
+})
+
+function selectRoute(routeId) {
+  selectedRouteId.value = routeId
+}
 
 function isAuthed() {
   return Boolean(localStorage.getItem('token'))
 }
 
 async function loadDashboard() {
+  if (!isAuthed()) {
+    loading.value = false
+    return
+  }
   loading.value = true
-  loadError.value = ''
   try {
-    const locationsRequest = request('/locations', 'GET', null, { credentials: 'include' })
-    const authRequests = isAuthed()
-      ? Promise.all([
-          request('/auth/me', 'GET', null, { credentials: 'include' }),
-          request('/checkin/status', 'GET', null, { credentials: 'include' }),
-        ])
-      : Promise.resolve([null, null])
-
-    const [locationsResponse, [meResponse, statusResponse]] = await Promise.all([locationsRequest, authRequests])
-    const locationList = locationsResponse?.data?.data?.locations || locationsResponse?.data?.locations
-    if (!locationsResponse?.ok || !Array.isArray(locationList)) throw new Error('请检查网络后再试一次')
-    locations.value = locationList
-
-    if (meResponse?.data?.code === 0) userInfo.value = meResponse.data.userInfo || null
-    if (statusResponse?.data?.code === 0) {
-      unlockedLocations.value = statusResponse.data.unlockedLocations || []
-      lockingLocations.value = statusResponse.data.lockingLocations || []
-    }
+    await fetchUserProgress()
   } catch (error) {
-    loadError.value = error?.message || '请稍后重新加载'
+    console.warn('[Home] fetchUserProgress failed, using local route fallback:', error)
   } finally {
     loading.value = false
   }
@@ -245,12 +269,6 @@ async function loadDashboard() {
 function goProtected(path) {
   if (isAuthed()) router.push(path)
   else router.push({ path: '/signin', query: { redirect: path } })
-}
-
-function showComingSoon(name) {
-  window.clearTimeout(toastTimer)
-  toastMessage.value = name
-  toastTimer = window.setTimeout(() => { toastMessage.value = '' }, 5000)
 }
 
 function dismissWelcome() {
@@ -290,10 +308,7 @@ onMounted(() => {
   if (welcomeVisible.value) nextTick(() => welcomeEnter.value?.focus())
 })
 
-onBeforeUnmount(() => {
-  window.clearTimeout(toastTimer)
-  document.body.classList.remove('dialog-open')
-})
+onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 </script>
 
 <style scoped>
@@ -321,7 +336,7 @@ onBeforeUnmount(() => {
 .skip-link { position: fixed; z-index: 2000; top: 8px; left: 8px; padding: 10px 14px; color: #fff; background: var(--ink); border-radius: 10px; transform: translateY(-150%); }
 .skip-link:focus { transform: translateY(0); }
 
-.site-header { width: min(calc(100% - 24px), 1240px); min-height: 72px; display: flex; align-items: center; gap: 10px; margin: 12px auto 0; padding: 11px 14px; border: 1px solid rgba(214,228,223,.68); border-radius: 14px; background: rgba(243,247,245,.56); box-shadow: 0 16px 42px rgba(10,46,59,.06), inset 0 1px 0 rgba(255,255,255,.62); backdrop-filter: blur(20px) saturate(1.22); position: relative; z-index: 30; }
+.site-header { width: min(calc(100% - 24px), 1240px); min-height: 72px; display: flex; align-items: center; gap: 10px; margin: calc(12px + env(safe-area-inset-top, 0px)) auto 0; padding: 11px 14px; border: 1px solid rgba(214,228,223,.68); border-radius: 14px; background: rgba(243,247,245,.56); box-shadow: 0 16px 42px rgba(10,46,59,.06), inset 0 1px 0 rgba(255,255,255,.62); backdrop-filter: blur(20px) saturate(1.22); position: relative; z-index: 30; }
 .brand { display: inline-flex; align-items: center; min-width: 0; text-decoration: none; color: var(--ink); }
 .brand-logo { width: min(260px, 72vw); height: 44px; display: flex; align-items: center; }
 .brand-logo img { display: block; width: 100%; max-height: 100%; object-fit: contain; object-position: left center; filter: brightness(0) saturate(100%) invert(15%) sepia(28%) saturate(1349%) hue-rotate(146deg) brightness(90%) contrast(96%); }
@@ -329,7 +344,7 @@ onBeforeUnmount(() => {
 
 .home-main { width: min(100% - 32px, 1240px); margin: 0 auto; outline: none; }
 .intro-row { padding: 46px 0 30px; display: grid; gap: 20px; }
-.eyebrow, .card-kicker, .section-index, .feature-copy small { margin: 0; font-family: "SFMono-Regular", Menlo, monospace; letter-spacing: 0; text-transform: uppercase; }
+.eyebrow, .card-kicker, .feature-copy small { margin: 0; font-family: "SFMono-Regular", Menlo, monospace; letter-spacing: 0; text-transform: uppercase; }
 .eyebrow { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--primary-dark); font-weight: 700; opacity: 0; animation: fade-lift .34s cubic-bezier(.2,.75,.25,1) .04s forwards; }
 .eyebrow span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--ink); animation: node-breathe 2.8s ease-in-out .7s infinite; }
 .intro-row h1 { margin: 12px 0 0; color: var(--ink); font-family: "DIN Alternate", "Avenir Next", "Noto Sans SC", sans-serif; font-size: clamp(35px, 8vw, 72px); line-height: .98; letter-spacing: 0; overflow: hidden; }
@@ -346,7 +361,6 @@ onBeforeUnmount(() => {
 @keyframes node-breathe { 50% { transform: scale(1.28); opacity: .72; } }
 @keyframes map-drift { 50% { transform: translate3d(-10px, 6px, 0); } }
 @keyframes route-fill { from { transform: scaleX(0); } to { transform: scaleX(var(--progress-scale, 0)); } }
-@keyframes route-node { 50% { transform: scale(1.2); opacity: .74; } }
 @keyframes scan-sweep { 50% { opacity: .35; transform: translateY(-5px); } }
 
 .explore-card, .feature-card { border: 1px solid var(--border); border-radius: 24px; position: relative; overflow: hidden; }
@@ -355,11 +369,10 @@ onBeforeUnmount(() => {
 .map-grid::after { content: ""; position: absolute; width: 310px; height: 210px; right: -80px; top: 80px; border: 1px solid rgba(199,242,74,.65); border-radius: 48% 52% 61% 39%; transform: rotate(-18deg); box-shadow: 0 0 0 28px rgba(199,242,74,.04),0 0 0 56px rgba(199,242,74,.025); }
 .coordinate { position: absolute; z-index: 1; font-family: "SFMono-Regular", Menlo, monospace; font-size: 9px; color: rgba(255,255,255,.45); letter-spacing: 0; }
 .coordinate-top { right: 22px; top: 19px; }.coordinate-side { right: -25px; bottom: 100px; transform: rotate(90deg); }
-.explore-head, .explore-actions, .progress-content, .progress-skeleton, .load-error { position: relative; z-index: 2; }
+.explore-head, .explore-actions, .progress-content, .progress-skeleton { position: relative; z-index: 2; }
 .explore-head { display: flex; align-items: flex-start; gap: 13px; padding-right: 35px; }
 .icon-tile { width: clamp(38px, 5.5vw, 46px); height: clamp(38px, 5.5vw, 46px); flex: 0 0 clamp(38px, 5.5vw, 46px); display: grid; place-items: center; border: 1px solid var(--border); border-radius: 14px 5px 14px 5px; background: #eef5f2; color: var(--ink); }
-.icon-tile svg, .feature-card svg, .desktop-nav svg, .utility-links svg, .explore-actions svg { width: 1.35em; height: 1.35em; }
-.mobile-nav svg { width: clamp(19px, 5vw, 22px); height: clamp(19px, 5vw, 22px); }
+.icon-tile svg, .feature-card svg, .desktop-nav svg, .explore-actions svg { width: 1.35em; height: 1.35em; }
 .icon-tile-accent { background: var(--accent); border-color: var(--accent); }.icon-tile-dark { background: var(--ink); color: var(--accent); border-color: var(--ink); }
 .card-kicker { font-size: 10px; color: rgba(255,255,255,.58); }
 .explore-head h2 { max-width: 460px; margin: 6px 0 0; font-size: clamp(24px, 6vw, 39px); line-height: 1.1; letter-spacing: 0; }
@@ -368,20 +381,21 @@ onBeforeUnmount(() => {
 .progress-number span { color: var(--accent); font-family: "DIN Alternate", "Avenir Next", sans-serif; font-size: clamp(64px, 19vw, 104px); font-weight: 800; line-height: .8; letter-spacing: 0; }
 .progress-number small { font-family: "SFMono-Regular", Menlo, monospace; font-size: 12px; color: rgba(255,255,255,.6); }
 .progress-content > p { margin: 15px 0 12px; color: rgba(255,255,255,.74); font-size: 14px; }
-.route-progress { height: 5px; position: relative; background: rgba(255,255,255,.17); border-radius: 10px; }
-.route-progress span { position: absolute; inset: 0; transform: scaleX(var(--progress-scale, 0)); transform-origin: left; background: var(--accent); border-radius: inherit; transition: transform .42s cubic-bezier(.2,.75,.25,1); animation: route-fill .7s cubic-bezier(.2,.75,.25,1) .22s both; }
-.route-progress i { width: 13px; height: 13px; position: absolute; top: -4px; border: 3px solid var(--ink); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.route-start { left: 0; animation: route-node 2.6s ease-in-out .9s infinite; }.route-end { right: 0; animation: route-node 2.6s ease-in-out 1.2s infinite; }
+.route-progress-list { display: grid; gap: 7px; }
+.route-progress-option { width: 100%; min-height: 52px; display: grid; gap: 8px; padding: 9px 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; color: #fff; background: rgba(255,255,255,.055); text-align: left; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+.route-progress-option:hover { background: rgba(255,255,255,.09); }.route-progress-option:active { transform: scale(.99); }.route-progress-option:focus-visible { outline: 3px solid rgba(199,242,74,.42); outline-offset: 2px; }
+.route-progress-option.active { border-color: rgba(199,242,74,.72); background: rgba(199,242,74,.11); }
+.route-progress-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }.route-progress-meta strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }.route-progress-meta small { flex: 0 0 auto; color: rgba(255,255,255,.58); font-family: "SFMono-Regular", Menlo, monospace; font-size: 10px; }.route-progress-option.active .route-progress-meta strong,.route-progress-option.active .route-progress-meta small { color: var(--accent); }
+.route-progress-track { height: 4px; position: relative; display: block; overflow: hidden; background: rgba(255,255,255,.16); border-radius: 999px; }.route-progress-track i { position: absolute; inset: 0; transform: scaleX(var(--progress-scale,0)); transform-origin: left; background: var(--accent); border-radius: inherit; transition: transform .42s cubic-bezier(.2,.75,.25,1); animation: route-fill .7s cubic-bezier(.2,.75,.25,1) .16s both; }
 .next-stop { min-height: 60px; display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.12); }
 .next-stop span { display: grid; min-width: 0; }.next-stop small { color: rgba(255,255,255,.52); font-size: 11px; }.next-stop strong { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .next-stop em { display: none; color: rgba(255,255,255,.52); font-size: 11px; font-style: normal; }
+.next-stop-complete strong { color: var(--accent); }
 .explore-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .primary-action, .text-action { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; text-decoration: none; font-weight: 800; }
 .primary-action { padding: 0 19px; background: var(--accent); color: var(--ink); }.text-action { padding: 0 8px; color: #fff; }
-.explore-meta .primary-action { cursor: default; pointer-events: none; }
 .progress-skeleton { margin-top: 78px; display: grid; gap: 14px; }.progress-skeleton span { display: block; height: 18px; border-radius: 10px; background: rgba(255,255,255,.12); animation: pulse 1.2s ease-in-out infinite; }.progress-skeleton span:first-child { height: 70px; width: 45%; }.progress-skeleton span:nth-child(2) { width: 75%; }
 @keyframes pulse { 50% { opacity: .42; } }
-.load-error { margin-top: 72px; padding: 18px; display: grid; grid-template-columns: 30px 1fr; gap: 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; background: rgba(255,255,255,.07); }.load-error div { display: grid; gap: 4px; }.load-error span { color: rgba(255,255,255,.64); font-size: 13px; }.load-error button { grid-column: 2; width: max-content; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--accent); color: var(--ink); font-weight: 800; }
 
 .feature-card { width: 100%; min-height: 250px; display: flex; flex-direction: column; padding: 20px; text-align: left; text-decoration: none; color: var(--text); background: var(--surface); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
 .feature-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transform: translateY(10px); background: linear-gradient(135deg, rgba(199,242,74,.16), transparent 42%); transition: opacity .24s ease, transform .24s ease; }
@@ -398,13 +412,7 @@ onBeforeUnmount(() => {
 .award-card { background: linear-gradient(135deg, #f4f0fa, #eef4ff); }.award-chips { display: flex; gap: 8px; margin-top: auto; padding-top: 18px; }.award-chips span { padding: 7px 14px; border-radius: 999px; background: #fff; border: 1px solid #e2d7f5; color: #6d28d9; font-size: 13px; font-weight: 700; }
 .test-card { color: #fff; background: var(--primary); border-color: var(--primary); }.test-card .feature-copy small { color: rgba(255,255,255,.66); }.test-card .feature-copy strong { color: #fff; }.test-card .feature-copy > span { color: rgba(255,255,255,.75); }.scan-line { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 1px; background: repeating-linear-gradient(90deg,var(--accent) 0 18px,transparent 18px 26px); opacity: .75; }
 .test-card:hover .scan-line { animation: scan-sweep 1.1s ease-in-out infinite; }
-.utility-row { width: min(100%, 860px); margin: 56px auto 26px; padding: 0; display: grid; gap: 18px; }.section-index { color: var(--primary-dark); font-size: 10px; font-weight: 800; }.utility-row h2 { margin: 7px 0 0; color: var(--ink); font-size: 27px; letter-spacing: 0; }.support-copy { max-width: 360px; margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }.utility-links { display: grid; gap: 10px; }.utility-links a { min-height: 76px; display: grid; grid-template-columns: 24px 1fr 20px; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; color: var(--ink); background: rgba(255,255,255,.76); text-decoration: none; transition: background .2s ease,border-color .2s ease,transform .2s ease; }.utility-links a:hover { transform: translateY(-2px); background: #fff; border-color: #afc9c2; }.utility-links span { display: grid; }.utility-links small { margin-top: 2px; color: var(--muted); font-size: 12px; }
 .site-footer { min-height: 90px; display: flex; flex-direction: column; justify-content: center; gap: 5px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }.footer-code { font-family: "SFMono-Regular", Menlo, monospace; color: var(--primary-dark); letter-spacing: 0; }
-
-.mobile-nav { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: 66px; display: grid; grid-template-columns: repeat(3,1fr); padding: 6px; border: 1px solid rgba(255,255,255,.65); border-radius: 20px; background: rgba(10,46,59,.94); box-shadow: 0 14px 40px rgba(10,46,59,.28); backdrop-filter: blur(14px); }
-.mobile-nav a, .mobile-nav button { min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 14px; color: rgba(255,255,255,.65); text-decoration: none; font-size: 10px; }.mobile-nav a[aria-current="page"] { color: var(--accent); background: rgba(255,255,255,.08); }
-
-.coming-toast { position: fixed; z-index: 120; left: 16px; right: 16px; bottom: calc(90px + env(safe-area-inset-bottom,0px)); min-height: 62px; display: grid; grid-template-columns: 24px 1fr 44px; align-items: center; gap: 10px; padding: 10px 8px 10px 16px; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; color: #fff; background: var(--ink); box-shadow: 0 18px 50px rgba(10,46,59,.28); }.coming-toast span { font-size: 13px; line-height: 1.45; }.coming-toast button { width: 44px; height: 44px; display: grid; place-items: center; color: #fff; border-radius: 50%; }.toast-enter-active,.toast-leave-active { transition: opacity .2s ease,transform .2s ease; }.toast-enter-from,.toast-leave-to { opacity: 0; transform: translateY(10px); }
 
 .welcome-layer { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(3,20,26,.68); backdrop-filter: blur(8px); }
 .welcome-dialog { width: min(100%, 540px); min-height: 580px; position: relative; overflow: hidden; padding: 34px 28px 30px; border-radius: 28px 8px 28px 8px; color: #fff; background: var(--ink); box-shadow: 0 32px 80px rgba(0,0,0,.35); }
@@ -420,19 +428,18 @@ onBeforeUnmount(() => {
 @media (min-width: 700px) {
   .site-header { padding-inline: 20px; gap: 16px; }
   .brand-logo { width: 300px; height: 48px; }
-  .home-main { width: min(100% - 48px,1240px); }.intro-row { grid-template-columns: 1.35fr .65fr; align-items: end; padding: 64px 0 38px; }.dashboard-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.explore-card { grid-column: span 2; }.feature-card { min-height: 270px; }.next-stop { grid-template-columns: 24px minmax(0,1fr) auto; }.next-stop em { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.utility-row { grid-template-columns: .95fr 1.05fr; align-items: center; }.site-footer { flex-direction: row; align-items: center; justify-content: space-between; }
-  .coming-toast { width: min(520px,calc(100% - 32px)); left: 50%; right: auto; transform: translateX(-50%); }.toast-enter-from,.toast-leave-to { transform: translate(-50%,10px); }
+  .home-main { width: min(100% - 48px,1240px); }.intro-row { grid-template-columns: 1.35fr .65fr; align-items: end; padding: 64px 0 38px; }.dashboard-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.explore-card { grid-column: span 2; }.feature-card { min-height: 270px; }.next-stop { grid-template-columns: 24px minmax(0,1fr) auto; }.next-stop em { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.site-footer { flex-direction: row; align-items: center; justify-content: space-between; }
 }
 
 @media (min-width: 1024px) {
-  .home-shell { padding-bottom: 0; }.site-header { min-height: 78px; padding: 12px 18px; }.brand-logo { width: 320px; height: 50px; }.desktop-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }.desktop-nav a,.desktop-nav button { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 700; }.desktop-nav a:hover,.desktop-nav button:hover,.desktop-nav a[aria-current="page"] { color: var(--ink); background: #e6efeb; }.mobile-nav { display: none; }
-  .dashboard-grid { grid-template-columns: repeat(12,minmax(0,1fr)); grid-auto-rows: minmax(132px,auto); gap: 16px; }.explore-card { grid-column: span 7; grid-row: span 4; min-height: 596px; padding: 30px; }.future-card,.award-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.test-card { grid-column: span 12; grid-row: span 2; min-height: 290px; }.test-card .feature-copy { max-width: 620px; }.progress-content { margin-top: 82px; }.feature-card { padding: 24px; }.feature-copy { margin-top: 26px; }.coming-toast { bottom: 28px; }
+  .home-shell { padding-bottom: 0; }.site-header { min-height: 78px; padding: 12px 18px; }.brand-logo { width: 320px; height: 50px; }.desktop-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }.desktop-nav a,.desktop-nav button { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 700; }.desktop-nav a:hover,.desktop-nav button:hover,.desktop-nav a[aria-current="page"] { color: var(--ink); background: #e6efeb; }
+  .dashboard-grid { grid-template-columns: repeat(12,minmax(0,1fr)); grid-auto-rows: minmax(132px,auto); gap: 16px; }.explore-card { grid-column: span 7; grid-row: span 4; min-height: 596px; padding: 30px; }.future-card,.award-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.test-card { grid-column: span 12; grid-row: span 2; min-height: 290px; }.test-card .feature-copy { max-width: 620px; }.progress-content { margin-top: 82px; }.feature-card { padding: 24px; }.feature-copy { margin-top: 26px; }
 }
 
 @media (max-width: 480px) {
   .site-header { padding: 9px 12px; }.brand-logo { width: min(220px, 68vw); height: 40px; }.home-main { width: min(100% - 24px, 1240px); }.intro-row { padding: 30px 0 22px; }.intro-row h1 { font-size: clamp(30px, 10vw, 44px); }.intro-copy { font-size: 14px; }
-  .feature-card { padding: 16px; }.feature-copy { margin-top: 18px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips span { font-size: 11px; padding: 6px 11px; }
-  .utility-row { margin: 38px auto 20px; }.site-footer { padding: 0 4px; }
+  .feature-card { padding: 16px; }.feature-copy { margin-top: 18px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips span { font-size: 11px; padding: 6px 11px; }.route-progress-option { padding-inline: 10px; }
+  .site-footer { padding: 0 4px; }
 }
 
 @media (hover:hover) {
@@ -440,6 +447,6 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-start,.route-end,.route-progress span,.scan-line { animation: none; }.route-progress span,.feature-card,.feature-card::before,.future-year,.utility-links a,.toast-enter-active,.toast-leave-active,.welcome-enter-active,.welcome-leave-active,.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: none; }
+  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-progress-track i,.scan-line { animation: none; }.route-progress-track i,.route-progress-option,.feature-card,.feature-card::before,.future-year,.welcome-enter-active,.welcome-leave-active,.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: none; }
 }
 </style>

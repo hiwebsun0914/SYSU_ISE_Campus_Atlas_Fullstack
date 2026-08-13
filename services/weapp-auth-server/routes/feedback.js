@@ -87,6 +87,9 @@ router.post('/', auth, (req, res) => {
     if (Array.from(rawContent).length > 1000) {
       return res.status(400).json({ code: 1, errorCode: 'FEEDBACK_CONTENT_LONG', field: 'content', message: '反馈内容最多 1000 个字符，请精简后提交。' });
     }
+    if (!contact) {
+      return res.status(400).json({ code: 1, errorCode: 'FEEDBACK_CONTACT_REQUIRED', field: 'contact', message: '请填写微信号。' });
+    }
 
     const now = Date.now();
     const record = {

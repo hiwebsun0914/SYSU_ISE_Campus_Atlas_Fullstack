@@ -23,6 +23,10 @@
       <div class="admin-rail-account">
         <span>{{ roleLabel }}</span>
         <strong>{{ dashboard.currentAdmin?.username || '管理员' }}</strong>
+        <button type="button" @click="leaveAdminMode">
+          <CircleUserRound :size="17" aria-hidden="true" />
+          返回普通模式
+        </button>
         <button type="button" @click="logout">
           <LogOut :size="17" aria-hidden="true" />
           退出登录
@@ -71,6 +75,10 @@
           <ChevronRight :size="17" aria-hidden="true" />
         </button>
       </nav>
+      <button class="admin-menu-site" type="button" @click="leaveAdminMode">
+        <CircleUserRound :size="18" aria-hidden="true" />
+        返回普通模式
+      </button>
       <button class="admin-menu-logout" type="button" @click="logout">
         <LogOut :size="18" aria-hidden="true" />
         退出管理员账号
@@ -1146,6 +1154,11 @@ function logout() {
   localStorage.removeItem('token')
   localStorage.removeItem('userInfo')
   router.replace('/signin')
+}
+
+function leaveAdminMode() {
+  closeMenu()
+  router.push('/myCheckins')
 }
 
 function activityBarScale(count) {

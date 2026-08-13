@@ -300,6 +300,7 @@ body {
 }
 
 .admin-menu-dialog nav button,
+.admin-menu-site,
 .admin-menu-logout {
   display: grid;
   min-height: 52px;
@@ -322,9 +323,17 @@ body {
   font-weight: 700;
 }
 
+.admin-menu-site,
 .admin-menu-logout {
   width: 100%;
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+.admin-menu-site {
+  color: var(--color-graphite-ink);
+}
+
+.admin-menu-logout {
   color: var(--color-danger);
 }
 

@@ -148,6 +148,7 @@ const mapLoading = ref(false)
 const mapError = ref('')
 const toastMessage = ref('')
 let toastTimer = null
+let lastConsumedDeepLink = ''
 
 
 
@@ -266,6 +267,7 @@ function updateLocations() {
 function onMapReady() {
   mapReady.value = true
   mapLoading.value = false
+  consumeMapDeepLink()
 }
 
 function onMapError(msg) {
@@ -383,6 +385,54 @@ function getRouteName(routeId) {
   return route?.name || routeId
 }
 
+function queryValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function resetDeepLinkedMap() {
+  selectedPlace.value = null
+  activeCategory.value = 'all'
+  onRouteSelect(null)
+}
+
+async function consumeMapDeepLink() {
+  if (!mapReady.value || !campusMapRef.value) return
+  const routeId = queryValue(route.query.route)
+  const placeId = queryValue(route.query.place)
+  if (!routeId && !placeId) {
+    if (lastConsumedDeepLink) resetDeepLinkedMap()
+    lastConsumedDeepLink = ''
+    return
+  }
+
+  const deepLinkKey = `${routeId || ''}:${placeId || ''}`
+  if (deepLinkKey === lastConsumedDeepLink) return
+  lastConsumedDeepLink = deepLinkKey
+
+  const targetRoute = routes.find(item => item.id === routeId)
+  const targetPlace = getPlaceById(placeId)
+  const placeBelongsToRoute = Boolean(
+    targetRoute && targetPlace && targetRoute.points?.some(id => Number(id) === Number(targetPlace.backendId)),
+  )
+
+  if (!targetRoute || !targetPlace || targetPlace.isHidden === 1 || !placeBelongsToRoute) {
+    resetDeepLinkedMap()
+    showToast('路线或地点链接无效，已为你打开完整地图')
+    return
+  }
+
+  onRouteSelect(targetRoute)
+  await nextTick()
+  await campusMapRef.value?.startRoute(targetRoute)
+  selectedPlace.value = targetPlace
+  campusMapRef.value?.flyTo(targetPlace.lnglat)
+}
+
+watch(
+  () => [route.query.route, route.query.place],
+  () => consumeMapDeepLink(),
+)
+
 
 
 onMounted(() => {
@@ -422,15 +472,16 @@ onBeforeUnmount(() => {
   background: var(--canvas);
   overflow: hidden;
   color: var(--text);
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
 }
 
 .map-header {
   flex: 0 0 auto;
-  height: 56px;
+  height: calc(56px + env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: env(safe-area-inset-top, 0px) calc(12px + env(safe-area-inset-right, 0px)) 0 calc(12px + env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   z-index: 20;
@@ -813,5 +864,9 @@ onBeforeUnmount(() => {
     height: 85%;
     border-radius: 20px;
   }
+}
+
+@media (min-width: 1024px) {
+  .map-shell { padding-bottom: 0; }
 }
 </style>
