@@ -9,6 +9,7 @@ const auth = require('../middleware/auth');
 const routes = require('../data/routes');
 const { effectiveRole, isAdminRole, canManageRoles, isConfiguredOwner } = require('../lib/roles');
 const { getLocations, getLocation, updateLocation } = require('../lib/locationSettings');
+const { readFeedback, writeFeedback } = require('../lib/feedbackStore');
 
 // ====== 常量 / 配置 ======
 const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
@@ -328,11 +329,13 @@ function buildAnomalies(users) {
 router.get('/dashboard', auth, adminOnly, (req, res) => {
   const users = readUsers();
   const submissions = readSubmissionsArray();
+  const feedback = readFeedback();
   const anomalies = buildAnomalies(users);
   const pendingCheckins = users.reduce((sum, user) => sum + user.lockingLocations.length, 0);
   const pendingSubmissions = submissions.filter(item =>
     item.status === 'pending' || (item.status === 'rejected' && item.appealStatus === 'pending')
   ).length;
+  const pendingFeedback = feedback.filter(item => !['resolved', 'closed'].includes(item.status)).length;
 
   return res.json({
     code: 0,
@@ -345,9 +348,10 @@ router.get('/dashboard', auth, adminOnly, (req, res) => {
         canManageRoles: canManageRoles(req.role)
       },
       metrics: {
-        pendingTotal: pendingCheckins + pendingSubmissions,
+        pendingTotal: pendingCheckins + pendingSubmissions + pendingFeedback,
         pendingCheckins,
         pendingSubmissions,
+        pendingFeedback,
         userCount: users.length,
         submissionCount: submissions.length,
         checkinCount: users.reduce((sum, user) => sum + user.unlockedLocations.length, 0),
@@ -359,6 +363,56 @@ router.get('/dashboard', auth, adminOnly, (req, res) => {
       anomalyPreview: anomalies.slice(0, 5)
     }
   });
+});
+
+// GET /admin/feedback?status=submitted|in_progress|resolved|all
+router.get('/feedback', auth, adminOnly, (req, res) => {
+  try {
+    const status = String(req.query.status || 'submitted');
+    const allowed = new Set(['submitted', 'in_progress', 'resolved', 'closed', 'all']);
+    if (!allowed.has(status)) return res.status(400).json({ code: 1, message: '无效的反馈状态' });
+
+    const all = readFeedback();
+    const list = (status === 'all' ? all : all.filter(item => (item.status || 'submitted') === status))
+      .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    const stat = all.reduce((acc, item) => {
+      const key = item.status || 'submitted';
+      acc.all += 1;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, { all: 0, submitted: 0, in_progress: 0, resolved: 0, closed: 0 });
+    return res.json({ code: 0, list, stat });
+  } catch (error) {
+    console.error('[GET /admin/feedback] error:', error);
+    return res.status(503).json({ code: 1, message: '暂时无法读取问题反馈，请稍后重试。' });
+  }
+});
+
+// PATCH /admin/feedback/:id { status, reply }
+router.patch('/feedback/:id', auth, adminOnly, (req, res) => {
+  try {
+    const status = String(req.body?.status || '').trim();
+    const reply = String(req.body?.reply || '').normalize('NFC').trim().slice(0, 1000);
+    if (!['in_progress', 'resolved', 'closed'].includes(status)) {
+      return res.status(400).json({ code: 1, message: '请选择有效的处理状态' });
+    }
+    if (status === 'resolved' && reply.length < 2) {
+      return res.status(400).json({ code: 1, message: '解决反馈时请填写至少 2 个字符的回复' });
+    }
+
+    const list = readFeedback();
+    const item = list.find(entry => String(entry.id) === String(req.params.id));
+    if (!item) return res.status(404).json({ code: 1, message: '反馈不存在或已被删除' });
+    item.status = status;
+    item.reply = reply;
+    item.updatedAt = Date.now();
+    item.handledBy = req.adminUser.username || String(req.userId);
+    writeFeedback(list);
+    return res.json({ code: 0, message: '反馈处理状态已更新', data: { feedback: item } });
+  } catch (error) {
+    console.error('[PATCH /admin/feedback/:id] error:', error);
+    return res.status(503).json({ code: 1, message: '暂时无法更新问题反馈，请稍后重试。' });
+  }
 });
 
 // GET /admin/anomalies

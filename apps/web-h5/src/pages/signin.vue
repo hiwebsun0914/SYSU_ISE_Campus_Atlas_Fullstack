@@ -30,8 +30,11 @@
       />
       <input v-if="mode==='register'"
              class="input"
-             placeholder="请输入真实姓名（仅用于联系）"
-             v-model.trim="phone" />
+             placeholder="请输入真实姓名（必填）"
+             autocomplete="name"
+             required
+             aria-required="true"
+             v-model.trim="realName" />
       <input class="input" placeholder="请输入密码" type="password" autocomplete="current-password" v-model="password" />
     </div>
 
@@ -84,7 +87,7 @@ const route  = useRoute()
 const mode        = ref('login') // 'login' | 'register'
 const adminMode   = ref(false)
 const username    = ref('')
-const phone       = ref('')
+const realName    = ref('')
 const password    = ref('')
 const redirect    = ref('')
 
@@ -140,6 +143,9 @@ async function onSubmit() {
   if (!username.value || !password.value) {
     alert('请输入账号密码'); return
   }
+  if (mode.value === 'register' && !realName.value) {
+    alert('请输入真实姓名'); return
+  }
   submitting.value = true
   try {
     if (mode.value === 'login') {
@@ -148,7 +154,7 @@ async function onSubmit() {
       alert(adminMode.value ? '管理员登录成功' : '登录成功')
       await goNext()
     } else {
-      await handleRegister(username.value, password.value, phone.value)
+      await handleRegister(username.value, password.value, realName.value)
       // 注册成功后走头像上传面板（原逻辑保持）
       showUploadPanel.value = true
       triggerChoose()
@@ -195,9 +201,9 @@ async function handleLoginStrict(name, pass) {
 }
 
 /** 注册：优先 /auth/register，不可用再降级到 /login_or_register */
-async function handleRegister(name, pass, phoneNum) {
+async function handleRegister(name, pass, confirmedRealName) {
   // 1) 首选 /auth/register
-  const resp = await request('/auth/register', 'POST', { username: name, password: pass, phone: phoneNum, realName: phoneNum })
+  const resp = await request('/auth/register', 'POST', { username: name, password: pass, realName: confirmedRealName })
   if (!isMissingEndpoint(resp)) {
     if (!normalizeOk(resp)) throw new Error(normalizeMsg(resp) || '注册失败')
     persistLogin(resp) // 大多数注册接口会直接返回 token
@@ -206,7 +212,7 @@ async function handleRegister(name, pass, phoneNum) {
 
   // 2) 兼容：/login_or_register 作为注册模式
   const fallback = await request('/login_or_register', 'POST', {
-    username: name, password: pass, phone: phoneNum, realName: phoneNum, mode: 'register'
+    username: name, password: pass, realName: confirmedRealName, mode: 'register'
   })
   const ok = normalizeOk(fallback)
   if (!ok) throw new Error(normalizeMsg(fallback) || '注册失败')

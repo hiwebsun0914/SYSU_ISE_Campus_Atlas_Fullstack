@@ -273,8 +273,7 @@ body {
 .admin-mode-line,
 .admin-stat-strip dt,
 .admin-status-readout span,
-.admin-subhead span,
-.admin-spec-id {
+.admin-subhead span {
   font-family: var(--font-body);
   font-size: var(--text-xs);
   letter-spacing: 0.08em;
@@ -768,17 +767,21 @@ body {
 }
 
 .status-pending,
+.status-submitted,
+.status-in_progress,
 .severity-medium {
   color: var(--color-warning);
 }
 
 .status-approved,
+.status-resolved,
 .severity-low {
   color: var(--color-success);
 }
 
 .status-rejected,
 .status-down,
+.status-closed,
 .severity-high {
   color: var(--color-danger);
 }
@@ -823,6 +826,94 @@ body {
 
 .admin-review-actions .admin-button {
   flex: 1 1 auto;
+}
+
+.admin-feedback-list {
+  border-block-start: var(--rule) solid var(--color-rule);
+}
+
+.admin-feedback-list article {
+  display: grid;
+  gap: var(--space-sm);
+  padding-block: var(--space-lg);
+  border-block-end: var(--rule) solid var(--color-rule);
+}
+
+.admin-feedback-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.admin-feedback-head time {
+  margin-inline-start: auto;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-feedback-content {
+  max-width: 72ch;
+  white-space: pre-wrap;
+}
+
+.admin-feedback-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5rem, 7rem));
+  gap: var(--space-xs);
+}
+
+.admin-feedback-images button {
+  aspect-ratio: 1;
+  overflow: hidden;
+  padding: 0;
+  background: var(--color-paper-muted);
+  border: var(--rule) solid var(--color-rule-strong);
+  border-radius: var(--radius-sm);
+}
+
+.admin-feedback-images img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-feedback-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.admin-feedback-list label {
+  margin-block-start: var(--space-xs);
+  font-weight: 700;
+}
+
+.admin-feedback-list textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: var(--space-sm);
+  resize: vertical;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: var(--rule) solid var(--color-rule-strong);
+  border-radius: var(--radius-sm);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+.admin-feedback-list textarea:focus-visible {
+  border-color: var(--color-accent);
+  outline-color: var(--color-accent-soft);
+}
+
+.admin-feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 
 .admin-empty {
@@ -1016,8 +1107,7 @@ body {
   color: var(--color-muted);
 }
 
-.admin-search-field,
-.admin-form-grid {
+.admin-search-field {
   display: grid;
   gap: var(--space-xs);
 }
@@ -1027,7 +1117,6 @@ body {
 }
 
 .admin-search-field label,
-.admin-form-grid label,
 .admin-dialog > form > label {
   color: var(--color-ink);
   font-weight: 700;
@@ -1047,8 +1136,6 @@ body {
 }
 
 .admin-search-field input,
-.admin-form-grid input,
-.admin-form-grid textarea,
 .admin-dialog textarea {
   width: 100%;
   min-height: 44px;
@@ -1066,22 +1153,18 @@ body {
   padding-inline-start: 2.5rem;
 }
 
-.admin-form-grid textarea,
 .admin-dialog textarea {
   min-height: 7rem;
   resize: vertical;
 }
 
 .admin-search-field input::placeholder,
-.admin-form-grid input::placeholder,
-.admin-form-grid textarea::placeholder,
 .admin-dialog textarea::placeholder {
   color: var(--color-muted);
   opacity: 1;
 }
 
 .admin-search-field small,
-.admin-form-grid small,
 .admin-dialog form > small {
   min-height: 1lh;
   color: var(--color-muted);
@@ -1089,16 +1172,12 @@ body {
 }
 
 .admin-search-field input:focus-visible,
-.admin-form-grid input:focus-visible,
-.admin-form-grid textarea:focus-visible,
 .admin-dialog textarea:focus-visible,
 .admin-filter-row select:focus-visible {
   outline-color: var(--color-focus);
 }
 
 .admin-search-field input:hover,
-.admin-form-grid input:hover,
-.admin-form-grid textarea:hover,
 .admin-dialog textarea:hover,
 .admin-filter-row select:hover {
   background: var(--color-paper-muted);
@@ -1108,39 +1187,20 @@ body {
   border-color: var(--color-danger);
 }
 
-.admin-dialog form > small.error,
-.admin-form-error {
+.admin-dialog form > small.error {
   color: var(--color-danger);
 }
 
-.admin-spec-list,
 .admin-user-list {
   border-block-start: var(--rule) solid var(--color-rule);
 }
 
-.admin-spec-list > button {
-  display: grid;
-  width: 100%;
-  min-height: 5.5rem;
-  grid-template-columns: 2.75rem minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--space-sm);
-  padding-block: var(--space-sm);
-  padding-inline: 0;
-  background: transparent;
-  border: 0;
-  border-block-end: var(--rule) solid var(--color-rule);
-  text-align: start;
-}
-
-.admin-spec-list > button > div,
 .admin-user-copy {
   display: grid;
   gap: var(--space-3xs);
   min-width: 0;
 }
 
-.admin-spec-list small,
 .admin-user-copy span {
   overflow: hidden;
   color: var(--color-muted);
@@ -1149,24 +1209,10 @@ body {
   white-space: nowrap;
 }
 
-.admin-spec-list strong,
 .admin-user-copy strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.admin-spec-list b {
-  color: var(--color-accent);
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.admin-load-more {
-  width: 100%;
-  margin-block-start: var(--space-lg);
 }
 
 .admin-permission-lock {
@@ -1242,10 +1288,6 @@ body {
   max-width: 36rem;
 }
 
-.admin-location-dialog {
-  max-width: 44rem;
-}
-
 .admin-dialog form {
   display: grid;
   gap: var(--space-md);
@@ -1257,20 +1299,6 @@ body {
   background: var(--color-paper-muted);
   color: var(--color-ink);
   border: var(--rule) solid var(--color-rule);
-}
-
-.admin-form-grid {
-  gap: var(--space-xs);
-}
-
-.admin-form-grid label:not(:first-child) {
-  margin-block-start: var(--space-sm);
-}
-
-.admin-form-error {
-  padding: var(--space-sm);
-  background: var(--color-danger-soft);
-  border: var(--rule) solid var(--color-danger);
 }
 
 .admin-dialog-actions {
@@ -1388,7 +1416,6 @@ body {
 
   .admin-tab-row button:hover,
   .admin-anomaly-summary button:hover,
-  .admin-spec-list > button:hover,
   .admin-menu-dialog nav button:hover {
     background: var(--color-paper-muted);
     color: var(--color-ink);
@@ -1405,8 +1432,7 @@ body {
   .admin-text-action,
   .admin-menu-button,
   .admin-filter-row select,
-  .admin-search-field input,
-  .admin-form-grid input {
+  .admin-search-field input {
     min-height: 48px;
   }
 }
@@ -1644,9 +1670,6 @@ body {
     gap: var(--space-3xl);
   }
 
-  .admin-spec-list > button {
-    grid-template-columns: 4rem minmax(0, 1fr) 7rem 2rem;
-  }
 }
 
 @media (min-width: 90rem) {
