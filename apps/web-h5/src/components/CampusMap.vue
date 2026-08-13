@@ -24,12 +24,6 @@ import {
   createRoutePolyline,
   planWalkingRoute,
 } from '@/utils/routeManager'
-import {
-  findNearbyPlaces,
-  createReminderMarker,
-  clearNearbyMarkers,
-} from '@/utils/routeNearby'
-import { campusLocations } from '@/data/campusPlaces'
 import { checkedPlaces, isPlaceChecked } from '@/stores/userProgress'
 import { getUserPosition as geoGetUserPosition, calcDistance } from '@/utils/geoCheckin'
 
@@ -59,7 +53,7 @@ let layerIndex = 0
 let routeMode = false
 const routeMarkers = []
 let routePolyline = null
-const nearbyMarkers = []
+let routeRenderVersion = 0
 
 const LEVEL_ZOOM = { 1: 1, 2: 14, 3: 17 }
 
@@ -75,6 +69,7 @@ const CONFIG = {
 }
 
 const LANDMARK_ZOOM_THRESHOLD = 17
+const ROUTE_MAX_ZOOM = 17
 
 const CATEGORY_ICONS = {
   landmark: '⭐', teaching: '📚', canteen: '🍜', dormitory: '🏠',
@@ -280,6 +275,9 @@ function reload() {
 }
 
 function destroyMap() {
+  routeRenderVersion += 1
+  routeMode = false
+  removeRouteOverlays()
   clearAllMarkers()
   if (mapInstance) {
     try { mapInstance.destroy() } catch (_) { /* noop */ }
@@ -313,21 +311,29 @@ function fitToBounds(lnglats) {
   mapInstance.setFitView(bounds, false, [80, 80, 300, 80])
 }
 
+function getRouteFitPadding() {
+  const viewportWidth = container.value?.clientWidth || window.innerWidth
+  return viewportWidth < 700
+    ? [72, 72, 36, 36]
+    : [64, 64, 64, 64]
+}
+
 /**
- * 进入路线探索模式：编号 Marker + 真实步行路线 + 自动适配视野
+ * 进入路线探索模式：立即显示编号、预览线与完整视野，再后台细化步行路径
  */
-async function startRoute(route) {
+function startRoute(route) {
   if (!mapInstance || !AMapNS || !route) return
 
-  // 避免重复进入同一路线
-  if (routeMode && routeMarkers.length > 0) {
-    clearRoute()
-  }
-
+  const renderVersion = ++routeRenderVersion
   routeMode = true
+  removeRouteOverlays()
 
   const places = resolveRoutePlaces(route)
-  if (places.length === 0) return
+  if (places.length === 0) {
+    routeMode = false
+    rebuildMarkers()
+    return
+  }
 
   // 隐藏普通地点 Marker
   clearAllMarkers()
@@ -345,58 +351,53 @@ async function startRoute(route) {
     routeMarkers.push(marker)
   })
 
-  // 规划并绘制真实步行路线
-  let routePath = []
-  if (places.length > 1) {
-    try {
-      routePath = await planWalkingRoute(AMapNS, mapInstance, places)
-      if (routePath.length > 1) {
-        routePolyline = createRoutePolyline(AMapNS, routePath)
-        if (routePolyline) routePolyline.setMap(mapInstance)
-      }
-    } catch (err) {
-      console.warn('[CampusMap] walking route failed, fallback to straight line:', err)
-      routePath = places.map(p => p.lnglat)
-      routePolyline = createRoutePolyline(AMapNS, routePath)
-      if (routePolyline) routePolyline.setMap(mapInstance)
-    }
-  } else if (places.length === 1) {
-    routePath = [places[0].lnglat]
+  // 先用地点坐标立即画出绿色预览线，避免等待多段步行规划
+  const directPath = places.map(place => place.lnglat)
+  if (directPath.length > 1) {
+    routePolyline = createRoutePolyline(AMapNS, directPath)
+    if (routePolyline) routePolyline.setMap(mapInstance)
   }
 
-  // 创建路线附近提醒 Marker
-  renderNearbyMarkers(route, routePath)
-
-  // 自动适配视野
+  // 视野与首屏路线同时确定，不等待高德步行规划完成
   if (routeMarkers.length > 0) {
-    mapInstance.setFitView(routeMarkers, false, [80, 80, 300, 80])
+    mapInstance.setFitView(routeMarkers, false, getRouteFitPadding(), ROUTE_MAX_ZOOM)
+  }
+
+  if (places.length > 1) {
+    void refineWalkingRoute(places, renderVersion)
   }
 }
 
-/**
- * 渲染路线附近提醒 Marker
- */
-function renderNearbyMarkers(route, routePath) {
-  if (!mapInstance || !AMapNS || routePath.length < 2) return
+async function refineWalkingRoute(places, renderVersion) {
+  try {
+    const refinedPath = await planWalkingRoute(AMapNS, mapInstance, places)
+    if (
+      refinedPath.length < 2 ||
+      renderVersion !== routeRenderVersion ||
+      !routeMode ||
+      !mapInstance ||
+      !routePolyline
+    ) return
 
-  const routePointIds = new Set((route.points || []))
-  const nearbyPlaces = findNearbyPlaces(routePath, campusLocations, routePointIds)
-
-  nearbyPlaces.forEach(place => {
-    const marker = createReminderMarker(AMapNS, place, (p) => {
-      emit('marker-click', { ...p })
-    })
-    marker.setMap(mapInstance)
-    nearbyMarkers.push(marker)
-  })
+    // 只替换线条路径，不再次调整视野，避免地图在加载后突然缩放
+    routePolyline.setPath(refinedPath)
+  } catch (err) {
+    console.warn('[CampusMap] walking route refinement failed, keeping direct preview:', err)
+  }
 }
 
 /**
  * 退出路线探索模式并恢复普通 Marker
  */
 function clearRoute() {
+  routeRenderVersion += 1
   routeMode = false
 
+  removeRouteOverlays()
+  rebuildMarkers()
+}
+
+function removeRouteOverlays() {
   routeMarkers.forEach(m => m.setMap(null))
   routeMarkers.length = 0
 
@@ -404,10 +405,6 @@ function clearRoute() {
     routePolyline.setMap(null)
     routePolyline = null
   }
-
-  clearNearbyMarkers(nearbyMarkers)
-
-  rebuildMarkers()
 }
 
 function locateUser() {

@@ -94,6 +94,22 @@ test.after(async () => {
   }
 });
 
+test('requires a real name when creating an account', async () => {
+  const strictRegister = await api(101, '/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ username: 'no-name-user', password: 'test-password' })
+  });
+  assert.equal(strictRegister.response.status, 400);
+  assert.equal(strictRegister.body.errorCode, 'REAL_NAME_REQUIRED');
+
+  const compatibleRegister = await api(101, '/login_or_register', {
+    method: 'POST',
+    body: JSON.stringify({ username: 'no-name-user', password: 'test-password', mode: 'register' })
+  });
+  assert.equal(compatibleRegister.response.status, 400);
+  assert.equal(compatibleRegister.body.errorCode, 'REAL_NAME_REQUIRED');
+});
+
 test('auth/me exposes the complete personal-home contract', async () => {
   const result = await api(101, '/auth/me');
   assert.equal(result.response.status, 200);
@@ -223,20 +239,48 @@ test('submits feedback and keeps each user history private', async () => {
   assert.equal(missingContact.response.status, 400);
   assert.equal(missingContact.body.errorCode, 'FEEDBACK_CONTACT_REQUIRED');
 
+  const foreignImage = await api(101, '/feedback', {
+    method: 'POST',
+    body: JSON.stringify({
+      category: 'bug',
+      content: '页面按钮无法点击',
+      contact: 'sysu_student_wechat',
+      images: [{ key: 'feedback/202/not-mine.jpg' }]
+    })
+  });
+  assert.equal(foreignImage.response.status, 400);
+  assert.equal(foreignImage.body.errorCode, 'FEEDBACK_IMAGE_INVALID');
+
+  const tooManyImages = await api(101, '/feedback', {
+    method: 'POST',
+    body: JSON.stringify({
+      category: 'bug',
+      content: '页面按钮无法点击',
+      contact: 'sysu_student_wechat',
+      images: Array.from({ length: 10 }, (_, index) => ({ key: `feedback/101/${index}.jpg` }))
+    })
+  });
+  assert.equal(tooManyImages.response.status, 400);
+  assert.equal(tooManyImages.body.errorCode, 'FEEDBACK_IMAGES_LIMIT');
+
   const created = await api(101, '/feedback', {
     method: 'POST',
     body: JSON.stringify({
       category: 'suggestion',
       content: '希望图鉴支持按建筑年代筛选。',
-      contact: 'sysu_student_wechat'
+      contact: 'sysu_student_wechat',
+      images: [{ key: 'feedback/101/example.jpg' }]
     })
   });
   assert.equal(created.response.status, 201);
   assert.equal(created.body.data.feedback.status, 'submitted');
+  assert.equal(created.body.data.feedback.images.length, 1);
+  assert.equal(created.body.data.feedback.images[0].key, 'feedback/101/example.jpg');
 
   const mine = await api(101, '/feedback/mine');
   assert.equal(mine.body.list.length, 1);
   assert.equal(mine.body.list[0].categoryName, '功能建议');
+  assert.equal(mine.body.list[0].images.length, 1);
 
   const otherMine = await api(202, '/feedback/mine');
   assert.equal(otherMine.body.list.length, 0);

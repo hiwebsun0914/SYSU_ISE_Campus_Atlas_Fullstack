@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-dashboard-test-'));
 const usersFile = path.join(testDir, 'users.json');
 const submissionsFile = path.join(testDir, 'submissions.json');
+const feedbackFile = path.join(testDir, 'feedback.json');
 const bottlesFile = path.join(testDir, 'bottles.json');
 const locationSettingsFile = path.join(testDir, 'location-settings.json');
 const jwtSecret = 'admin-dashboard-test-secret-with-sufficient-length';
@@ -85,12 +86,44 @@ const submissions = [
   }
 ];
 
+const feedback = [
+  {
+    id: 'feedback-1',
+    userId: 3,
+    username: 'student',
+    category: 'bug',
+    categoryName: '问题反馈',
+    content: '地图上的地点无法打开。',
+    contact: 'student-wechat',
+    images: [{ key: 'feedback/3/example.png', url: 'https://example.com/feedback.png' }],
+    status: 'submitted',
+    reply: '',
+    createdAt: now,
+    updatedAt: now
+  },
+  {
+    id: 'feedback-2',
+    userId: 3,
+    username: 'student',
+    category: 'suggestion',
+    categoryName: '功能建议',
+    content: '希望增加路线收藏功能。',
+    contact: 'student-wechat',
+    status: 'resolved',
+    reply: '已记录。',
+    createdAt: now - 1000,
+    updatedAt: now - 500
+  }
+];
+
 fs.writeFileSync(usersFile, JSON.stringify(users), 'utf8');
 fs.writeFileSync(submissionsFile, JSON.stringify(submissions), 'utf8');
+fs.writeFileSync(feedbackFile, JSON.stringify(feedback), 'utf8');
 fs.writeFileSync(bottlesFile, '[]', 'utf8');
 
 process.env.USERS_FILE = usersFile;
 process.env.SUBMISSIONS_FILE = submissionsFile;
+process.env.FEEDBACK_FILE = feedbackFile;
 process.env.BOTTLES_FILE = bottlesFile;
 process.env.LOCATION_SETTINGS_FILE = locationSettingsFile;
 process.env.JWT_SECRET = jwtSecret;
@@ -151,10 +184,34 @@ test('returns real dashboard totals, activity, hotspots and anomaly signals', as
   assert.equal(result.body.data.metrics.userCount, 3);
   assert.equal(result.body.data.metrics.pendingCheckins, 2);
   assert.equal(result.body.data.metrics.pendingSubmissions, 1);
-  assert.equal(result.body.data.metrics.pendingTotal, 3);
+  assert.equal(result.body.data.metrics.pendingFeedback, 1);
+  assert.equal(result.body.data.metrics.pendingTotal, 4);
   assert.equal(result.body.data.activity.length, 7);
   assert.equal(result.body.data.hotspots[0].locationId, 1);
   assert.ok(result.body.data.metrics.anomalyCount >= 3);
+});
+
+test('lets administrators receive and resolve user feedback', async () => {
+  const forbidden = await api(3, '/admin/feedback');
+  assert.equal(forbidden.response.status, 403);
+
+  const received = await api(2, '/admin/feedback?status=submitted');
+  assert.equal(received.response.status, 200);
+  assert.equal(received.body.list.length, 1);
+  assert.equal(received.body.list[0].id, 'feedback-1');
+  assert.equal(received.body.list[0].contact, 'student-wechat');
+  assert.equal(received.body.list[0].images.length, 1);
+
+  const resolved = await api(2, '/admin/feedback/feedback-1', {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'resolved', reply: '问题已修复，请重新打开地图。' })
+  });
+  assert.equal(resolved.response.status, 200);
+  assert.equal(resolved.body.data.feedback.status, 'resolved');
+  assert.equal(resolved.body.data.feedback.handledBy, 'reviewer');
+
+  const dashboard = await api(2, '/admin/dashboard');
+  assert.equal(dashboard.body.data.metrics.pendingFeedback, 0);
 });
 
 test('only a protected owner can grant and revoke reviewer access', async () => {

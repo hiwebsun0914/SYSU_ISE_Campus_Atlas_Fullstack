@@ -185,7 +185,7 @@ function goHiddenCheckpoints() {
   router.push('/hidden-checkpoints')
 }
 
-function onRouteSelect(route) {
+async function onRouteSelect(route) {
   if (!route) {
     // 取消选中：恢复全量地点 + 默认视野 + 清除路线覆盖物 + 退出探索
     selectedRoute.value = null
@@ -202,36 +202,24 @@ function onRouteSelect(route) {
   activeCategory.value = 'all' // 路线模式下重置分类
   updateLocations()
 
-  // 自动调整地图视野
-  const ids = route.points ?? []
-  const coords = ids
-    .map(id => getPlaceById(id))
-    .filter(Boolean)
-    .map(p => p.lnglat)
+  // 地点列表更新后立即进入路线显示模式：仅保留路线点、顺序编号和连线
+  await nextTick()
+  await campusMapRef.value?.startRoute(route)
 
-  if (coords.length > 0) {
-    nextTick(() => {
-      campusMapRef.value?.fitToBounds(coords)
-    })
-  }
-
-  console.log('[Route] selected:', route.name, 'points:', ids)
+  console.log('[Route] selected:', route.name, 'points:', route.points ?? [])
 }
 
 /** 开始探索：初始化打卡状态，显示路线，定位第一站 */
-function onStartExplore(route) {
+async function onStartExplore(route) {
   if (!route || !route.points?.length) return
 
   // 选中并显示路线
   if (selectedRoute.value?.id !== route.id) {
-    onRouteSelect(route)
+    await onRouteSelect(route)
   }
 
   // 初始化探索状态
   startExplore(route)
-
-  // 绘制路线覆盖物
-  campusMapRef.value?.startRoute(route)
 
   // 打开第一站卡片并定位
   if (currentPlace.value) {
@@ -463,6 +451,7 @@ onBeforeUnmount(() => {
   --text: #102a2e;
   --muted: #5e7271;
   --border: #d6e4df;
+  --mobile-nav-clearance: calc(86px + env(safe-area-inset-bottom, 0px));
   position: relative;
   width: 100%;
   height: 100vh;
@@ -472,7 +461,7 @@ onBeforeUnmount(() => {
   background: var(--canvas);
   overflow: hidden;
   color: var(--text);
-  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(--mobile-nav-clearance);
 }
 
 .map-header {
@@ -522,6 +511,8 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   overflow: hidden;
   background: #e8efe9;
 }
@@ -595,7 +586,7 @@ onBeforeUnmount(() => {
   z-index: 25;
   background: var(--surface);
   height: 85%;
-  padding: 44px 16px 16px;
+  padding: 44px 16px var(--mobile-nav-clearance);
   display: flex;
   flex-direction: column;
 }
@@ -868,5 +859,6 @@ onBeforeUnmount(() => {
 
 @media (min-width: 1024px) {
   .map-shell { padding-bottom: 0; }
+  .place-sheet { padding-bottom: 16px; }
 }
 </style>

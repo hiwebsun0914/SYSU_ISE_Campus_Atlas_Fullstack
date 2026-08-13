@@ -16,16 +16,16 @@
       </nav>
     </header>
 
-    <main id="main-content" ref="mainContent" class="home-main" tabindex="-1">
+    <main id="main-content" class="home-main" tabindex="-1">
       <section class="intro-row" aria-labelledby="page-title">
         <div>
           <p class="eyebrow"><span></span> SYSU · ISE / 2026</p>
           <h1 id="page-title">
-            <span>你好，新同学。</span>
-            <span>从认识校园开始。</span>
+            <span>Hi，新同学。</span>
+            <span>欢迎来到智工！</span>
           </h1>
         </div>
-        <p class="intro-copy">这里不是说明书，而是你的迎新行动地图。先找到第一站，再慢慢留下属于自己的大学坐标。</p>
+        <p class="intro-copy">探索校园路线，解锁人格测试、作品投稿与未来寄语，在这里开启你的智工新生活。</p>
       </section>
 
       <section class="dashboard-grid" aria-label="迎新活动与校园探索">
@@ -134,7 +134,7 @@
           </span>
           <span class="feature-copy">
             <small>PLACE / 校园人格</small>
-            <strong>测测你的校园类型</strong>
+            <strong>测测你的校园人格类型</strong>
             <span>从 28 个选择里找到你的校园人格与探索偏好</span>
           </span>
           <span class="scan-line" aria-hidden="true"></span>
@@ -148,43 +148,21 @@
       </footer>
     </main>
 
-    <Transition name="welcome">
-      <div v-if="welcomeVisible" class="welcome-layer" role="presentation" @mousedown.self="dismissWelcome">
-        <section ref="welcomeDialog" class="welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-desc" @keydown="handleDialogKeydown">
-          <button class="dialog-close" type="button" aria-label="关闭欢迎窗口" @click="dismissWelcome"><X :size="20" aria-hidden="true" /></button>
-          <div class="welcome-logo-wrap">
-            <img src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png" alt="校园探索活动标志" />
-          </div>
-          <p class="welcome-code">WELCOME · CLASS OF 2026</p>
-          <h2 id="welcome-title">欢迎来到<br />智能工程学院</h2>
-          <p id="welcome-desc">新的坐标已经点亮。愿你从校园的第一站出发，找到自己的方向、伙伴与四年答案。</p>
-          <button ref="welcomeEnter" class="welcome-enter" type="button" @click="dismissWelcome">
-            进入迎新站 <ArrowRight :size="19" aria-hidden="true" />
-          </button>
-          <div class="welcome-coordinate" aria-hidden="true">23°05′46″N<br />113°17′49″E</div>
-        </section>
-      </div>
-    </Transition>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ArrowRight, MapPinned, Navigation, ScanFace,
-  Send, Sparkles, X,
+  MapPinned, Navigation, ScanFace,
+  Send, Sparkles,
 } from '@lucide/vue'
 import { CATEGORY_MAP, getPlaceById } from '@/data/campusPlaces'
 import routes from '@/data/routes'
 import { checkedSet, fetchUserProgress, getRouteCheckedCount } from '@/stores/userProgress'
 
-const WELCOME_KEY = 'ise-welcome-2026-v1'
 const router = useRouter()
-const mainContent = ref(null)
-const welcomeDialog = ref(null)
-const welcomeEnter = ref(null)
-const welcomeVisible = ref(false)
 const loading = ref(false)
 const selectedRouteId = ref(null)
 
@@ -271,44 +249,10 @@ function goProtected(path) {
   else router.push({ path: '/signin', query: { redirect: path } })
 }
 
-function dismissWelcome() {
-  try { localStorage.setItem(WELCOME_KEY, 'seen') } catch {}
-  welcomeVisible.value = false
-  nextTick(() => mainContent.value?.focus())
-}
-
-function handleDialogKeydown(event) {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    dismissWelcome()
-    return
-  }
-  if (event.key !== 'Tab') return
-  const focusable = welcomeDialog.value?.querySelectorAll('button, a[href], [tabindex]:not([tabindex="-1"])') || []
-  if (!focusable.length) return
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-
-watch(welcomeVisible, visible => {
-  document.body.classList.toggle('dialog-open', visible)
-})
-
 onMounted(() => {
   document.title = '2026 新生迎新｜中山大学智能工程学院'
   loadDashboard()
-  try { welcomeVisible.value = localStorage.getItem(WELCOME_KEY) !== 'seen' } catch { welcomeVisible.value = true }
-  if (welcomeVisible.value) nextTick(() => welcomeEnter.value?.focus())
 })
-
-onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 </script>
 
 <style scoped>
@@ -414,17 +358,6 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 .test-card:hover .scan-line { animation: scan-sweep 1.1s ease-in-out infinite; }
 .site-footer { min-height: 90px; display: flex; flex-direction: column; justify-content: center; gap: 5px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }.footer-code { font-family: "SFMono-Regular", Menlo, monospace; color: var(--primary-dark); letter-spacing: 0; }
 
-.welcome-layer { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(3,20,26,.68); backdrop-filter: blur(8px); }
-.welcome-dialog { width: min(100%, 540px); min-height: 580px; position: relative; overflow: hidden; padding: 34px 28px 30px; border-radius: 28px 8px 28px 8px; color: #fff; background: var(--ink); box-shadow: 0 32px 80px rgba(0,0,0,.35); }
-.welcome-dialog::before { content: ""; width: 370px; height: 370px; position: absolute; right: -180px; bottom: -120px; border: 1px solid rgba(199,242,74,.4); border-radius: 50%; box-shadow: 0 0 0 42px rgba(199,242,74,.035),0 0 0 84px rgba(199,242,74,.02); }
-.dialog-close { width: 44px; height: 44px; position: absolute; z-index: 2; right: 17px; top: 17px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(255,255,255,.08); }
-.welcome-logo-wrap { width: 96px; min-height: 74px; display: grid; place-items: center; padding: 10px; border-radius: 18px 5px 18px 5px; background: #fff; }.welcome-logo-wrap img { display: block; width: 100%; max-height: 54px; object-fit: contain; }
-.welcome-code { margin: 44px 0 0; color: var(--accent); font-family: "SFMono-Regular", Menlo, monospace; font-size: 10px; letter-spacing: 0; }
-.welcome-dialog h2 { margin: 12px 0 0; font-size: clamp(40px,10vw,60px); line-height: 1.02; letter-spacing: 0; }.welcome-dialog > p:not(.welcome-code) { max-width: 390px; margin: 22px 0 0; color: rgba(255,255,255,.7); font-size: 15px; line-height: 1.75; }
-.welcome-enter { min-height: 52px; position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 12px; margin-top: 28px; padding: 0 21px; border-radius: 999px; color: var(--ink); background: var(--accent); font-weight: 900; }
-.welcome-coordinate { position: absolute; right: 27px; bottom: 27px; color: rgba(255,255,255,.37); font-family: "SFMono-Regular",Menlo,monospace; font-size: 9px; line-height: 1.6; letter-spacing: 0; text-align: right; }
-.welcome-enter-active,.welcome-leave-active { transition: opacity .22s ease; }.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: transform .26s cubic-bezier(.2,.75,.25,1),opacity .22s ease; }.welcome-enter-from,.welcome-leave-to { opacity: 0; }.welcome-enter-from .welcome-dialog,.welcome-leave-to .welcome-dialog { opacity: 0; transform: translateY(14px) scale(.98); }
-
 @media (min-width: 700px) {
   .site-header { padding-inline: 20px; gap: 16px; }
   .brand-logo { width: 300px; height: 48px; }
@@ -438,7 +371,18 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 
 @media (max-width: 480px) {
   .site-header { padding: 9px 12px; }.brand-logo { width: min(220px, 68vw); height: 40px; }.home-main { width: min(100% - 24px, 1240px); }.intro-row { padding: 30px 0 22px; }.intro-row h1 { font-size: clamp(30px, 10vw, 44px); }.intro-copy { font-size: 14px; }
-  .feature-card { padding: 16px; }.feature-copy { margin-top: 18px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips span { font-size: 11px; padding: 6px 11px; }.route-progress-option { padding-inline: 10px; }
+  .explore-card { min-height: 0; padding: 20px; }
+  .progress-content { margin-top: 30px; }
+  .progress-number span { font-size: clamp(56px, 17vw, 72px); }
+  .progress-content > p { margin: 12px 0 10px; }
+  .route-progress-option { min-height: 46px; gap: 6px; padding: 8px 10px; }
+  .next-stop { min-height: 52px; margin-top: 16px; padding-top: 12px; }
+  .explore-actions { margin-top: 18px; }
+  .feature-card { padding: 16px; }
+  .future-card,
+  .test-card { min-height: 205px; }
+  .award-card { min-height: 220px; }
+  .feature-copy { margin-top: 16px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips { padding-top: 14px; }.award-chips span { font-size: 11px; padding: 6px 11px; }.scan-line { bottom: 14px; }
   .site-footer { padding: 0 4px; }
 }
 
@@ -447,6 +391,6 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-progress-track i,.scan-line { animation: none; }.route-progress-track i,.route-progress-option,.feature-card,.feature-card::before,.future-year,.welcome-enter-active,.welcome-leave-active,.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: none; }
+  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-progress-track i,.scan-line { animation: none; }.route-progress-track i,.route-progress-option,.feature-card,.feature-card::before,.future-year { transition: none; }
 }
 </style>

@@ -415,6 +415,9 @@ app.post('/auth/register', (req, res) => {
   if (!username || !password) {
     return res.json({ code: 1, message: '用户名或密码不能为空' });
   }
+  if (!realName) {
+    return res.status(400).json({ code: 1, errorCode: 'REAL_NAME_REQUIRED', field: 'realName', message: '请输入真实姓名' });
+  }
   const users = readUsers();
   const exists = users.find(u => u.username === username);
   if (exists) return res.json({ code: ERR_USERNAME_TAKEN, message: '用户名已存在' });
@@ -467,6 +470,9 @@ app.post('/login_or_register', (req, res) => {
     if (exists) {
       return res.json({ code: ERR_USERNAME_TAKEN, message: '用户名已存在' });
     }
+    if (!realName) {
+      return res.status(400).json({ code: 1, errorCode: 'REAL_NAME_REQUIRED', field: 'realName', message: '请输入真实姓名' });
+    }
     const newUser = createUser({ username, passwordPlain: password, phone, realName });
     users.push(newUser);
     writeUsers(users);
@@ -475,6 +481,9 @@ app.post('/login_or_register', (req, res) => {
 
   // —— 旧端兼容：不带任何控制参数 => 维持"自动注册"的旧行为 —— 
   if (!exists) {
+    if (!realName) {
+      return res.status(400).json({ code: 1, errorCode: 'REAL_NAME_REQUIRED', field: 'realName', message: '请输入真实姓名' });
+    }
     const newUser = createUser({ username, passwordPlain: password, phone, realName });
     users.push(newUser);
     writeUsers(users);

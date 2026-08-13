@@ -75,21 +75,28 @@ export async function planWalkingRoute(AMapNS, mapInstance, places) {
   // 确保 Walking 插件已加载
   await loadWalkingPlugin(AMapNS)
 
-  const fullPath = []
+  const segmentCount = places.length - 1
+  const segmentPaths = new Array(segmentCount)
+  let nextSegmentIndex = 0
 
-  for (let i = 0; i < places.length - 1; i++) {
-    const start = normalizeLngLat(places[i].lnglat)
-    const end = normalizeLngLat(places[i + 1].lnglat)
-
-    const segmentPath = await planWalkingSegmentWithFallback(AMapNS, start, end)
-
-    if (i === 0) {
-      fullPath.push(...segmentPath)
-    } else {
-      // 跳过连接点重复坐标
-      fullPath.push(...segmentPath.slice(1))
+  // 同时规划少量相邻路段，兼顾加载速度与地图服务请求压力
+  async function planNextSegment() {
+    while (nextSegmentIndex < segmentCount) {
+      const index = nextSegmentIndex++
+      const start = normalizeLngLat(places[index].lnglat)
+      const end = normalizeLngLat(places[index + 1].lnglat)
+      segmentPaths[index] = await planWalkingSegmentWithFallback(AMapNS, start, end)
     }
   }
+
+  const concurrency = Math.min(4, segmentCount)
+  await Promise.all(Array.from({ length: concurrency }, () => planNextSegment()))
+
+  const fullPath = []
+  segmentPaths.forEach((segmentPath, index) => {
+    if (index === 0) fullPath.push(...segmentPath)
+    else fullPath.push(...segmentPath.slice(1))
+  })
 
   return fullPath.length >= 2 ? fullPath : buildRoutePathFromPlaces(places)
 }

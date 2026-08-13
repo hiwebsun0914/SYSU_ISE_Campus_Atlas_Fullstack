@@ -119,7 +119,7 @@
               <strong aria-hidden="true">{{ animatedPending }}</strong>
               <div class="admin-hero-copy">
                 <h1 id="admin-title">项内容等待处理</h1>
-                <p>先清空审核队列，再处理异常、地点资料与权限配置。</p>
+                <p>集中处理审核队列、用户反馈、异常记录、地点资料与权限配置。</p>
                 <div class="admin-hero-actions">
                   <button class="admin-button admin-button-primary" type="button" @click="goSection('review')">
                     <ClipboardCheck :size="17" aria-hidden="true" />
@@ -144,6 +144,11 @@
                 <span>投稿作品</span>
                 <strong>{{ dashboard.metrics.pendingSubmissions }}</strong>
                 <small>待审核或申诉中</small>
+              </div>
+              <div>
+                <span>问题反馈</span>
+                <strong>{{ dashboard.metrics.pendingFeedback }}</strong>
+                <small>待接收或处理中</small>
               </div>
             </div>
           </div>
@@ -332,6 +337,88 @@
           </Transition>
         </section>
 
+        <section id="feedback" class="admin-section admin-feedback-section admin-observed" aria-labelledby="admin-feedback-title">
+          <div class="admin-section-head">
+            <div>
+              <h2 id="admin-feedback-title">问题反馈</h2>
+              <p>接收用户提交的问题与建议，记录处理进度；回复内容会同步显示在用户的反馈记录中。</p>
+            </div>
+            <span>{{ feedbackStat.submitted + feedbackStat.in_progress }} 条待处理</span>
+          </div>
+
+          <div class="admin-filter-row">
+            <label for="feedback-status">处理状态</label>
+            <select id="feedback-status" v-model="feedbackStatus" @change="fetchFeedback">
+              <option value="submitted">待接收</option>
+              <option value="in_progress">处理中</option>
+              <option value="resolved">已解决</option>
+              <option value="closed">已关闭</option>
+              <option value="all">全部反馈</option>
+            </select>
+            <button class="admin-text-action" type="button" :disabled="feedbackLoading" @click="fetchFeedback">
+              <RefreshCcw :size="16" aria-hidden="true" :class="{ spinning: feedbackLoading }" />
+              更新反馈
+            </button>
+          </div>
+
+          <div v-if="feedbackLoading" class="admin-queue-loading" aria-label="正在加载问题反馈">
+            <div v-for="index in 2" :key="index" class="admin-review-skeleton"></div>
+          </div>
+          <div v-else-if="feedbackItems.length" class="admin-feedback-list">
+            <article v-for="item in feedbackItems" :key="item.id">
+              <div class="admin-feedback-head">
+                <span :class="['admin-status', 'status-' + (item.status || 'submitted')]">{{ feedbackStatusLabel(item.status) }}</span>
+                <strong>{{ item.categoryName || '问题反馈' }}</strong>
+                <time :datetime="toDateTime(item.createdAt)">{{ formatTime(item.createdAt) }}</time>
+              </div>
+              <p class="admin-feedback-content">{{ item.content }}</p>
+              <div v-if="item.images?.length" class="admin-feedback-images" aria-label="反馈附图">
+                <button v-for="(image, index) in item.images" :key="image.key || image.url" type="button" @click="openPreview(image.url, `反馈附图 ${index + 1}`)">
+                  <img :src="image.url" :alt="`反馈附图 ${index + 1}`" loading="lazy" />
+                </button>
+              </div>
+              <p class="admin-feedback-user">
+                <CircleUserRound :size="16" aria-hidden="true" />
+                {{ item.username || ('用户 ' + item.userId) }} · 联系方式：{{ item.contact || '未填写' }}
+              </p>
+              <label :for="'feedback-reply-' + item.id">管理员回复</label>
+              <textarea
+                :id="'feedback-reply-' + item.id"
+                v-model="feedbackDrafts[item.id]"
+                rows="3"
+                maxlength="1000"
+                placeholder="填写处理结果，解决反馈时会同步给用户"
+              ></textarea>
+              <div class="admin-feedback-actions">
+                <button
+                  v-if="item.status === 'submitted' || !item.status"
+                  class="admin-button admin-button-quiet"
+                  type="button"
+                  :disabled="isBusy('feedback-' + item.id)"
+                  @click="updateFeedback(item, 'in_progress')"
+                >
+                  <MessageSquareText :size="17" aria-hidden="true" />
+                  接收处理
+                </button>
+                <button
+                  v-if="item.status !== 'resolved' && item.status !== 'closed'"
+                  class="admin-button admin-button-primary"
+                  type="button"
+                  :disabled="isBusy('feedback-' + item.id)"
+                  @click="updateFeedback(item, 'resolved')"
+                >
+                  <CheckCircle2 :size="17" aria-hidden="true" />
+                  标记已解决
+                </button>
+              </div>
+            </article>
+          </div>
+          <div v-else class="admin-empty admin-empty-inline">
+            <CheckCircle2 :size="25" aria-hidden="true" />
+            <div><strong>当前没有符合条件的问题反馈</strong><p>用户提交后会立即出现在这里。</p></div>
+          </div>
+        </section>
+
         <section id="anomalies" class="admin-section admin-anomaly-section admin-observed" aria-labelledby="anomaly-title">
           <div class="admin-section-head">
             <div>
@@ -418,44 +505,6 @@
               </div>
             </div>
           </div>
-        </section>
-
-        <section id="locations" class="admin-section admin-location-section admin-observed" aria-labelledby="locations-title">
-          <div class="admin-section-head">
-            <div>
-              <h2 id="locations-title">打卡点与积分</h2>
-              <p>编辑后的名称、介绍、图片和单点积分会同步到公开地点接口与后续打卡。</p>
-            </div>
-            <span>{{ locations.length }} 个地点</span>
-          </div>
-
-          <div class="admin-search-field">
-            <label for="location-search">查找打卡点</label>
-            <div>
-              <Search :size="18" aria-hidden="true" />
-              <input id="location-search" v-model.trim="locationSearch" type="search" placeholder="名称或编号，例如：图书馆" />
-            </div>
-            <small>当前显示 {{ visibleLocations.length }} / {{ filteredLocations.length }} 个匹配地点</small>
-          </div>
-
-          <div v-if="visibleLocations.length" class="admin-spec-list">
-            <button v-for="location in visibleLocations" :key="location.backendId" type="button" @click="openLocationEditor(location)">
-              <span class="admin-spec-id">{{ String(location.backendId).padStart(3, '0') }}</span>
-              <div>
-                <strong>{{ location.name }}</strong>
-                <small>{{ location.position || '未填写位置' }}</small>
-              </div>
-              <b>{{ location.points }} 分</b>
-              <Pencil :size="17" aria-hidden="true" />
-            </button>
-          </div>
-          <div v-else class="admin-empty admin-empty-inline">
-            <SearchX :size="25" aria-hidden="true" />
-            <div><strong>没有匹配的打卡点</strong><p>尝试输入更短的名称或地点编号。</p></div>
-          </div>
-          <button v-if="visibleLocations.length < filteredLocations.length" class="admin-button admin-button-quiet admin-load-more" type="button" @click="locationLimit += 20">
-            再显示 20 个
-          </button>
         </section>
 
         <section id="permissions" class="admin-section admin-permission-section admin-observed" aria-labelledby="permissions-title">
@@ -563,47 +612,6 @@
       </form>
     </dialog>
 
-    <dialog ref="locationDialog" class="admin-dialog admin-location-dialog" @close="resetLocationDialog" @click="closeDialogBackdrop">
-      <form @submit.prevent="saveLocation">
-        <div class="admin-dialog-head">
-          <div>
-            <span>地点 #{{ locationForm.backendId }}</span>
-            <h2>编辑打卡点</h2>
-          </div>
-          <button type="button" aria-label="关闭地点编辑窗口" @click="locationDialog?.close()"><X :size="20" aria-hidden="true" /></button>
-        </div>
-        <div class="admin-form-grid">
-          <label for="location-name">地点名称</label>
-          <input id="location-name" ref="locationNameInput" v-model.trim="locationForm.name" maxlength="80" required />
-          <small>显示在地图、探索进度、投稿和管理员统计中。</small>
-
-          <label for="location-position">校园位置</label>
-          <input id="location-position" v-model.trim="locationForm.position" maxlength="120" placeholder="例如：南校园 335 号" />
-          <small>用于帮助学生确认现场位置。</small>
-
-          <label for="location-points">单次积分</label>
-          <input id="location-points" v-model.number="locationForm.points" type="number" min="0" max="100" step="1" inputmode="numeric" required />
-          <small>只影响此后首次通过的打卡，不追溯改写历史积分。</small>
-
-          <label for="location-image">图片地址</label>
-          <input id="location-image" v-model.trim="locationForm.image" type="url" maxlength="2000" placeholder="https://…" />
-          <small>留空时沿用当前图片。</small>
-
-          <label for="location-description">地点介绍</label>
-          <textarea id="location-description" v-model="locationForm.description" rows="8" maxlength="20000"></textarea>
-          <small>兼容 PR 中已有的基础 HTML；后端会移除脚本和事件属性。</small>
-        </div>
-        <p v-if="locationForm.error" class="admin-form-error" role="alert">{{ locationForm.error }}</p>
-        <div class="admin-dialog-actions">
-          <button class="admin-button admin-button-quiet" type="button" @click="locationDialog?.close()">取消</button>
-          <button class="admin-button admin-button-primary" type="submit" :disabled="locationForm.saving">
-            <Save :size="17" aria-hidden="true" />
-            {{ locationForm.saving ? '正在保存' : '保存设置' }}
-          </button>
-        </div>
-      </form>
-    </dialog>
-
     <dialog ref="previewDialog" class="admin-preview-dialog" aria-label="图片预览" @close="previewState.url = ''" @click="closeDialogBackdrop">
       <div>
         <img v-if="previewState.url" :src="previewState.url" :alt="previewState.label" />
@@ -624,7 +632,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import '@fontsource/space-grotesk/latin-500.css'
 import '@fontsource/space-grotesk/latin-600.css'
@@ -645,11 +653,9 @@ import {
   LogOut,
   MapPinned,
   Menu,
-  Pencil,
+  MessageSquareText,
   RefreshCcw,
-  Save,
   Search,
-  SearchX,
   ShieldCheck,
   Star,
   TriangleAlert,
@@ -666,9 +672,9 @@ const route = useRoute()
 const navigation = [
   { id: 'overview', label: '管理总览', icon: Activity },
   { id: 'review', label: '审核队列', icon: ClipboardCheck },
+  { id: 'feedback', label: '问题反馈', icon: MessageSquareText },
   { id: 'anomalies', label: '打卡异常', icon: TriangleAlert },
   { id: 'analytics', label: '数据分析', icon: BarChart3 },
-  { id: 'locations', label: '地点设置', icon: MapPinned },
   { id: 'permissions', label: '权限管理', icon: Users }
 ]
 
@@ -676,6 +682,7 @@ const blankMetrics = () => ({
   pendingTotal: 0,
   pendingCheckins: 0,
   pendingSubmissions: 0,
+  pendingFeedback: 0,
   userCount: 0,
   submissionCount: 0,
   checkinCount: 0,
@@ -687,38 +694,37 @@ const dashboard = reactive({ currentAdmin: null, metrics: blankMetrics(), activi
 const checkins = ref([])
 const submissions = ref([])
 const anomalies = ref([])
-const locations = ref([])
+const feedbackItems = ref([])
 const users = ref([])
 const checkinStat = reactive({ all: 0, pending: 0, approved: 0 })
 const submissionStat = reactive({ all: 0, pending: 0, approved: 0, rejected: 0, down: 0, featured: 0 })
 const anomalyStat = reactive({ all: 0, high: 0, medium: 0, low: 0 })
+const feedbackStat = reactive({ all: 0, submitted: 0, in_progress: 0, resolved: 0, closed: 0 })
+const feedbackDrafts = reactive({})
 
 const initialLoading = ref(true)
 const refreshing = ref(false)
 const reviewLoading = ref(false)
+const feedbackLoading = ref(false)
 const fatalError = ref('')
 const activeSection = ref('overview')
 const reviewQueue = ref(route.query.queue === 'submissions' ? 'submissions' : 'checkins')
 const checkinStatus = ref('pending')
 const submissionStatus = ref('pending')
 const anomalyFilter = ref('all')
+const feedbackStatus = ref('submitted')
 const busy = ref({})
 const animatedPending = ref(0)
 
 const menuDialog = ref(null)
 const rejectDialog = ref(null)
 const rejectNoteInput = ref(null)
-const locationDialog = ref(null)
-const locationNameInput = ref(null)
 const previewDialog = ref(null)
 const menuOpen = ref(false)
 
-const locationSearch = ref('')
-const locationLimit = ref(20)
 const userSearch = ref('')
 
 const rejectState = reactive({ kind: '', item: null, note: '', touched: false, error: '', submitting: false })
-const locationForm = reactive({ backendId: null, name: '', position: '', points: 1, image: '', description: '', saving: false, error: '' })
 const previewState = reactive({ url: '', label: '' })
 const toast = reactive({ message: '', tone: 'error', retry: null })
 let toastTimer = 0
@@ -758,12 +764,6 @@ const anomalyFilters = computed(() => [
   { value: 'medium', label: '需复核', count: anomalyStat.medium },
   { value: 'low', label: '低风险', count: anomalyStat.low }
 ])
-const filteredLocations = computed(() => {
-  const query = locationSearch.value.toLowerCase()
-  if (!query) return locations.value
-  return locations.value.filter(item => `${item.backendId} ${item.name} ${item.position || ''}`.toLowerCase().includes(query))
-})
-const visibleLocations = computed(() => filteredLocations.value.slice(0, locationLimit.value))
 const filteredUsers = computed(() => {
   const query = userSearch.value.toLowerCase()
   if (!query) return users.value
@@ -836,9 +836,18 @@ async function fetchAnomalies() {
   anomalies.value = requestedSeverity === 'all' ? all : all.filter(item => item.severity === requestedSeverity)
 }
 
-async function fetchLocations() {
-  const payload = await api('/admin/locations')
-  locations.value = payload.list || []
+async function fetchFeedback() {
+  feedbackLoading.value = true
+  try {
+    const payload = await api('/admin/feedback', 'GET', { status: feedbackStatus.value })
+    feedbackItems.value = payload.list || []
+    Object.assign(feedbackStat, { all: 0, submitted: 0, in_progress: 0, resolved: 0, closed: 0, ...(payload.stat || {}) })
+    feedbackItems.value.forEach(item => { feedbackDrafts[item.id] = item.reply || '' })
+  } catch (error) {
+    showError(error.message, fetchFeedback)
+  } finally {
+    feedbackLoading.value = false
+  }
 }
 
 async function fetchUsers() {
@@ -851,7 +860,7 @@ async function loadAdminSpace() {
   initialLoading.value = true
   fatalError.value = ''
   try {
-    await Promise.all([fetchDashboard(), fetchCheckins(), fetchSubmissions(), fetchAnomalies(), fetchLocations(), fetchUsers()])
+    await Promise.all([fetchDashboard(), fetchCheckins(), fetchSubmissions(), fetchFeedback(), fetchAnomalies(), fetchUsers()])
   } catch (error) {
     fatalError.value = error.message || '管理员接口没有返回完整数据。'
   } finally {
@@ -866,7 +875,7 @@ async function refreshAll() {
   if (refreshing.value) return
   refreshing.value = true
   try {
-    await Promise.all([fetchDashboard(), fetchReviewQueue(), fetchAnomalies(), fetchLocations(), fetchUsers()])
+    await Promise.all([fetchDashboard(), fetchReviewQueue(), fetchFeedback(), fetchAnomalies(), fetchUsers()])
   } catch (error) {
     showError(error.message, refreshAll)
   } finally {
@@ -912,6 +921,23 @@ function approveSubmission(item) {
     () => api(`/admin/submissions/${encodeURIComponent(item.id)}/approve`, 'POST', {}),
     () => approveSubmission(item)
   )
+}
+
+async function updateFeedback(item, status) {
+  const busyId = `feedback-${item.id}`
+  if (isBusy(busyId)) return
+  setBusy(busyId, true)
+  try {
+    await api(`/admin/feedback/${encodeURIComponent(item.id)}`, 'PATCH', {
+      status,
+      reply: String(feedbackDrafts[item.id] || '').trim()
+    })
+    await Promise.all([fetchFeedback(), fetchDashboard()])
+  } catch (error) {
+    showError(error.message, () => updateFeedback(item, status))
+  } finally {
+    setBusy(busyId, false)
+  }
 }
 
 function toggleFeature(item) {
@@ -983,57 +1009,6 @@ function resetRejectDialog() {
   rejectState.touched = false
   rejectState.error = ''
   rejectState.submitting = false
-}
-
-function openLocationEditor(location) {
-  Object.assign(locationForm, {
-    backendId: location.backendId,
-    name: location.name || '',
-    position: location.position || '',
-    points: Number(location.points || 0),
-    image: location.image || '',
-    description: location.description || '',
-    saving: false,
-    error: ''
-  })
-  locationDialog.value?.showModal()
-  nextTick(() => locationNameInput.value?.focus())
-}
-
-async function saveLocation() {
-  locationForm.error = ''
-  if (!locationForm.name.trim()) {
-    locationForm.error = '地点名称不能为空。'
-    return
-  }
-  if (!Number.isInteger(Number(locationForm.points)) || Number(locationForm.points) < 0 || Number(locationForm.points) > 100) {
-    locationForm.error = '单点积分必须是 0–100 的整数。'
-    return
-  }
-
-  locationForm.saving = true
-  try {
-    const payload = await api(`/admin/locations/${encodeURIComponent(locationForm.backendId)}`, 'PATCH', {
-      name: locationForm.name,
-      position: locationForm.position,
-      points: Number(locationForm.points),
-      image: locationForm.image,
-      description: locationForm.description
-    })
-    const updated = payload.data?.location
-    const index = locations.value.findIndex(item => Number(item.backendId) === Number(locationForm.backendId))
-    if (updated && index >= 0) locations.value.splice(index, 1, updated)
-    locationDialog.value?.close()
-    await fetchDashboard()
-  } catch (error) {
-    locationForm.error = error.message
-  } finally {
-    locationForm.saving = false
-  }
-}
-
-function resetLocationDialog() {
-  Object.assign(locationForm, { backendId: null, name: '', position: '', points: 1, image: '', description: '', saving: false, error: '' })
 }
 
 function openPreview(url, label) {
@@ -1177,6 +1152,10 @@ function submissionStatusLabel(status) {
   return ({ pending: '待审核', approved: '已通过', rejected: '已驳回', down: '已下架' })[status] || status
 }
 
+function feedbackStatusLabel(status) {
+  return ({ submitted: '待接收', in_progress: '处理中', resolved: '已解决', closed: '已关闭' })[status || 'submitted'] || status
+}
+
 function severityLabel(severity) {
   return ({ high: '高风险', medium: '需复核', low: '低风险' })[severity] || '待确认'
 }
@@ -1203,8 +1182,6 @@ function formatTime(value) {
     hour12: false
   }).format(date)
 }
-
-watch(locationSearch, () => { locationLimit.value = 20 })
 
 onMounted(loadAdminSpace)
 

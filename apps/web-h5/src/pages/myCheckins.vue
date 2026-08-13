@@ -105,9 +105,9 @@
               <small>当前积分</small>
             </div>
             <div>
-              <span>PROGRESS</span>
-              <strong>{{ unlockedCount }}<i>/{{ totalBadges }}</i></strong>
-              <small>地点已解锁</small>
+              <span>WORKS</span>
+              <strong>{{ submissionCounts.all }}</strong>
+              <small>投稿总数</small>
             </div>
             <div>
               <span>REVIEW</span>
@@ -400,7 +400,7 @@
               >
                 <span class="feedback-toggle-icon" aria-hidden="true"><MessageSquareText :size="20" /></span>
                 <span>
-                  <strong id="feedback-title">意见反馈</strong>
+                  <strong id="feedback-title">问题反馈</strong>
                   <small>{{ feedbackExpanded ? '收起反馈表单' : '遇到问题或有建议时，在这里告诉我们' }}</small>
                 </span>
                 <ChevronDown :size="19" aria-hidden="true" />
@@ -449,6 +449,44 @@
                   </div>
                 </div>
 
+                <div class="form-field feedback-image-field">
+                  <div class="label-row">
+                    <label for="feedback-images">补充图片 <span>选填</span></label>
+                    <span>{{ feedbackImages.length }}/9</span>
+                  </div>
+                  <input
+                    id="feedback-images"
+                    ref="feedbackImageInput"
+                    class="visually-hidden-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    @change="onFeedbackImagesChosen"
+                  />
+                  <div class="feedback-image-grid">
+                    <div v-for="image in feedbackImages" :key="image.uid" class="feedback-image-preview">
+                      <img :src="image.preview" :alt="image.file.name" />
+                      <button type="button" :aria-label="`移除图片 ${image.file.name}`" :disabled="feedbackSaveState === 'loading'" @click="removeFeedbackImage(image.uid)">
+                        <X :size="15" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <button
+                      v-if="feedbackImages.length < 9"
+                      class="feedback-image-add"
+                      type="button"
+                      :disabled="feedbackSaveState === 'loading'"
+                      @click="feedbackImageInput?.click()"
+                    >
+                      <ImageIcon :size="22" aria-hidden="true" />
+                      <span>添加图片</span>
+                    </button>
+                  </div>
+                  <div class="field-message-slot" aria-live="polite">
+                    <p v-if="feedbackErrors.images" class="field-error">{{ feedbackErrors.images }}</p>
+                    <p v-else class="field-help">最多 9 张，支持 JPG、PNG、WebP、GIF，单张不超过 10MB。</p>
+                  </div>
+                </div>
+
                 <div class="form-field">
                   <label for="feedback-contact">联系方式</label>
                   <input
@@ -491,10 +529,16 @@
                 <ol>
                   <li v-for="item in feedbackHistory.slice(0, 3)" :key="item.id">
                     <div>
-                      <strong>{{ item.categoryName || '意见反馈' }}</strong>
+                      <strong>{{ item.categoryName || '问题反馈' }}</strong>
                       <span>{{ feedbackStatusLabel(item.status) }}</span>
                     </div>
                     <p>{{ item.content }}</p>
+                    <div v-if="item.images?.length" class="feedback-history-images">
+                      <a v-for="image in item.images" :key="image.key || image.url" :href="image.url" target="_blank" rel="noopener">
+                        <img :src="image.url" alt="反馈附图" loading="lazy" />
+                      </a>
+                    </div>
+                    <p v-if="item.reply" class="feedback-reply"><strong>管理员回复：</strong>{{ item.reply }}</p>
                     <time :datetime="toDateTime(item.createdAt)">{{ formatDate(item.createdAt, 'short') }}</time>
                   </li>
                 </ol>
@@ -843,6 +887,7 @@ const commandDialog = ref(null)
 const firstProfileField = ref(null)
 const commandInput = ref(null)
 const avatarInput = ref(null)
+const feedbackImageInput = ref(null)
 const cropWorkspace = ref(null)
 
 const mainPersonalityVisuals = {
@@ -918,6 +963,9 @@ const feedbackForm = ref({ category: 'suggestion', content: '', contact: '' })
 const feedbackErrors = ref({})
 const feedbackMessage = ref('')
 const feedbackSaveState = ref('idle')
+const feedbackImages = ref([])
+const feedbackUploadProgress = ref({ current: 0, total: 0 })
+let feedbackImageSequence = 0
 
 const commandQuery = ref('')
 const commandIndex = ref(0)
@@ -1031,7 +1079,9 @@ const achievementUnlockedCount = computed(() => achievements.value.filter(item =
 
 const feedbackButtonCopy = computed(() => ({
   idle: '提交反馈',
-  loading: '正在提交',
+  loading: feedbackUploadProgress.value.total
+    ? `正在上传 ${feedbackUploadProgress.value.current}/${feedbackUploadProgress.value.total}`
+    : '正在提交',
   success: '已提交',
   error: '重新提交'
 }[feedbackSaveState.value] || '提交反馈'))
@@ -1050,7 +1100,7 @@ const commands = [
   { label: 'ISETI 测试', hint: '查看或更新校园人格', keywords: '人格 测试 place iseti', icon: Compass, run: () => router.push('/place') },
   { label: '投稿活动', hint: '提交或查看校园作品', keywords: '投稿 作品 award', icon: Trophy, run: () => router.push('/award') },
   { label: '编辑个人资料', hint: '更新头像、昵称与学号', keywords: '资料 编辑 头像 学号', icon: Pencil, run: openProfileFromCommand },
-  { label: '提交意见反馈', hint: '报告问题或提出建议', keywords: '意见 反馈 bug', icon: MessageSquareText, run: focusFeedbackFromCommand },
+  { label: '提交问题反馈', hint: '报告问题或提出建议', keywords: '问题 意见 反馈 bug', icon: MessageSquareText, run: focusFeedbackFromCommand },
   { label: '退出登录', hint: '清除当前设备的登录信息', keywords: '退出 logout', icon: LogOut, run: logout }
 ]
 
@@ -1256,6 +1306,7 @@ function feedbackStatusLabel(status) {
   return {
     submitted: '已提交',
     processing: '处理中',
+    in_progress: '处理中',
     resolved: '已回复',
     closed: '已结束'
   }[status] || '已提交'
@@ -1647,6 +1698,56 @@ function onFeedbackInput(field) {
   if (Object.prototype.hasOwnProperty.call(feedbackErrors.value, field)) validateFeedbackField(field)
 }
 
+function onFeedbackImagesChosen(event) {
+  const files = Array.from(event.target.files || [])
+  event.target.value = ''
+  feedbackErrors.value = { ...feedbackErrors.value, images: '' }
+  feedbackMessage.value = ''
+  if (feedbackSaveState.value !== 'loading') feedbackSaveState.value = 'idle'
+  const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+  for (const file of files) {
+    if (feedbackImages.value.length >= 9) {
+      feedbackErrors.value = { ...feedbackErrors.value, images: '最多上传 9 张图片。' }
+      break
+    }
+    if (!allowedTypes.has(file.type)) {
+      feedbackErrors.value = { ...feedbackErrors.value, images: `${file.name} 格式不支持。` }
+      continue
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      feedbackErrors.value = { ...feedbackErrors.value, images: `${file.name} 超过 10MB。` }
+      continue
+    }
+    feedbackImages.value.push({
+      uid: `feedback-image-${Date.now()}-${feedbackImageSequence++}`,
+      file,
+      preview: URL.createObjectURL(file)
+    })
+  }
+}
+
+function removeFeedbackImage(uid) {
+  const index = feedbackImages.value.findIndex(image => image.uid === uid)
+  if (index < 0) return
+  URL.revokeObjectURL(feedbackImages.value[index].preview)
+  feedbackImages.value.splice(index, 1)
+  feedbackErrors.value = { ...feedbackErrors.value, images: '' }
+}
+
+function clearFeedbackImages() {
+  feedbackImages.value.forEach(image => URL.revokeObjectURL(image.preview))
+  feedbackImages.value = []
+  feedbackUploadProgress.value = { current: 0, total: 0 }
+}
+
+async function uploadFeedbackImage(file) {
+  const data = new FormData()
+  data.append('file', file)
+  const response = await request('/feedback/upload', 'POST', data)
+  if (!responseOkay(response)) throw new Error(responseMessage(response, '图片上传失败，请稍后重试。'))
+  return response.data.data
+}
+
 async function submitFeedback() {
   const valid = ['category', 'content', 'contact'].map(validateFeedbackField).every(Boolean)
   if (!valid) {
@@ -1657,15 +1758,34 @@ async function submitFeedback() {
 
   feedbackSaveState.value = 'loading'
   feedbackMessage.value = ''
-  const response = await request('/feedback', 'POST', {
-    category: feedbackForm.value.category,
-    content: feedbackForm.value.content.trim(),
-    contact: feedbackForm.value.contact.trim()
-  })
+  let response
+  try {
+    const uploadedImages = []
+    feedbackUploadProgress.value = { current: 0, total: feedbackImages.value.length }
+    for (const image of feedbackImages.value) {
+      uploadedImages.push(await uploadFeedbackImage(image.file))
+      feedbackUploadProgress.value = { ...feedbackUploadProgress.value, current: feedbackUploadProgress.value.current + 1 }
+    }
+    feedbackUploadProgress.value = { current: 0, total: 0 }
+    response = await request('/feedback', 'POST', {
+      category: feedbackForm.value.category,
+      content: feedbackForm.value.content.trim(),
+      contact: feedbackForm.value.contact.trim(),
+      images: uploadedImages
+    })
+  } catch (error) {
+    feedbackUploadProgress.value = { current: 0, total: 0 }
+    feedbackErrors.value = { ...feedbackErrors.value, images: error?.message || '图片上传失败，请稍后重试。' }
+    feedbackMessage.value = '反馈尚未提交，请检查图片后重试。'
+    feedbackSaveState.value = 'error'
+    return
+  }
 
   if (!responseOkay(response)) {
     const field = response?.data?.field
-    if (field && Object.prototype.hasOwnProperty.call(feedbackForm.value, field)) {
+    if (field === 'images') {
+      feedbackErrors.value = { ...feedbackErrors.value, images: responseMessage(response, '请重新选择反馈图片。') }
+    } else if (field && Object.prototype.hasOwnProperty.call(feedbackForm.value, field)) {
       feedbackErrors.value = { ...feedbackErrors.value, [field]: responseMessage(response, '请检查这一项。') }
     }
     feedbackMessage.value = responseMessage(response, '反馈提交失败，请稍后重试。')
@@ -1675,6 +1795,7 @@ async function submitFeedback() {
 
   feedbackHistory.value = [response.data.data.feedback, ...feedbackHistory.value]
   feedbackForm.value = { ...feedbackForm.value, content: '', contact: '' }
+  clearFeedbackImages()
   feedbackErrors.value = {}
   feedbackMessage.value = '反馈已提交，可在下方查看处理状态。'
   feedbackSaveState.value = 'success'
@@ -1756,6 +1877,7 @@ onBeforeUnmount(() => {
   if (profileDialog.value?.open) profileDialog.value.close()
   if (commandDialog.value?.open) commandDialog.value.close()
   revokeAvatarPreview()
+  clearFeedbackImages()
 })
 </script>
 
