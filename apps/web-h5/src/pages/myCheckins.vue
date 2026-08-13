@@ -509,8 +509,8 @@
         <div class="profile-editor">
           <div class="avatar-preview">
             <img
-              v-if="profileForm.avatar && !profilePreviewFailed"
-              :src="profileForm.avatar"
+              v-if="profileAvatarPreview && !profilePreviewFailed"
+              :src="profileAvatarPreview"
               alt="新头像预览"
               width="88"
               height="88"
@@ -521,22 +521,32 @@
           </div>
 
           <div class="form-field profile-avatar-field">
-            <label for="profile-avatar">头像图片地址 <span>选填</span></label>
+            <label>头像图片 <span>选填</span></label>
             <input
               id="profile-avatar"
-              v-model="profileForm.avatar"
-              type="url"
-              maxlength="500"
-              inputmode="url"
-              autocomplete="url"
-              placeholder="https://example.com/avatar.jpg"
+              ref="avatarInput"
+              class="avatar-file-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
               :aria-invalid="Boolean(profileErrors.avatar)"
-              @input="onProfileInput('avatar')"
-              @blur="validateProfileField('avatar')"
+              aria-describedby="profile-avatar-help"
+              @change="onAvatarFileSelected"
             />
+            <label class="avatar-upload-control" for="profile-avatar">
+              <span class="avatar-upload-icon"><ImageIcon :size="21" aria-hidden="true" /></span>
+              <span>
+                <strong>{{ avatarFile ? '重新选择图片' : '从本地选择图片' }}</strong>
+                <small>{{ avatarFile ? avatarFile.name : '支持 JPG、PNG、WebP，最大 5 MB' }}</small>
+              </span>
+            </label>
+            <button v-if="avatarFile" class="avatar-clear-button" type="button" @click="clearAvatarSelection">
+              移除已选图片
+            </button>
             <div class="field-message-slot" aria-live="polite">
               <p v-if="profileErrors.avatar" class="field-error">{{ profileErrors.avatar }}</p>
-              <p v-else class="field-help">当前版本使用公开的 http 或 https 图片地址。</p>
+              <p v-else id="profile-avatar-help" class="field-help">
+                {{ avatarFile ? `已选择 ${formatFileSize(avatarFile.size)}，保存资料时上传。` : '选择后可先预览，保存资料时正式上传。' }}
+              </p>
             </div>
           </div>
         </div>
@@ -745,6 +755,7 @@ const profileDialog = ref(null)
 const commandDialog = ref(null)
 const firstProfileField = ref(null)
 const commandInput = ref(null)
+const avatarInput = ref(null)
 
 const loading = ref(true)
 const loadError = ref('')
@@ -764,14 +775,16 @@ const profileForm = ref({
   realName: '',
   studentId: '',
   phone: '',
-  bio: '',
-  avatar: ''
+  bio: ''
 })
 const profileOriginal = ref({})
 const profileErrors = ref({})
 const profileMessage = ref('')
 const profileSaveState = ref('idle')
 const profilePreviewFailed = ref(false)
+const avatarFile = ref(null)
+const avatarPreviewUrl = ref('')
+const avatarUploadProgress = ref(0)
 
 const feedbackForm = ref({ category: 'suggestion', content: '', contact: '' })
 const feedbackErrors = ref({})
@@ -789,6 +802,7 @@ const collectionTabs = computed(() => [
 const displayName = computed(() => userInfo.value.username || userInfo.value.realName || '校园探索者')
 const profileCode = computed(() => String(userInfo.value.id || 'LOCAL').slice(-8).toUpperCase())
 const avatarSrc = computed(() => String(userInfo.value.avatar || '').trim())
+const profileAvatarPreview = computed(() => avatarPreviewUrl.value || avatarSrc.value)
 const unlockedIds = computed(() => new Set((userInfo.value.unlockedLocations || []).map(Number)))
 const lockingIds = computed(() => new Set((userInfo.value.lockingLocations || []).map(Number)))
 const unlockedCount = computed(() => unlockedIds.value.size)
@@ -1110,14 +1124,14 @@ function openProfileDialog() {
     realName: String(userInfo.value.realName || ''),
     studentId: String(userInfo.value.studentId || ''),
     phone: editablePhone(userInfo.value.phone),
-    bio: String(userInfo.value.bio || ''),
-    avatar: String(userInfo.value.avatar || '')
+    bio: String(userInfo.value.bio || '')
   }
   profileOriginal.value = { ...profileForm.value }
   profileErrors.value = {}
   profileMessage.value = ''
   profileSaveState.value = 'idle'
   profilePreviewFailed.value = false
+  clearAvatarSelection()
   profileDialog.value?.showModal()
   nextTick(() => firstProfileField.value?.focus())
 }
@@ -1127,6 +1141,7 @@ function closeProfileDialog() {
 }
 
 function resetProfileDialog() {
+  clearAvatarSelection()
   profileErrors.value = {}
   profileMessage.value = ''
   profileSaveState.value = 'idle'
@@ -1159,9 +1174,6 @@ function validateProfileField(field) {
   if (field === 'bio' && Array.from(value).length > 160) {
     message = '个人简介最多 160 个字符。'
   }
-  if (field === 'avatar' && value && !/^https?:\/\/[^\s]+$/i.test(value)) {
-    message = '头像地址需要以 http:// 或 https:// 开头。'
-  }
   profileErrors.value = { ...profileErrors.value, [field]: message }
   return !message
 }
@@ -1173,6 +1185,107 @@ function onProfileInput(field) {
   if (Object.prototype.hasOwnProperty.call(profileErrors.value, field)) validateProfileField(field)
 }
 
+function formatFileSize(bytes) {
+  if (!Number.isFinite(Number(bytes))) return ''
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function revokeAvatarPreview() {
+  if (avatarPreviewUrl.value) URL.revokeObjectURL(avatarPreviewUrl.value)
+  avatarPreviewUrl.value = ''
+}
+
+function clearAvatarSelection() {
+  revokeAvatarPreview()
+  avatarFile.value = null
+  avatarUploadProgress.value = 0
+  profilePreviewFailed.value = false
+  if (avatarInput.value) avatarInput.value.value = ''
+}
+
+function onAvatarFileSelected(event) {
+  const file = event.target.files?.[0] || null
+  profileMessage.value = ''
+  profileSaveState.value = 'idle'
+  profileErrors.value = { ...profileErrors.value, avatar: '' }
+  if (!file) return
+
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    clearAvatarSelection()
+    profileErrors.value = { ...profileErrors.value, avatar: '请选择 JPG、PNG 或 WebP 图片。' }
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    clearAvatarSelection()
+    profileErrors.value = { ...profileErrors.value, avatar: '图片不能超过 5 MB。' }
+    return
+  }
+
+  revokeAvatarPreview()
+  avatarFile.value = file
+  avatarPreviewUrl.value = URL.createObjectURL(file)
+  profilePreviewFailed.value = false
+}
+
+function avatarExtension(file) {
+  if (file.type === 'image/png') return 'png'
+  if (file.type === 'image/webp') return 'webp'
+  return 'jpg'
+}
+
+function putAvatarFile(putUrl, file) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', putUrl, true)
+    xhr.setRequestHeader('Content-Type', file.type || 'image/jpeg')
+    xhr.upload.onprogress = event => {
+      if (!event.lengthComputable) return
+      avatarUploadProgress.value = Math.min(99, Math.round((event.loaded / event.total) * 100))
+      profileMessage.value = `正在上传头像 ${avatarUploadProgress.value}%`
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        avatarUploadProgress.value = 100
+        resolve()
+      } else {
+        reject(new Error(`头像上传失败（${xhr.status}）`))
+      }
+    }
+    xhr.onerror = () => reject(new Error('头像上传网络异常，请稍后重试。'))
+    xhr.send(file)
+  })
+}
+
+async function uploadAvatar(file) {
+  profileMessage.value = '正在准备头像上传…'
+  const presignResponse = await request('/avatar/presign', 'POST', { ext: avatarExtension(file) })
+  if (!responseOkay(presignResponse)) {
+    throw new Error(responseMessage(presignResponse, '获取头像上传地址失败。'))
+  }
+
+  const { key, putUrl } = presignResponse.data.data || {}
+  if (!key || !putUrl) throw new Error('头像上传地址无效，请稍后重试。')
+  await putAvatarFile(putUrl, file)
+
+  profileMessage.value = '正在更新头像…'
+  const commitResponse = await request('/avatar/commit', 'POST', {
+    key,
+    size: file.size,
+    mime: file.type
+  })
+  if (!responseOkay(commitResponse)) {
+    throw new Error(responseMessage(commitResponse, '头像绑定失败，请重新上传。'))
+  }
+  return commitResponse.data.avatar_url
+}
+
+function persistProfileUser(updatedUser) {
+  userInfo.value = updatedUser
+  const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
+  localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...updatedUser }))
+}
+
 async function saveProfile() {
   const fields = Object.keys(profileForm.value)
   const payload = {}
@@ -1182,13 +1295,13 @@ async function saveProfile() {
     if (current !== original) payload[field] = current
   })
 
-  if (!Object.keys(payload).length) {
+  if (!Object.keys(payload).length && !avatarFile.value) {
     profileMessage.value = '没有需要保存的资料变更。'
     profileSaveState.value = 'error'
     return
   }
 
-  const valid = Object.keys(payload).every(validateProfileField)
+  const valid = Object.keys(payload).every(validateProfileField) && !profileErrors.value.avatar
   if (!valid) {
     profileMessage.value = '请先修正标记的资料项。'
     profileSaveState.value = 'error'
@@ -1197,23 +1310,42 @@ async function saveProfile() {
 
   profileSaveState.value = 'loading'
   profileMessage.value = ''
-  const response = await request('/user/profile', 'PUT', payload)
+  let updatedUser = { ...userInfo.value }
 
-  if (!responseOkay(response)) {
-    const field = response?.data?.field
-    if (field && Object.prototype.hasOwnProperty.call(profileForm.value, field)) {
-      profileErrors.value = { ...profileErrors.value, [field]: responseMessage(response, '请检查这一项。') }
+  if (Object.keys(payload).length) {
+    const response = await request('/user/profile', 'PUT', payload)
+    if (!responseOkay(response)) {
+      const field = response?.data?.field
+      if (field && Object.prototype.hasOwnProperty.call(profileForm.value, field)) {
+        profileErrors.value = { ...profileErrors.value, [field]: responseMessage(response, '请检查这一项。') }
+      }
+      profileMessage.value = responseMessage(response, '资料保存失败，请稍后重试。')
+      profileSaveState.value = 'error'
+      return
     }
-    profileMessage.value = responseMessage(response, '资料保存失败，请稍后重试。')
+    updatedUser = { ...updatedUser, ...response.data.data.userInfo }
+  }
+
+  try {
+    if (avatarFile.value) {
+      const avatar = await uploadAvatar(avatarFile.value)
+      updatedUser = { ...updatedUser, avatar }
+    }
+  } catch (error) {
+    persistProfileUser(updatedUser)
+    if (Object.keys(payload).length) profileOriginal.value = { ...profileForm.value }
+    const avatarError = error?.message || '头像上传失败，请稍后重试。'
+    profileMessage.value = Object.keys(payload).length
+      ? `其他资料已保存；${avatarError}`
+      : avatarError
     profileSaveState.value = 'error'
     return
   }
 
-  userInfo.value = { ...userInfo.value, ...response.data.data.userInfo }
+  persistProfileUser(updatedUser)
   profileOriginal.value = { ...profileForm.value }
   avatarFailed.value = false
-  const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
-  localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...userInfo.value }))
+  clearAvatarSelection()
   profileMessage.value = '资料已保存，主页内容已更新。'
   profileSaveState.value = 'success'
 }
@@ -1350,6 +1482,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
   profileDialog.value?.close()
   commandDialog.value?.close()
+  revokeAvatarPreview()
 })
 </script>
 

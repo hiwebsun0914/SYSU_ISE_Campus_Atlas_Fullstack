@@ -23,8 +23,8 @@ const {
 
 const cos = new COS({ SecretId: TENCENT_SECRET_ID, SecretKey: TENCENT_SECRET_KEY });
 
-// users.json 绝对路径
-const USERS_FILE = path.join(__dirname, '..', 'users.json');
+// users.json 绝对路径（与主服务、资料接口保持同一数据源）
+const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
 
 function readUsers() {
   try {
@@ -52,6 +52,28 @@ function buildAvatarKey(uid, ext = 'jpg') {
   const rand = Math.random().toString(36).slice(2, 8);
   return `UserImage/${uid}/${ts}_${rand}.${safeExt(ext)}`;
 }
+
+/** 获取仅用于当前用户头像目录的短期 PUT 地址 */
+router.post('/presign', auth, (req, res) => {
+  const key = buildAvatarKey(req.userId, req.body?.ext);
+  cos.getObjectUrl(
+    {
+      Bucket: COS_BUCKET,
+      Region: COS_REGION,
+      Key: key,
+      Method: 'PUT',
+      Sign: true,
+      Expires: 300
+    },
+    (error, data) => {
+      if (error || !data?.Url) {
+        console.error('[avatar/presign] error:', error || data);
+        return res.status(500).json({ code: 1, message: '获取头像上传地址失败' });
+      }
+      return res.json({ code: 0, data: { key, putUrl: data.Url } });
+    }
+  );
+});
 
 /** 获取直传凭证（STS）+ 生成 key（用 policy 严格限目录） */
 router.post('/init', auth, (req, res) => {
@@ -121,7 +143,11 @@ router.post('/commit', auth, async (req, res) => {
   const head = await cos.headObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }).catch(() => null);
   if (!head) return res.status(400).json({ code: 1, message: '对象不存在或未上传成功' });
 
-  if (size && Number(head.headers['content-length']) > Number(size) + 1024) {
+  const uploadedSize = Number(head.headers['content-length'] || 0);
+  if (uploadedSize > 5 * 1024 * 1024) {
+    return res.status(413).json({ code: 1, message: '头像图片不能超过 5 MB' });
+  }
+  if (size && uploadedSize > Number(size) + 1024) {
     return res.status(400).json({ code: 1, message: '文件大小不匹配' });
   }
 
