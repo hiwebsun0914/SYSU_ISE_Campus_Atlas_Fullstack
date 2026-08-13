@@ -9,23 +9,23 @@ const router = express.Router();
 const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
 
 const MAIN_TYPES = Object.freeze({
-  GROW: '长线练级人',
-  SIDE: '兴趣杂食生',
-  DONE: '结项专业户',
-  DDL: '截止线爆发户',
-  HOST: '群聊开场人',
-  SYNC: '同频搭子体',
-  TRY: '校园尝鲜家',
-  PING: '随机掉落派'
+  GROW: '长期积累型',
+  SIDE: '兴趣拓展型',
+  DONE: '目标完成型',
+  DDL: '临期爆发型',
+  HOST: '主动组织型',
+  SYNC: '同伴同行型',
+  TRY: '新鲜体验型',
+  PING: '随性探索型'
 });
 
 const SUB_TYPES = Object.freeze({
-  TREE: '榕树下挂机人',
-  MAPS: '地图全收集玩家',
-  RUN: '下课即远征',
-  LENS: '康乐园摄影蹲点王',
-  WIKI: '建筑考古学家',
-  BASE: '固定据点守护者'
+  STAY: '慢节奏停留型',
+  MAPS: '地标收集型',
+  RUN: '路线探索型',
+  LENS: '视觉观察型',
+  WIKI: '维基百科型',
+  BASE: '熟悉地点型'
 });
 
 const BADGES = Object.freeze({
@@ -188,15 +188,11 @@ router.put('/personality', auth, (req, res) => {
   try {
     const payload = req.body && typeof req.body === 'object' ? req.body : {};
     const mainCode = cleanText(payload.mainCode, 8).toUpperCase();
-    const subCode = cleanText(payload.subCode, 8).toUpperCase();
+    const requestedSubCode = cleanText(payload.subCode, 8).toUpperCase();
+    const subCode = requestedSubCode === 'TREE' ? 'STAY' : requestedSubCode;
 
     if (!MAIN_TYPES[mainCode] || !SUB_TYPES[subCode]) {
       return sendValidation(res, 'personality', 'ISETI 结果无效，请重新完成测试。', 'PERSONALITY_INVALID');
-    }
-
-    const placeId = Number(payload.placeId);
-    if (!Number.isInteger(placeId) || placeId <= 0) {
-      return sendValidation(res, 'placeId', '推荐地点无效，请重新完成测试。', 'PERSONALITY_INVALID');
     }
 
     const badgeCodes = Array.isArray(payload.badges)
@@ -204,17 +200,17 @@ router.put('/personality', auth, (req, res) => {
       : [];
 
     const personality = {
-      testId: 'PLACE_AT_SYSU',
-      version: 1,
+      testId: 'PLACE',
+      version: 2,
       mainCode,
       mainName: MAIN_TYPES[mainCode],
       subCode,
       subName: SUB_TYPES[subCode],
       badges: badgeCodes.map(code => ({ code, name: BADGES[code] })),
-      placeId,
-      placeName: cleanText(payload.placeName, 60),
-      line: cleanText(payload.line, 180),
-      task: cleanText(payload.task, 180),
+      placeId: null,
+      placeName: '',
+      line: '',
+      task: '',
       completedAt: Date.now()
     };
 
