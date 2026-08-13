@@ -185,7 +185,7 @@ function goHiddenCheckpoints() {
   router.push('/hidden-checkpoints')
 }
 
-function onRouteSelect(route) {
+async function onRouteSelect(route) {
   if (!route) {
     // 取消选中：恢复全量地点 + 默认视野 + 清除路线覆盖物 + 退出探索
     selectedRoute.value = null
@@ -202,36 +202,24 @@ function onRouteSelect(route) {
   activeCategory.value = 'all' // 路线模式下重置分类
   updateLocations()
 
-  // 自动调整地图视野
-  const ids = route.points ?? []
-  const coords = ids
-    .map(id => getPlaceById(id))
-    .filter(Boolean)
-    .map(p => p.lnglat)
+  // 地点列表更新后立即进入路线显示模式：仅保留路线点、顺序编号和连线
+  await nextTick()
+  await campusMapRef.value?.startRoute(route)
 
-  if (coords.length > 0) {
-    nextTick(() => {
-      campusMapRef.value?.fitToBounds(coords)
-    })
-  }
-
-  console.log('[Route] selected:', route.name, 'points:', ids)
+  console.log('[Route] selected:', route.name, 'points:', route.points ?? [])
 }
 
 /** 开始探索：初始化打卡状态，显示路线，定位第一站 */
-function onStartExplore(route) {
+async function onStartExplore(route) {
   if (!route || !route.points?.length) return
 
   // 选中并显示路线
   if (selectedRoute.value?.id !== route.id) {
-    onRouteSelect(route)
+    await onRouteSelect(route)
   }
 
   // 初始化探索状态
   startExplore(route)
-
-  // 绘制路线覆盖物
-  campusMapRef.value?.startRoute(route)
 
   // 打开第一站卡片并定位
   if (currentPlace.value) {
