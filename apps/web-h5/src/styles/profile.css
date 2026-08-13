@@ -1912,6 +1912,19 @@ body {
   border: 0;
 }
 
+.profile-workbench-single {
+  display: block;
+}
+
+.profile-workbench-single .workbench-side {
+  display: block;
+}
+
+.profile-workbench-single .feedback-panel {
+  width: min(100%, 48rem);
+  margin: 0 auto;
+}
+
 .workbench-side {
   background: transparent;
 }
@@ -2073,6 +2086,10 @@ body {
   .profile-workbench {
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 30%);
     gap: var(--space-lg);
+  }
+
+  .profile-workbench-single {
+    display: block;
   }
 
   .workbench-main,

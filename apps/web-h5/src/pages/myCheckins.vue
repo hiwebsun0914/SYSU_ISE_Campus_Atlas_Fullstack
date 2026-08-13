@@ -114,8 +114,8 @@
           </div>
         </section>
 
-        <div class="profile-workbench">
-          <div class="workbench-main">
+        <div class="profile-workbench profile-workbench-single">
+          <div v-if="false" class="workbench-main">
             <section class="profile-section atlas-section" aria-labelledby="atlas-title">
               <div class="section-heading section-heading-split">
                 <div>
@@ -338,7 +338,7 @@
           </div>
 
           <aside class="workbench-side">
-            <section class="side-panel personality-panel" aria-labelledby="personality-title">
+            <section v-if="false" class="side-panel personality-panel" aria-labelledby="personality-title">
               <div class="section-heading">
                 <p class="eyebrow">ISETI / PLACE @ SYSU</p>
                 <h2 id="personality-title">校园人格</h2>
