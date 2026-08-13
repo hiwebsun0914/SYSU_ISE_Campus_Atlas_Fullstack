@@ -463,6 +463,7 @@ onBeforeUnmount(() => {
   --text: #102a2e;
   --muted: #5e7271;
   --border: #d6e4df;
+  --mobile-nav-clearance: calc(86px + env(safe-area-inset-bottom, 0px));
   position: relative;
   width: 100%;
   height: 100vh;
@@ -472,7 +473,7 @@ onBeforeUnmount(() => {
   background: var(--canvas);
   overflow: hidden;
   color: var(--text);
-  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(--mobile-nav-clearance);
 }
 
 .map-header {
@@ -522,6 +523,8 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   overflow: hidden;
   background: #e8efe9;
 }
@@ -595,7 +598,7 @@ onBeforeUnmount(() => {
   z-index: 25;
   background: var(--surface);
   height: 85%;
-  padding: 44px 16px 16px;
+  padding: 44px 16px var(--mobile-nav-clearance);
   display: flex;
   flex-direction: column;
 }
@@ -868,5 +871,6 @@ onBeforeUnmount(() => {
 
 @media (min-width: 1024px) {
   .map-shell { padding-bottom: 0; }
+  .place-sheet { padding-bottom: 16px; }
 }
 </style>
