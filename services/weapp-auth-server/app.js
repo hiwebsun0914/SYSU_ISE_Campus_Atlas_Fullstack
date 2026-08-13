@@ -1,4 +1,4 @@
-// app.js — 登录/注册 + 头像直传 COS + 角色/打卡/漂流瓶 + 访问日志 + /api 兼容
+// app.js — 登录/注册 + 头像直传 COS + 角色/打卡 + 访问日志 + /api 兼容
 require('dotenv').config();
 
 const express = require('express');
@@ -12,7 +12,6 @@ const path = require('path');
 const auth = require('./middleware/auth');        // 解析 JWT -> req.userId
 const avatarRouter = require('./routes/avatar');  // 头像上传
 const checkinRouter = require('./routes/checkin');// 打卡/通用上传
-const bottleRouter  = require('./routes/bottle');
 const futureCardsRouter = require('./routes/futureCards');
 const adminRouter   = require('./routes/admin');
 const submissionsRouter = require('./routes/submissions');
@@ -127,7 +126,6 @@ app.use((req, res, next) => {
 /* ========= 子路由 ========= */
 app.use('/avatar',  avatarRouter);
 app.use('/checkin', checkinRouter);
-app.use('/bottle',  bottleRouter);
 app.use('/future-cards', futureCardsRouter);
 app.use('/submissions',  submissionsRouter);
 app.use('/user', profileRouter);
@@ -135,8 +133,7 @@ app.use('/feedback', feedbackRouter);
 app.use('/admin',   auth, adminOnly, adminRouter);
 
 /* ========= 文件路径 ========= */
-const USERS_FILE   = path.resolve(process.env.USERS_FILE || path.join(__dirname, 'users.json'));
-const BOTTLES_FILE = path.join(__dirname, 'bottles.json');
+const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, 'users.json'));
 
 /* ========= 常量 ========= */
 const DEFAULT_AVATAR = 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/NumberImage.png';
@@ -156,7 +153,6 @@ function ensureFile(file, fallbackJson = '[]') {
   }
 }
 ensureFile(USERS_FILE, '[]');
-ensureFile(BOTTLES_FILE, '[]');
 
 /* ========= 通用读写 ========= */
 function readUsers() {
@@ -175,23 +171,6 @@ function writeUsers(list) {
     console.error('写入 users.json 失败：', e);
   }
 }
-function readBottles() {
-  try {
-    const raw = fs.readFileSync(BOTTLES_FILE, 'utf8') || '[]';
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('读取 bottles.json 失败：', e);
-    return [];
-  }
-}
-function writeBottles(list) {
-  try {
-    fs.writeFileSync(BOTTLES_FILE, JSON.stringify(list, null, 2), 'utf8');
-  } catch (e) {
-    console.error('写入 bottles.json 失败：', e);
-  }
-}
-
 function findUserById(id) {
   return readUsers().find(u => String(u.id) === String(id));
 }
@@ -258,8 +237,6 @@ function createUser({ username, passwordPlain, phone, realName }) {
     completedRoutes: [],
     checkinRecords: [],
     points: 0,
-    bottlesThrow: [],
-    bottlesReceived: [],
     lastToken: '',
     createdAt: now,
     updatedAt: now
@@ -532,8 +509,6 @@ app.get('/auth/me', auth, (req, res) => {
       lockingLocations: u.lockingLocations || [],
       completedRoutes: u.completedRoutes || [],
       checkinRecords: u.checkinRecords || [],
-      bottlesThrow: u.bottlesThrow || [],
-      bottlesReceived: u.bottlesReceived || [],
       createdAt: u.createdAt,
       updatedAt: u.updatedAt
     }
@@ -617,197 +592,6 @@ async function handleLatestMyCheckin(req, res) {
 app.get('/checkin/photo',        auth, handleLatestMyCheckin);
 app.get('/checkin/photo/latest', auth, handleLatestMyCheckin);
 
-/* ========= 漂流瓶 ========= */
-app.post('/bottle/throw', auth, (req, res) => {
-  const { text = '', photo } = req.body || {};
-  if (!photo || typeof photo !== 'string') {
-    return res.json({ code: 1, message: '缺少图片地址 photo' });
-  }
-  if (text.length > 120) {
-    return res.json({ code: 1, message: '文字最多 120 字' });
-  }
-
-  const users = readUsers();
-  const meIdx = users.findIndex(u => String(u.id) === String(req.userId));
-  if (meIdx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
-
-  const bottles = readBottles();
-
-  const id = Date.now();
-  const now = Date.now();
-  const one = {
-    id,
-    ownerId: req.userId,
-    text: String(text || ''),
-    photo: String(photo),
-    uploadTime: now,
-    pickedBy: null,
-    pickTime: null
-  };
-  bottles.push(one);
-  writeBottles(bottles);
-
-  users[meIdx].bottlesThrow = users[meIdx].bottlesThrow || [];
-  users[meIdx].bottlesThrow.push(id);
-  users[meIdx].updatedAt = now;
-  writeUsers(users);
-
-  return res.json({ code: 0, bottle: one });
-});
-
-app.post('/bottle/pick', auth, (req, res) => {
-  const users = readUsers();
-  const meIdx = users.findIndex(u => String(u.id) === String(req.userId));
-  if (meIdx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
-
-  const bottles = readBottles();
-
-  // 所有可捡候选（未被任何人捡过，且不是自己扔的）
-  const candidateIdxs = bottles.reduce((arr, b, i) => {
-    if (!b.pickedBy && String(b.ownerId) !== String(req.userId)) arr.push(i);
-    return arr;
-  }, []);
-
-  if (candidateIdxs.length === 0) {
-    return res.json({ code: 0, bottle: null, message: '暂无可捡的瓶子' });
-  }
-
-  // 随机挑一只；若并发被抢，再尝试一次
-  function pickRandomIndex(excludeIdx = null) {
-    const pool = excludeIdx == null
-      ? candidateIdxs
-      : candidateIdxs.filter(i => i !== excludeIdx);
-    if (pool.length === 0) return null;
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-
-  let chosenIdx = pickRandomIndex();
-  // 并发保护：再次确认还未被捡
-  if (chosenIdx == null || bottles[chosenIdx].pickedBy) {
-    const retryIdx = pickRandomIndex(chosenIdx);
-    if (retryIdx == null || bottles[retryIdx].pickedBy) {
-      return res.json({ code: 0, bottle: null, message: '手慢了，换一个试试' });
-    }
-    chosenIdx = retryIdx;
-  }
-
-  const now = Date.now();
-  bottles[chosenIdx].pickedBy = req.userId;
-  bottles[chosenIdx].pickTime = now;
-  writeBottles(bottles);
-
-  const chosen = bottles[chosenIdx];
-  users[meIdx].bottlesReceived = Array.isArray(users[meIdx].bottlesReceived) ? users[meIdx].bottlesReceived : [];
-  if (!users[meIdx].bottlesReceived.includes(chosen.id)) {
-    users[meIdx].bottlesReceived.unshift(chosen.id);
-  }
-  users[meIdx].updatedAt = now;
-  writeUsers(users);
-
-  return res.json({ code: 0, bottle: chosen });
-});
-
-
-// app.js
-app.get('/bottle/my-picked', auth, (req, res) => {
-  try {
-    const meId = String(req.userId);
-    const all = (typeof readBottles === 'function' ? readBottles() : []) || [];
-
-    // 汇总"我捡过的"，对同一瓶子取我最新的一次 pickTime
-    const mineAll = all
-      .map(b => {
-        let myLatestPickTime = null;
-
-        // 新结构：picks[]
-        if (Array.isArray(b.picks) && b.picks.length) {
-          for (const p of b.picks) {
-            if (String(p.userId) === meId) {
-              const t = Number(p.pickTime || 0);
-              if (!Number.isNaN(t)) {
-                myLatestPickTime = myLatestPickTime == null ? t : Math.max(myLatestPickTime, t);
-              }
-            }
-          }
-        }
-
-        // 旧结构回退：pickedBy/pickTime
-        if (myLatestPickTime == null && String(b.pickedBy) === meId) {
-          const t = Number(b.pickTime || 0);
-          if (!Number.isNaN(t)) myLatestPickTime = t;
-        }
-
-        if (myLatestPickTime == null) return null;
-
-        return {
-          id: b.id,
-          ownerId: b.ownerId,
-          ownerName: b.ownerName || '',
-          ownerAvatar: b.ownerAvatar || '',
-          text: b.text || '',
-          photo: b.photo || '',
-          uploadTime: Number(b.uploadTime || 0),
-          pickTime: myLatestPickTime,
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => (b.pickTime || 0) - (a.pickTime || 0)); // 最近拾取在前
-
-    const q = req.query || {};
-    const hasPaging = q.limit !== undefined || q.offset !== undefined;
-
-    // 旧行为：不带分页参数，返回全量
-    if (!hasPaging) {
-      return res.json({ code: 0, list: mineAll });
-    }
-
-    // 新行为：分页
-    const DEFAULT_LIMIT = 6;
-    const MAX_LIMIT = 50;
-
-    let limit = parseInt(q.limit, 10);
-    if (!Number.isFinite(limit) || limit <= 0) limit = DEFAULT_LIMIT;
-    limit = Math.min(limit, MAX_LIMIT);
-
-    let offset = parseInt(q.offset, 10);
-    if (!Number.isFinite(offset) || offset < 0) offset = 0;
-
-    const total = mineAll.length;
-    if (offset > total) offset = total;
-
-    const page = mineAll.slice(offset, offset + limit);
-    const hasMore = offset + limit < total;
-
-    return res.json({
-      code: 0,
-      list: page,
-      hasMore,
-      total,
-      offset,
-      limit,
-      nextOffset: Math.min(offset + limit, total),
-    });
-  } catch (e) {
-    console.error('[GET /bottle/my-picked] error:', e);
-    return res.status(500).json({ code: 1, message: 'server error' });
-  }
-});
-
-
-app.get('/bottle/my-throw', auth, (_req, res) => {
-  const bottles = readBottles()
-    .filter(b => b.ownerId === _req.userId)
-    .sort((a, b) => (b.uploadTime || 0) - (a.uploadTime || 0));
-  return res.json({ code: 0, list: bottles });
-});
-
-app.get('/bottle/quota', auth, (req, res) => {
-  const u = findUserById(req.userId);
-  if (!u) return res.status(401).json({ code: 1, message: '未登录' });
-  const quota = Array.isArray(u.unlockedLocations) ? u.unlockedLocations.length : 0;
-  return res.json({ code: 0, quota });
-});
-
 /* ========= 管理端 ========= */
 function adminOnly(req, res, next) {
   const u = findUserById(req.userId);
@@ -828,8 +612,6 @@ app.get('/admin/users', auth, adminOnly, (_req, res) => {
     role: effectiveRole(u),
     unlockedLocations: u.unlockedLocations || [],
     lockingLocations: u.lockingLocations || [],
-    bottlesThrow: u.bottlesThrow || [],
-    bottlesReceived: u.bottlesReceived || [],
     createdAt: u.createdAt,
     updatedAt: u.updatedAt
   }));
@@ -878,8 +660,6 @@ function ensureDevUser() {
     lockingLocations: [],
     completedRoutes: [],
     checkinRecords: [],
-    bottlesThrow: [],
-    bottlesReceived: [],
     lastToken: '',
     lastLogin: now,
     createdAt: now,

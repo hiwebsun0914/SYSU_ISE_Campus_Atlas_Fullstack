@@ -54,26 +54,17 @@ const safeExt = (e = 'jpg') => {
   return ['jpg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
 };
 
-const pickDir = (req) => {
-  const d = String(req.body?.dir || '').toLowerCase();
-  // 仅允许两个命名空间：checkin / Bottle
-  if (d === 'bottle' || d === 'bottles') return 'Bottle';
-  return 'checkin';
-};
-
 // checkin/<uid>__<slug>/<locationId>/<ts_rand>.<ext>
-// 或 Bottle/<uid>__<slug>/<locationId>/<ts_rand>.<ext>
 function buildKey(req, ext = 'jpg') {
   const u = req.user?.username
     ? { username: req.user.username }
     : getUserById(req.userId) || {};
-  const dir = pickDir(req);
   const uid = req.userId;
   const slug = safeSlug(u.username || 'user');
   const loc = (req.body?.locationId || 'general').toString();
   const ts = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
-  return `${dir}/${uid}__${slug}/${loc}/${ts}_${rand}.${safeExt(ext)}`;
+  return `checkin/${uid}__${slug}/${loc}/${ts}_${rand}.${safeExt(ext)}`;
 }
 
 // ======= 取图相关：前缀、签名、公网 URL、列举 =======
@@ -90,12 +81,9 @@ function getUserPrefix(req, locationId) {
 function getUserRootPrefixes(req) {
   const slug = getUserSlug(req);
   const uid  = req.userId;
-  return [
-    `checkin/${uid}__${slug}/`,
-    `Bottle/${uid}__${slug}/`,
-  ];
+  return [`checkin/${uid}__${slug}/`];
 }
-// 校验某 key 是否属于当前用户（checkin/ 或 Bottle/ 任一目录均可）
+// 校验某 key 是否属于当前用户的打卡目录
 function ensureKeyOwned(req, key) {
   const roots = getUserRootPrefixes(req);
   return !!roots.find(p => String(key || '').startsWith(p));
@@ -141,20 +129,7 @@ async function listObjectsByPrefix(prefix, max = 1000) {
 // ==== A. 预签名 PUT ====
 router.post('/presign', auth, (req, res) => {
   const ext = req.body?.ext;
-  const dir = (req.body?.dir || '').toString();   // 可选：'Bottle'
-  const uid = req.userId;
-  const slug = safeSlug(req.user?.username || 'user');
-
-  let key;
-  if (dir && /^[-_/A-Za-z0-9]+$/.test(dir)) {
-    // ✅ 用于漂流瓶：Bucket 中的 Bottle/ 目录
-    const ts = Date.now();
-    const rand = Math.random().toString(36).slice(2, 8);
-    key = `${dir}/${uid}__${slug}/${ts}_${rand}.${safeExt(ext)}`;
-  } else {
-    // ✅ 正常打卡：checkin/<uid>__<slug>/<locationId>/<ts_rand>.<ext>
-    key = buildKey(req, ext);
-  }
+  const key = buildKey(req, ext);
 
   cos.getObjectUrl(
     { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300 },
@@ -223,11 +198,9 @@ router.post('/commit', auth, async (req, res) => {
   const uid = req.userId;
   const slug = safeSlug(req.user?.username || 'user');
 
-  // 允许 Bottle/ 前缀 或 checkin/<uid>__<slug>/ 前缀
-  const okPrefix1 = `checkin/${uid}__${slug}/`;
-  const okPrefix2 = `Bottle/${uid}__${slug}/`;
+  const ownedPrefix = `checkin/${uid}__${slug}/`;
 
-  if (!key || !(key.startsWith(okPrefix1) || key.startsWith(okPrefix2))) {
+  if (!key || !key.startsWith(ownedPrefix)) {
     return res.status(400).json({ code: 1, message: '非法 key' });
   }
 
@@ -445,7 +418,7 @@ router.get('/photo/sign', auth, async (req, res) => {
     const { key } = req.query || {};
     if (!key) return res.status(400).json({ code: 1, message: 'key required' });
 
-    // 安全校验：必须属于该用户（checkin/ 或 Bottle/ 根目录）
+    // 安全校验：必须属于该用户的打卡根目录
     if (!ensureKeyOwned(req, key)) {
       return res.status(403).json({ code: 1, message: 'forbidden key' });
     }

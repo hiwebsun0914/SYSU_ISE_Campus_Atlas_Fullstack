@@ -140,8 +140,6 @@ ADMIN_OWNER_USERNAMES=campus-owner,backup-owner
 - `lockingLocations`
 - `completedRoutes`
 - `checkinRecords`
-- `bottlesThrow`
-- `bottlesReceived`
 - `createdAt`、`updatedAt`
 
 管理员路由守卫也使用本接口重新确认 `role`。
@@ -351,7 +349,6 @@ ADMIN_OWNER_USERNAMES=campus-owner,backup-owner
 | `FEEDBACK_FILE` | `services/weapp-auth-server/feedback.json` | 用户反馈 |
 | `LOCATION_SETTINGS_FILE` | `services/weapp-auth-server/location-settings.json` | 地点内容与积分覆盖设置 |
 | `SUBMISSIONS_FILE` | `services/weapp-auth-server/submissions.json` | 投稿与审核状态 |
-| `BOTTLES_FILE` | `services/weapp-auth-server/bottles.json` | 漂流瓶数据及兼容统计 |
 
 这些都是运行数据，已被 `.gitignore` 排除，不能提交到 PR。生产部署应将文件放在版本发布目录之外的持久化卷并定期备份；多实例或高并发部署应迁移到数据库，避免多个进程并发写 JSON。
 
@@ -364,7 +361,6 @@ USERS_FILE=/srv/campus-atlas-data/users.json
 FEEDBACK_FILE=/srv/campus-atlas-data/feedback.json
 LOCATION_SETTINGS_FILE=/srv/campus-atlas-data/location-settings.json
 SUBMISSIONS_FILE=/srv/campus-atlas-data/submissions.json
-BOTTLES_FILE=/srv/campus-atlas-data/bottles.json
 ADMIN_OWNER_IDS=<稳定的用户 ID>
 CHECKIN_ANOMALY_DISTANCE_M=200
 CHECKIN_PENDING_STALE_HOURS=48

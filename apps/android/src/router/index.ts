@@ -10,7 +10,6 @@ export default createRouter({
     // 其余页面都用懒加载（就算文件没就位也不影响首页）
     { path: '/myCheckins',   component: () => import('../pages/myCheckins.vue') },
     { path: '/rank',         component: () => import('../pages/rank.vue') },
-    { path: '/message',      component: () => import('../pages/message.vue') },
     { path: '/signin',       component: () => import('../pages/signin.vue') },
     { path: '/connect',      component: () => import('../pages/connect.vue') },
 

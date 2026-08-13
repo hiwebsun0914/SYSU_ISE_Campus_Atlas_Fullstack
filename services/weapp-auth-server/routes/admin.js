@@ -11,8 +11,7 @@ const { effectiveRole, isAdminRole, canManageRoles, isConfiguredOwner } = requir
 const { getLocations, getLocation, updateLocation } = require('../lib/locationSettings');
 
 // ====== 常量 / 配置 ======
-const USERS_FILE   = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
-const BOTTLES_FILE = path.resolve(process.env.BOTTLES_FILE || path.join(__dirname, '..', 'bottles.json'));
+const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
 const DEFAULT_AVATAR = 'https://img.yzcdn.cn/vant/user-active.png';
 const DEFAULT_ROLE   = 'visitor';
 
@@ -62,8 +61,6 @@ function readUsers() {
       completedRoutes  : Array.isArray(u.completedRoutes)   ? u.completedRoutes   : [],
       checkinRecords   : Array.isArray(u.checkinRecords)    ? u.checkinRecords    : [],
       pendingCheckins  : Array.isArray(u.pendingCheckins)   ? u.pendingCheckins   : [],
-      bottlesThrow    : Array.isArray(u.bottlesThrow)       ? u.bottlesThrow       : [],
-      bottlesReceived : Array.isArray(u.bottlesReceived)    ? u.bottlesReceived    : [],
       points: Number.isFinite(Number(u.points)) ? Number(u.points) : 0,
     }));
   } catch (e) {
@@ -77,21 +74,6 @@ function writeUsers(list) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf8');
   } catch (e) {
     console.error('[admin] writeUsers fail:', e);
-  }
-}
-
-// 读取 bottles.json —— 兼容数组或 { bottles: [] }，统一返回“瓶子数组”
-function readBottlesArray() {
-  ensureFile(BOTTLES_FILE, '[]');
-  try {
-    const raw = fs.readFileSync(BOTTLES_FILE, 'utf8') || '[]';
-    const data = JSON.parse(raw);
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.bottles)) return data.bottles;
-    return [];
-  } catch (e) {
-    console.error('[admin] readBottlesArray fail:', e);
-    return [];
   }
 }
 
@@ -141,23 +123,12 @@ function listLatestPhoto(uid, username, locationId) {
   });
 }
 
-// ====== 用户列表（含统计：unlocked/locking/threw） ======
+// ====== 用户列表（含打卡统计） ======
 // GET /admin/users
 router.get('/users', auth, adminOnly, (req, res) => {
-  const users   = readUsers();
-  const bottles = readBottlesArray();
-
-  // 从 bottles.json 统计每个用户真实扔出的数量
-  const thrownByOwner = bottles.reduce((acc, b) => {
-    const k = String(b.ownerId);
-    acc[k] = (acc[k] || 0) + 1;
-    return acc;
-  }, {});
+  const users = readUsers();
 
   const list = users.map(u => {
-    const threwFromUsers = Array.isArray(u.bottlesThrow) ? u.bottlesThrow.length : 0;
-    const threwFromBottle= thrownByOwner[String(u.id)] || 0;
-    const threw = Math.max(threwFromUsers, threwFromBottle); // 取最大更稳健
     return {
       id: u.id,
       username: u.username,
@@ -167,7 +138,6 @@ router.get('/users', auth, adminOnly, (req, res) => {
       avatar: u.avatar,
       unlocked: u.unlockedLocations.length,
       locking : u.lockingLocations.length,
-      threw,
       points: u.points,
       protectedOwner: isConfiguredOwner(u) || String(u.role || '') === 'owner',
       createdAt: u.createdAt || null,
@@ -594,57 +564,6 @@ router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
   writeUsers(users);
 
   res.json({ code: 0, message: '已驳回' });
-});
-
-// ====== 漂流瓶列表（支持 all / picked / unpicked，兼容 picks 与 pickedBy） ======
-// GET /admin/bottles?status=all|picked|unpicked
-router.get('/bottles', auth, adminOnly, (req, res) => {
-  const status  = String(req.query.status || 'all').toLowerCase();
-
-  const bottles = readBottlesArray();
-  const users   = readUsers();
-
-  const id2name = {};
-  users.forEach(u => { id2name[String(u.id)] = u.username || ''; });
-
-  // 统一“是否被捡过”的判断 & 统一 picks 结构
-  const norm = bottles.map(b => {
-    let picks = [];
-    if (Array.isArray(b.picks)) {
-      picks = b.picks;
-    } else if (b.pickedBy) {
-      picks = [{ userId: b.pickedBy, pickTime: b.pickTime || 0 }];
-    }
-    const picked = picks.length > 0;
-
-    const picksWithName = picks.map(p => ({
-      ...p,
-      name: id2name[String(p.userId)] || ''
-    }));
-
-    return {
-      ...b,
-      picks: picksWithName,
-      _pickerNames: picksWithName.map(p => p.name).filter(Boolean).join('、'),
-      _picked: picked
-    };
-  });
-
-  let list = norm;
-  if (status === 'picked')   list = norm.filter(b => b._picked);
-  if (status === 'unpicked') list = norm.filter(b => !b._picked);
-
-  const all      = norm.length;
-  const picked   = norm.filter(b => b._picked).length;
-  const unpicked = all - picked;
-
-  // 按上传时间/ID 倒序
-  list.sort((a, b) =>
-    (Number(b.uploadTime || 0) - Number(a.uploadTime || 0)) ||
-    (Number(b.id || 0)         - Number(a.id || 0))
-  );
-
-  return res.json({ code: 0, list, stat: { all, picked, unpicked } });
 });
 
 // ================================================================

@@ -47,8 +47,6 @@ function initDb() {
       lockingLocations TEXT DEFAULT '[]',
       completedRoutes TEXT DEFAULT '[]',
       checkinRecords TEXT DEFAULT '[]',
-      bottlesThrow TEXT DEFAULT '[]',
-      bottlesReceived TEXT DEFAULT '[]',
       lastToken TEXT DEFAULT '',
       lastLogin INTEGER,
       createdAt INTEGER,
@@ -77,8 +75,6 @@ function rowToUser(row) {
     lockingLocations: fromJson(row.lockingLocations),
     completedRoutes: fromJson(row.completedRoutes),
     checkinRecords: fromJson(row.checkinRecords),
-    bottlesThrow: fromJson(row.bottlesThrow),
-    bottlesReceived: fromJson(row.bottlesReceived),
     lastToken: row.lastToken || '',
     lastLogin: row.lastLogin,
     createdAt: row.createdAt,
@@ -141,10 +137,9 @@ function createUser(user) {
     const sql = `
       INSERT INTO users (
         id, openId, nickName, avatarUrl, role, points,
-        unlockedLocations, lockingLocations, completedRoutes, checkinRecords,
-        bottlesThrow, bottlesReceived, lastToken,
+        unlockedLocations, lockingLocations, completedRoutes, checkinRecords, lastToken,
         lastLogin, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
     const params = [
       user.id,
@@ -157,8 +152,6 @@ function createUser(user) {
       toJson(user.lockingLocations),
       toJson(user.completedRoutes),
       toJson(user.checkinRecords),
-      toJson(user.bottlesThrow),
-      toJson(user.bottlesReceived),
       user.lastToken || '',
       user.lastLogin,
       user.createdAt,
@@ -179,10 +172,9 @@ function upsertUser(user) {
     const sql = `
       INSERT INTO users (
         id, openId, nickName, avatarUrl, role, points,
-        unlockedLocations, lockingLocations, completedRoutes, checkinRecords,
-        bottlesThrow, bottlesReceived, lastToken,
+        unlockedLocations, lockingLocations, completedRoutes, checkinRecords, lastToken,
         lastLogin, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         openId = excluded.openId,
         nickName = excluded.nickName,
@@ -193,8 +185,6 @@ function upsertUser(user) {
         lockingLocations = excluded.lockingLocations,
         completedRoutes = excluded.completedRoutes,
         checkinRecords = excluded.checkinRecords,
-        bottlesThrow = excluded.bottlesThrow,
-        bottlesReceived = excluded.bottlesReceived,
         lastToken = excluded.lastToken,
         lastLogin = excluded.lastLogin,
         updatedAt = excluded.updatedAt
@@ -210,8 +200,6 @@ function upsertUser(user) {
       toJson(user.lockingLocations),
       toJson(user.completedRoutes),
       toJson(user.checkinRecords),
-      toJson(user.bottlesThrow),
-      toJson(user.bottlesReceived),
       user.lastToken || '',
       user.lastLogin,
       user.createdAt,
