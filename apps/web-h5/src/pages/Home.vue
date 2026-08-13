@@ -123,36 +123,11 @@
 
       </section>
 
-      <section class="utility-row" aria-labelledby="utility-title">
-        <div>
-          <p class="section-index">SUPPORT / 反馈入口</p>
-          <h2 id="utility-title">需要帮助时</h2>
-          <p class="support-copy">账号、打卡或页面内容异常，可以直接把问题交给维护同学处理。</p>
-        </div>
-        <div class="utility-links">
-          <RouterLink to="/connect"><LifeBuoy :size="20" aria-hidden="true" /><span><strong>问题反馈</strong><small>遇到问题，告诉维护同学</small></span><ChevronRight :size="19" aria-hidden="true" /></RouterLink>
-        </div>
-      </section>
-
       <footer class="site-footer">
         <span>中山大学智能工程学院 · 2026 级迎新</span>
         <span class="footer-code">SYSU / ISE / GZ</span>
       </footer>
     </main>
-
-    <nav class="mobile-nav" aria-label="移动端主要导航">
-      <RouterLink to="/" aria-current="page"><House :size="21" aria-hidden="true" /><span>首页</span></RouterLink>
-      <RouterLink to="/map"><MapPinned :size="21" aria-hidden="true" /><span>地图</span></RouterLink>
-      <button type="button" @click="goProtected('/myCheckins')"><CircleUserRound :size="21" aria-hidden="true" /><span>我的</span></button>
-    </nav>
-
-    <Transition name="toast">
-      <div v-if="toastMessage" class="coming-toast" role="status" aria-live="polite">
-        <Clock3 :size="20" aria-hidden="true" />
-        <span><strong>{{ toastMessage }}</strong>正在认真筹备中，开放后会在这里通知你。</span>
-        <button type="button" aria-label="关闭提示" @click="toastMessage = ''"><X :size="18" aria-hidden="true" /></button>
-      </div>
-    </Transition>
 
     <Transition name="welcome">
       <div v-if="welcomeVisible" class="welcome-layer" role="presentation" @mousedown.self="dismissWelcome">
@@ -178,8 +153,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ArrowRight, ChevronRight, CircleUserRound, Clock3, House,
-  LifeBuoy, MapPinned, Navigation, ScanFace,
+  ArrowRight, MapPinned, Navigation, ScanFace,
   Send, Sparkles, Trophy, WifiOff, X,
 } from '@lucide/vue'
 import { request } from '@/utils/request'
@@ -190,14 +164,12 @@ const mainContent = ref(null)
 const welcomeDialog = ref(null)
 const welcomeEnter = ref(null)
 const welcomeVisible = ref(false)
-const toastMessage = ref('')
 const loading = ref(true)
 const loadError = ref('')
 const userInfo = ref(null)
 const locations = ref([])
 const unlockedLocations = ref([])
 const lockingLocations = ref([])
-let toastTimer = 0
 
 const totalCount = computed(() => locations.value.length)
 const completedCount = computed(() => unlockedLocations.value.length)
@@ -247,12 +219,6 @@ function goProtected(path) {
   else router.push({ path: '/signin', query: { redirect: path } })
 }
 
-function showComingSoon(name) {
-  window.clearTimeout(toastTimer)
-  toastMessage.value = name
-  toastTimer = window.setTimeout(() => { toastMessage.value = '' }, 5000)
-}
-
 function dismissWelcome() {
   try { localStorage.setItem(WELCOME_KEY, 'seen') } catch {}
   welcomeVisible.value = false
@@ -290,10 +256,7 @@ onMounted(() => {
   if (welcomeVisible.value) nextTick(() => welcomeEnter.value?.focus())
 })
 
-onBeforeUnmount(() => {
-  window.clearTimeout(toastTimer)
-  document.body.classList.remove('dialog-open')
-})
+onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 </script>
 
 <style scoped>
@@ -329,7 +292,7 @@ onBeforeUnmount(() => {
 
 .home-main { width: min(100% - 32px, 1240px); margin: 0 auto; outline: none; }
 .intro-row { padding: 46px 0 30px; display: grid; gap: 20px; }
-.eyebrow, .card-kicker, .section-index, .feature-copy small { margin: 0; font-family: "SFMono-Regular", Menlo, monospace; letter-spacing: 0; text-transform: uppercase; }
+.eyebrow, .card-kicker, .feature-copy small { margin: 0; font-family: "SFMono-Regular", Menlo, monospace; letter-spacing: 0; text-transform: uppercase; }
 .eyebrow { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--primary-dark); font-weight: 700; opacity: 0; animation: fade-lift .34s cubic-bezier(.2,.75,.25,1) .04s forwards; }
 .eyebrow span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--ink); animation: node-breathe 2.8s ease-in-out .7s infinite; }
 .intro-row h1 { margin: 12px 0 0; color: var(--ink); font-family: "DIN Alternate", "Avenir Next", "Noto Sans SC", sans-serif; font-size: clamp(35px, 8vw, 72px); line-height: .98; letter-spacing: 0; overflow: hidden; }
@@ -358,8 +321,7 @@ onBeforeUnmount(() => {
 .explore-head, .explore-actions, .progress-content, .progress-skeleton, .load-error { position: relative; z-index: 2; }
 .explore-head { display: flex; align-items: flex-start; gap: 13px; padding-right: 35px; }
 .icon-tile { width: clamp(38px, 5.5vw, 46px); height: clamp(38px, 5.5vw, 46px); flex: 0 0 clamp(38px, 5.5vw, 46px); display: grid; place-items: center; border: 1px solid var(--border); border-radius: 14px 5px 14px 5px; background: #eef5f2; color: var(--ink); }
-.icon-tile svg, .feature-card svg, .desktop-nav svg, .utility-links svg, .explore-actions svg { width: 1.35em; height: 1.35em; }
-.mobile-nav svg { width: clamp(19px, 5vw, 22px); height: clamp(19px, 5vw, 22px); }
+.icon-tile svg, .feature-card svg, .desktop-nav svg, .explore-actions svg { width: 1.35em; height: 1.35em; }
 .icon-tile-accent { background: var(--accent); border-color: var(--accent); }.icon-tile-dark { background: var(--ink); color: var(--accent); border-color: var(--ink); }
 .card-kicker { font-size: 10px; color: rgba(255,255,255,.58); }
 .explore-head h2 { max-width: 460px; margin: 6px 0 0; font-size: clamp(24px, 6vw, 39px); line-height: 1.1; letter-spacing: 0; }
@@ -398,13 +360,7 @@ onBeforeUnmount(() => {
 .award-card { background: linear-gradient(135deg, #f4f0fa, #eef4ff); }.award-chips { display: flex; gap: 8px; margin-top: auto; padding-top: 18px; }.award-chips span { padding: 7px 14px; border-radius: 999px; background: #fff; border: 1px solid #e2d7f5; color: #6d28d9; font-size: 13px; font-weight: 700; }
 .test-card { color: #fff; background: var(--primary); border-color: var(--primary); }.test-card .feature-copy small { color: rgba(255,255,255,.66); }.test-card .feature-copy strong { color: #fff; }.test-card .feature-copy > span { color: rgba(255,255,255,.75); }.scan-line { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 1px; background: repeating-linear-gradient(90deg,var(--accent) 0 18px,transparent 18px 26px); opacity: .75; }
 .test-card:hover .scan-line { animation: scan-sweep 1.1s ease-in-out infinite; }
-.utility-row { width: min(100%, 860px); margin: 56px auto 26px; padding: 0; display: grid; gap: 18px; }.section-index { color: var(--primary-dark); font-size: 10px; font-weight: 800; }.utility-row h2 { margin: 7px 0 0; color: var(--ink); font-size: 27px; letter-spacing: 0; }.support-copy { max-width: 360px; margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }.utility-links { display: grid; gap: 10px; }.utility-links a { min-height: 76px; display: grid; grid-template-columns: 24px 1fr 20px; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; color: var(--ink); background: rgba(255,255,255,.76); text-decoration: none; transition: background .2s ease,border-color .2s ease,transform .2s ease; }.utility-links a:hover { transform: translateY(-2px); background: #fff; border-color: #afc9c2; }.utility-links span { display: grid; }.utility-links small { margin-top: 2px; color: var(--muted); font-size: 12px; }
 .site-footer { min-height: 90px; display: flex; flex-direction: column; justify-content: center; gap: 5px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }.footer-code { font-family: "SFMono-Regular", Menlo, monospace; color: var(--primary-dark); letter-spacing: 0; }
-
-.mobile-nav { position: fixed; z-index: 50; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: 66px; display: grid; grid-template-columns: repeat(3,1fr); padding: 6px; border: 1px solid rgba(255,255,255,.65); border-radius: 20px; background: rgba(10,46,59,.94); box-shadow: 0 14px 40px rgba(10,46,59,.28); backdrop-filter: blur(14px); }
-.mobile-nav a, .mobile-nav button { min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 14px; color: rgba(255,255,255,.65); text-decoration: none; font-size: 10px; }.mobile-nav a[aria-current="page"] { color: var(--accent); background: rgba(255,255,255,.08); }
-
-.coming-toast { position: fixed; z-index: 120; left: 16px; right: 16px; bottom: calc(90px + env(safe-area-inset-bottom,0px)); min-height: 62px; display: grid; grid-template-columns: 24px 1fr 44px; align-items: center; gap: 10px; padding: 10px 8px 10px 16px; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; color: #fff; background: var(--ink); box-shadow: 0 18px 50px rgba(10,46,59,.28); }.coming-toast span { font-size: 13px; line-height: 1.45; }.coming-toast button { width: 44px; height: 44px; display: grid; place-items: center; color: #fff; border-radius: 50%; }.toast-enter-active,.toast-leave-active { transition: opacity .2s ease,transform .2s ease; }.toast-enter-from,.toast-leave-to { opacity: 0; transform: translateY(10px); }
 
 .welcome-layer { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(3,20,26,.68); backdrop-filter: blur(8px); }
 .welcome-dialog { width: min(100%, 540px); min-height: 580px; position: relative; overflow: hidden; padding: 34px 28px 30px; border-radius: 28px 8px 28px 8px; color: #fff; background: var(--ink); box-shadow: 0 32px 80px rgba(0,0,0,.35); }
@@ -420,19 +376,18 @@ onBeforeUnmount(() => {
 @media (min-width: 700px) {
   .site-header { padding-inline: 20px; gap: 16px; }
   .brand-logo { width: 300px; height: 48px; }
-  .home-main { width: min(100% - 48px,1240px); }.intro-row { grid-template-columns: 1.35fr .65fr; align-items: end; padding: 64px 0 38px; }.dashboard-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.explore-card { grid-column: span 2; }.feature-card { min-height: 270px; }.next-stop { grid-template-columns: 24px minmax(0,1fr) auto; }.next-stop em { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.utility-row { grid-template-columns: .95fr 1.05fr; align-items: center; }.site-footer { flex-direction: row; align-items: center; justify-content: space-between; }
-  .coming-toast { width: min(520px,calc(100% - 32px)); left: 50%; right: auto; transform: translateX(-50%); }.toast-enter-from,.toast-leave-to { transform: translate(-50%,10px); }
+  .home-main { width: min(100% - 48px,1240px); }.intro-row { grid-template-columns: 1.35fr .65fr; align-items: end; padding: 64px 0 38px; }.dashboard-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.explore-card { grid-column: span 2; }.feature-card { min-height: 270px; }.next-stop { grid-template-columns: 24px minmax(0,1fr) auto; }.next-stop em { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.site-footer { flex-direction: row; align-items: center; justify-content: space-between; }
 }
 
 @media (min-width: 1024px) {
-  .home-shell { padding-bottom: 0; }.site-header { min-height: 78px; padding: 12px 18px; }.brand-logo { width: 320px; height: 50px; }.desktop-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }.desktop-nav a,.desktop-nav button { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 700; }.desktop-nav a:hover,.desktop-nav button:hover,.desktop-nav a[aria-current="page"] { color: var(--ink); background: #e6efeb; }.mobile-nav { display: none; }
-  .dashboard-grid { grid-template-columns: repeat(12,minmax(0,1fr)); grid-auto-rows: minmax(132px,auto); gap: 16px; }.explore-card { grid-column: span 7; grid-row: span 4; min-height: 596px; padding: 30px; }.future-card,.award-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.test-card { grid-column: span 12; grid-row: span 2; min-height: 290px; }.test-card .feature-copy { max-width: 620px; }.progress-content { margin-top: 82px; }.feature-card { padding: 24px; }.feature-copy { margin-top: 26px; }.coming-toast { bottom: 28px; }
+  .home-shell { padding-bottom: 0; }.site-header { min-height: 78px; padding: 12px 18px; }.brand-logo { width: 320px; height: 50px; }.desktop-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }.desktop-nav a,.desktop-nav button { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 700; }.desktop-nav a:hover,.desktop-nav button:hover,.desktop-nav a[aria-current="page"] { color: var(--ink); background: #e6efeb; }
+  .dashboard-grid { grid-template-columns: repeat(12,minmax(0,1fr)); grid-auto-rows: minmax(132px,auto); gap: 16px; }.explore-card { grid-column: span 7; grid-row: span 4; min-height: 596px; padding: 30px; }.future-card,.award-card { grid-column: span 5; grid-row: span 2; min-height: 290px; }.test-card { grid-column: span 12; grid-row: span 2; min-height: 290px; }.test-card .feature-copy { max-width: 620px; }.progress-content { margin-top: 82px; }.feature-card { padding: 24px; }.feature-copy { margin-top: 26px; }
 }
 
 @media (max-width: 480px) {
   .site-header { padding: 9px 12px; }.brand-logo { width: min(220px, 68vw); height: 40px; }.home-main { width: min(100% - 24px, 1240px); }.intro-row { padding: 30px 0 22px; }.intro-row h1 { font-size: clamp(30px, 10vw, 44px); }.intro-copy { font-size: 14px; }
   .feature-card { padding: 16px; }.feature-copy { margin-top: 18px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips span { font-size: 11px; padding: 6px 11px; }
-  .utility-row { margin: 38px auto 20px; }.site-footer { padding: 0 4px; }
+  .site-footer { padding: 0 4px; }
 }
 
 @media (hover:hover) {
@@ -440,6 +395,6 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-start,.route-end,.route-progress span,.scan-line { animation: none; }.route-progress span,.feature-card,.feature-card::before,.future-year,.utility-links a,.toast-enter-active,.toast-leave-active,.welcome-enter-active,.welcome-leave-active,.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: none; }
+  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-start,.route-end,.route-progress span,.scan-line { animation: none; }.route-progress span,.feature-card,.feature-card::before,.future-year,.welcome-enter-active,.welcome-leave-active,.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: none; }
 }
 </style>

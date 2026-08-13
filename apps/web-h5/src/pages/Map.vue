@@ -422,6 +422,7 @@ onBeforeUnmount(() => {
   background: var(--canvas);
   overflow: hidden;
   color: var(--text);
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
 }
 
 .map-header {
@@ -813,5 +814,9 @@ onBeforeUnmount(() => {
     height: 85%;
     border-radius: 20px;
   }
+}
+
+@media (min-width: 1024px) {
+  .map-shell { padding-bottom: 0; }
 }
 </style>
