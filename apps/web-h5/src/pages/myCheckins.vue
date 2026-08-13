@@ -483,6 +483,21 @@
           </aside>
         </div>
 
+        <section v-if="isAdmin" class="profile-admin-entry" aria-labelledby="profile-admin-title">
+          <div class="profile-admin-mark" aria-hidden="true">
+            <ShieldCheck :size="24" />
+          </div>
+          <div class="profile-admin-copy">
+            <p class="eyebrow">ADMIN ACCESS / 管理权限</p>
+            <h2 id="profile-admin-title">进入管理员模式</h2>
+            <p>保留当前账号与普通功能，切换到审核、数据和权限管理空间。</p>
+          </div>
+          <button class="profile-admin-button" type="button" @click="router.push('/admin')">
+            进入管理员模式
+            <ChevronRight :size="18" aria-hidden="true" />
+          </button>
+        </section>
+
         <section class="profile-session" aria-labelledby="profile-session-title">
           <div class="profile-session-copy">
             <p class="eyebrow">ACCOUNT SESSION / 账户会话</p>
@@ -781,6 +796,7 @@ import {
   RotateCcw,
   Search,
   Send,
+  ShieldCheck,
   Trophy,
   UserRound,
   X,
@@ -856,6 +872,7 @@ const collectionTabs = computed(() => [
 ])
 
 const displayName = computed(() => userInfo.value.username || userInfo.value.realName || '校园探索者')
+const isAdmin = computed(() => ['admin', 'owner'].includes(String(userInfo.value.role || '')))
 const avatarSrc = computed(() => String(userInfo.value.avatar || '').trim())
 const profileAvatarPreview = computed(() => avatarPreviewUrl.value || avatarSrc.value)
 const cropFrameSize = computed(() => Math.min(cropWorkspaceSize.value.width, cropWorkspaceSize.value.height) * 0.72)

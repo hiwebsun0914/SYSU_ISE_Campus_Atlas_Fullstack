@@ -2207,6 +2207,88 @@ body {
   border-radius: 16px;
 }
 
+.profile-admin-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  overflow: hidden;
+  color: #fff;
+  background:
+    linear-gradient(120deg, rgb(199 242 74 / 0.12), transparent 42%),
+    var(--ise-ink);
+  border: 1px solid rgb(199 242 74 / 0.34);
+  border-radius: 16px;
+}
+
+.profile-admin-entry::after {
+  content: "ADMIN";
+  position: absolute;
+  right: 1rem;
+  bottom: -1.25rem;
+  color: rgb(255 255 255 / 0.045);
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 10vw, 7rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+}
+
+.profile-admin-mark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  color: var(--ise-ink);
+  background: var(--ise-accent);
+  border-radius: 14px 5px 14px 5px;
+}
+
+.profile-admin-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.profile-admin-copy .eyebrow {
+  margin: 0 0 var(--space-3xs);
+  color: var(--ise-accent);
+}
+
+.profile-admin-copy h2 {
+  margin: 0;
+  color: #fff;
+  font-size: var(--text-lg);
+}
+
+.profile-admin-copy > p:last-child {
+  margin: var(--space-3xs) 0 0;
+  color: rgb(255 255 255 / 0.66);
+  font-size: var(--text-sm);
+}
+
+.profile-admin-button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  min-height: 2.875rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  color: var(--ise-ink);
+  background: var(--ise-accent);
+  border: 1px solid var(--ise-accent);
+  border-radius: 10px;
+  font-weight: 800;
+  transition: background var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+}
+
 .profile-session-copy {
   min-width: 0;
 }
@@ -2247,6 +2329,10 @@ body {
 }
 
 @media (hover: hover) {
+  .profile-admin-button:hover {
+    background: #d8ff66;
+  }
+
   .profile-logout-button:hover {
     color: var(--color-accent-ink);
     background: var(--color-danger);
@@ -2315,6 +2401,17 @@ body {
     flex-direction: column;
     gap: var(--space-md);
     padding: var(--space-md);
+  }
+
+  .profile-admin-entry {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    padding: var(--space-md);
+  }
+
+  .profile-admin-button {
+    width: 100%;
+    grid-column: 1 / -1;
   }
 
   .profile-logout-button {
