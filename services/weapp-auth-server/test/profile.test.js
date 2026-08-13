@@ -112,7 +112,6 @@ test('updates editable profile fields and rejects duplicate identifiers', async 
     method: 'PUT',
     body: JSON.stringify({
       username: '逸仙同学',
-      realName: '林逸仙',
       studentId: '23300001',
       phone: '138 0000 0000',
       bio: '正在收集康乐园的建筑与故事。',
@@ -127,6 +126,20 @@ test('updates editable profile fields and rejects duplicate identifiers', async 
   assert.equal(me.body.userInfo.username, '逸仙同学');
   assert.equal(me.body.userInfo.bio, '正在收集康乐园的建筑与故事。');
   assert.equal(me.body.userInfo.avatar, 'https://example.com/avatar-new.png');
+
+  const lockedRealName = await api(101, '/user/profile', {
+    method: 'PUT',
+    body: JSON.stringify({ realName: '林逸仙' })
+  });
+  assert.equal(lockedRealName.response.status, 400);
+  assert.equal(lockedRealName.body.errorCode, 'REAL_NAME_LOCKED');
+
+  const unchangedRealName = await api(101, '/user/profile', {
+    method: 'PUT',
+    body: JSON.stringify({ realName: '林同学', bio: '姓名保持不变时，其他资料仍可保存。' })
+  });
+  assert.equal(unchangedRealName.response.status, 200);
+  assert.equal(unchangedRealName.body.data.userInfo.realName, '林同学');
 
   const duplicateStudentId = await api(101, '/user/profile', {
     method: 'PUT',

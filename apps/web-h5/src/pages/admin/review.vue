@@ -11,12 +11,6 @@
 
       <button
         class="tab"
-        :class="{ active: currentTab === 'bottles' }"
-        @click="switchTab('bottles')"
-      >漂流瓶</button>
-
-      <button
-        class="tab"
         :class="{ active: currentTab === 'users' }"
         @click="switchTab('users')"
       >用户</button>
@@ -75,55 +69,6 @@
       <div class="empty" v-if="!loading && (!checkins || !checkins.length)">暂无数据</div>
     </div>
 
-    <!-- ========== 漂流瓶 ========== -->
-    <div v-if="currentTab === 'bottles'">
-      <div class="filter">
-        <label>
-          状态：
-          <select v-model.number="bottleStatusIndex" @change="fetchBottles">
-            <option v-for="(opt, i) in bottleStatusOptions" :key="opt.value" :value="i">
-              {{ opt.label }}
-            </option>
-          </select>
-        </label>
-
-        <div v-if="bottleStat" class="stat">
-          全部 {{ bottleStat.all }} · 未被捡 {{ bottleStat.unpicked }} · 已被捡 {{ bottleStat.picked }}
-        </div>
-      </div>
-
-      <div v-for="item in bottles" :key="item.id" class="card">
-        <img class="thumb" :src="item.photo" alt="漂流瓶图片" @click="previewImage(item.photo)" />
-        <div class="info">
-          <div class="title">{{ item.text || '（无文字内容）' }}</div>
-          <div class="meta">发送人：{{ item.ownerName }}</div>
-          <div class="meta">发送时间：{{ item._uploadTime }}</div>
-
-          <div class="meta" v-if="item._picks && item._picks.length">
-            拾取人：
-            <template v-for="(p, idx) in item._picks" :key="p.userId + '-' + idx">
-              <span>{{ p.name || ('#' + p.userId) }}</span>
-              <span>（{{ p._pickTime }}）</span>
-              <span v-if="idx < item._picks.length - 1">、</span>
-            </template>
-          </div>
-          <div class="meta" v-else>拾取人：—</div>
-        </div>
-
-        <div class="ops">
-          <button
-            class="btn btn-warn"
-            :disabled="!!deleting[item.id] || loading"
-            @click="deleteBottle(item)"
-          >
-            {{ deleting[item.id] ? '删除中…' : '删除' }}
-          </button>
-        </div>
-      </div>
-
-      <div class="empty" v-if="!loading && (!bottles || !bottles.length)">暂无漂流瓶</div>
-    </div>
-
     <!-- ========== 用户（可折叠详情） ========== -->
     <div v-if="currentTab === 'users'">
       <div v-for="item in users" :key="item.id">
@@ -136,7 +81,7 @@
               <span class="chev">{{ expanded[item.id] ? '▾' : '▸' }}</span>
             </div>
             <div class="desc">
-              已解锁：{{ item.unlocked }}　审核中：{{ item.locking }}　扔瓶：{{ item.threw }}
+              已解锁：{{ item.unlocked }}　审核中：{{ item.locking }}
             </div>
           </div>
         </div>
@@ -169,17 +114,6 @@
             </div>
           </div>
 
-          <div class="detail-row">
-            <div class="detail-title">扔瓶时间</div>
-            <div class="detail-body">
-              <template v-if="details[item.id]?.throws?.length">
-                <div class="chips">
-                  <span v-for="(t, i) in details[item.id].throws" :key="'throw-' + item.id + '-' + i" class="chip">{{ t }}</span>
-                </div>
-              </template>
-              <span v-else>—</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -216,7 +150,7 @@ const LOC_NAME = {
 }
 
 const loading = ref(false)
-const currentTab = ref('checkins') // 'checkins' | 'bottles' | 'users'
+const currentTab = ref('checkins') // 'checkins' | 'users'
 
 /* 打卡审核 */
 const checkinStatusOptions = ref([
@@ -229,22 +163,10 @@ const checkinStat = ref(null)
 /* 审核进行中标记：避免重复点击 */
 const moderating = ref({}) // { [checkinId]: true }
 
-/* 漂流瓶 */
-const bottleStatusOptions = ref([
-  { value: 'all',      label: '全部'   },
-  { value: 'unpicked', label: '未被捡' },
-  { value: 'picked',   label: '已被捡' },
-])
-const bottleStatusIndex = ref(0)
-const bottles = ref([])
-const bottleStat = ref(null)
-const deleting = ref({})
-
 /* 用户与详情（折叠） */
 const users = ref([])
 const expanded = ref({})       // { [userId]: true }
-const details  = ref({})       // { [userId]: { regTimeText, checkins:{locId:[timeText]}, throws:[timeText] } }
-const bottlesCache   = ref([]) // 所有瓶子（缓存一次）
+const details  = ref({})       // { [userId]: { regTimeText, checkins:{locId:[timeText]} } }
 const checkinsCache  = ref([]) // 全部已通过打卡（缓存一次）
 
 onMounted(() => {
@@ -260,7 +182,6 @@ function switchTab(tab) {
 
 function refreshCurrentTab() {
   if (currentTab.value === 'checkins') return fetchCheckins()
-  if (currentTab.value === 'bottles')  return fetchBottles()
   if (currentTab.value === 'users')    return fetchUsers()
 }
 
@@ -393,127 +314,12 @@ async function rejectCheckin(id) {
   }
 }
 
-/* ===== 漂流瓶 ===== */
-async function fetchBottles() {
-  loading.value = true
-  try {
-    const status = bottleStatusOptions.value[bottleStatusIndex.value].value
-    const resp = await request(`/admin/bottles?status=${encodeURIComponent(status)}`, 'GET')
-
-    const usersMap = {}
-    if (toOk(resp)) {
-      const inlineUsers = resp.data.users || []
-      inlineUsers.forEach(u => { usersMap[String(u.id)] = u.username || '' })
-      if (!Object.keys(usersMap).length) {
-        try {
-          const ures = await request('/admin/users', 'GET')
-          const ulist = toOk(ures) ? (ures.data.users || ures.data.list || []) : []
-          ulist.forEach(u => { usersMap[String(u.id)] = u.username || '' })
-        } catch {}
-      }
-    }
-
-    const rawList = toOk(resp) ? (resp.data.list || resp.data.bottles || []) : []
-
-    const toPicks = (b) => {
-      if (Array.isArray(b.picks)) return b.picks
-      const arr = []
-      if (b.pickedBy) arr.push({ userId: b.pickedBy, pickTime: b.pickTime || 0 })
-      return arr
-    }
-
-    const list = rawList.map(b => {
-      const picks = toPicks(b).map(p => ({
-        ...p,
-        name: usersMap[String(p.userId)] || '',
-        _pickTime: fmt(p.pickTime),
-      }))
-      return {
-        ...b,
-        _uploadTime : fmt(b.uploadTime),
-        _pickerNames: picks.map(p => p.name).filter(Boolean).join('、'),
-        _picks      : picks,
-      }
-    })
-
-    let stat = resp?.data?.stat || null
-    if (!stat) {
-      const all = list.length
-      const picked = list.filter(b => Array.isArray(b._picks) && b._picks.length > 0).length
-      stat = { all, picked, unpicked: all - picked }
-    }
-
-    bottles.value = list
-    bottleStat.value = stat
-  } catch (e) {
-    console.warn('[admin] fetchBottles error', e)
-    bottles.value = []
-    bottleStat.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
-/* 删除漂流瓶：乐观更新 + 回滚 */
-function isDeleteOk(resp) {
-  const s = resp?.status ?? resp?.statusCode
-  return s === 204 || (s === 200 && resp?.data?.code === 0)
-}
-async function deleteBottle(itemOrId) {
-  const id = typeof itemOrId === 'object' ? itemOrId.id : itemOrId
-  if (!id) return
-  const t = bottles.value.find(b => b.id === id)
-  const sure = window.confirm(`确认删除该漂流瓶${t?.text ? '“' + String(t.text).slice(0,20) + (String(t.text).length>20?'…':'') + '”' : ''}吗？`)
-  if (!sure) return
-  deleting.value = { ...deleting.value, [id]: true }
-  const snapshot = bottles.value.slice()
-  const idx = bottles.value.findIndex(b => b.id === id)
-  if (idx >= 0) bottles.value.splice(idx, 1)
-
-  let ok = false
-  try {
-    let resp = await request(`/admin/bottles/${encodeURIComponent(id)}`, 'DELETE', {})
-    if (!isDeleteOk(resp)) {
-      resp = await request(`/admin/bottles/${encodeURIComponent(id)}/delete`, 'POST', {})
-    }
-    ok = isDeleteOk(resp)
-  } catch {}
-  if (!ok) {
-    bottles.value = snapshot
-    alert('删除失败')
-  }
-  const map = { ...deleting.value }; delete map[id]; deleting.value = map
-}
-
 /* ===== 用户列表 + 折叠详情 ===== */
 async function fetchUsers() {
   loading.value = true
   try {
-    const [uRes, bRes] = await Promise.all([
-      request('/admin/users', 'GET'),
-      request('/admin/bottles?status=all', 'GET'),
-    ])
-
-    let listUsers = toOk(uRes) ? (uRes.data.users || uRes.data.list || []) : []
-    const allBottles = toOk(bRes) ? (bRes.data.list || bRes.data.bottles || []) : []
-    bottlesCache.value = allBottles // 缓存供详情用
-
-    // ownerId -> 扔瓶数量
-    const threwByOwner = allBottles.reduce((acc, b) => {
-      const uid = Number(b.ownerId)
-      if (!uid) return acc
-      acc[uid] = (acc[uid] || 0) + 1
-      return acc
-    }, {})
-
-    listUsers = listUsers.map(u => {
-      const fromSelf = Array.isArray(u.bottlesThrow) ? u.bottlesThrow.length : null
-      const fromAgg  = threwByOwner[Number(u.id)] || 0
-      const threw    = (fromSelf !== null ? fromSelf : fromAgg)
-      return { ...u, threw }
-    })
-
-    users.value = listUsers
+    const response = await request('/admin/users', 'GET')
+    users.value = toOk(response) ? (response.data.users || response.data.list || []) : []
   } catch (e) {
     console.warn('[admin] fetchUsers error', e)
     users.value = []
@@ -542,13 +348,6 @@ async function toggleUser(u) {
     const regTs = u.registerTime || u.createdAt || u.created_at || u.signupTime || 0
     const regTimeText = regTs ? fmtCN(regTs) : '—'
 
-    // 扔瓶时间（按时间倒序）
-    const throws = (bottlesCache.value || [])
-      .filter(b => Number(b.ownerId) === Number(uid))
-      .map(b => b.uploadTime)
-      .sort((a,b) => (b||0)-(a||0))
-      .map(fmtCN)
-
     // 打卡：按地点分组
     const myCheckinsRaw = (checkinsCache.value || []).filter(it => {
       if (Number(it.userId)) return Number(it.userId) === Number(uid)
@@ -571,7 +370,7 @@ async function toggleUser(u) {
 
     details.value = {
       ...details.value,
-      [uid]: { regTimeText, checkins: checkinsGrouped, throws }
+      [uid]: { regTimeText, checkins: checkinsGrouped }
     }
   }
 }

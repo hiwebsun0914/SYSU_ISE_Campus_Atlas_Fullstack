@@ -52,7 +52,7 @@
 
         <section class="profile-hero" aria-labelledby="profile-title">
           <div class="profile-identity">
-            <div class="profile-avatar" aria-hidden="true">
+            <div class="profile-avatar">
               <img
                 v-if="avatarSrc && !avatarFailed"
                 :src="avatarSrc"
@@ -65,56 +65,58 @@
               <UserRound v-else :size="42" />
             </div>
             <div class="profile-heading">
-              <p class="eyebrow">STUDENT PROFILE / {{ profileCode }}</p>
-              <h1 id="profile-title">{{ displayName }}</h1>
+              <p class="eyebrow">STUDENT PROFILE</p>
+              <div class="profile-title-row">
+                <h1 id="profile-title">{{ displayName }}</h1>
+                <button class="button button-secondary hero-edit" type="button" @click="openProfileDialog">
+                  <Pencil :size="16" aria-hidden="true" />
+                  <span class="hero-edit-label">编辑资料</span>
+                </button>
+              </div>
               <p class="profile-bio">{{ userInfo.bio || '记录走过的校园，也记录正在形成的自己。' }}</p>
-              <dl class="profile-identifiers">
-                <div>
-                  <dt>姓名</dt>
-                  <dd>{{ userInfo.realName || '未填写' }}</dd>
-                </div>
-                <div>
-                  <dt>学号</dt>
-                  <dd>{{ userInfo.studentId || '未填写' }}</dd>
-                </div>
-                <div>
-                  <dt>账户</dt>
-                  <dd>{{ userInfo.id || '未同步' }}</dd>
-                </div>
-              </dl>
+            </div>
+            <div class="profile-personality-space" aria-hidden="true"></div>
+            <dl class="profile-identifiers">
+              <div>
+                <dt>姓名</dt>
+                <dd>{{ userInfo.realName || '未填写' }}</dd>
+              </div>
+              <div>
+                <dt>学号</dt>
+                <dd>{{ userInfo.studentId || '未填写' }}</dd>
+              </div>
+              <div>
+                <dt>账户</dt>
+                <dd>{{ userInfo.id || '未同步' }}</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="stat-strip" aria-label="个人概览">
+            <div>
+              <span>POINTS</span>
+              <strong>{{ userInfo.points || 0 }}</strong>
+              <small>当前积分</small>
+            </div>
+            <div>
+              <span>PROGRESS</span>
+              <strong>{{ unlockedCount }}<i>/{{ totalBadges }}</i></strong>
+              <small>地点已解锁</small>
+            </div>
+            <div>
+              <span>REVIEW</span>
+              <strong>{{ submissionCounts.pending }}</strong>
+              <small>投稿待审核</small>
+            </div>
+            <div>
+              <span>ROUTES</span>
+              <strong>{{ completedRouteCount }}</strong>
+              <small>路线已完成</small>
             </div>
           </div>
-          <button class="button button-secondary hero-edit" type="button" @click="openProfileDialog">
-            <Pencil :size="16" aria-hidden="true" />
-            编辑资料
-          </button>
         </section>
 
-        <section class="stat-strip" aria-label="个人概览">
-          <div>
-            <span>POINTS</span>
-            <strong>{{ userInfo.points || 0 }}</strong>
-            <small>当前积分</small>
-          </div>
-          <div>
-            <span>PROGRESS</span>
-            <strong>{{ unlockedCount }}<i>/{{ totalBadges }}</i></strong>
-            <small>地点已解锁</small>
-          </div>
-          <div>
-            <span>REVIEW</span>
-            <strong>{{ submissionCounts.pending }}</strong>
-            <small>投稿待审核</small>
-          </div>
-          <div>
-            <span>ROUTES</span>
-            <strong>{{ completedRouteCount }}</strong>
-            <small>路线已完成</small>
-          </div>
-        </section>
-
-        <div class="profile-workbench">
-          <div class="workbench-main">
+        <div class="profile-workbench profile-workbench-single">
+          <div v-if="false" class="workbench-main">
             <section class="profile-section atlas-section" aria-labelledby="atlas-title">
               <div class="section-heading section-heading-split">
                 <div>
@@ -337,7 +339,7 @@
           </div>
 
           <aside class="workbench-side">
-            <section class="side-panel personality-panel" aria-labelledby="personality-title">
+            <section v-if="false" class="side-panel personality-panel" aria-labelledby="personality-title">
               <div class="section-heading">
                 <p class="eyebrow">ISETI / PLACE @ SYSU</p>
                 <h2 id="personality-title">校园人格</h2>
@@ -480,6 +482,18 @@
             </section>
           </aside>
         </div>
+
+        <section class="profile-session" aria-labelledby="profile-session-title">
+          <div class="profile-session-copy">
+            <p class="eyebrow">ACCOUNT SESSION / 账户会话</p>
+            <h2 id="profile-session-title">退出当前账号</h2>
+            <p>退出后将清除这台设备上的登录信息，本地未提交的内容不会自动保存。</p>
+          </div>
+          <button class="profile-logout-button" type="button" @click="logout">
+            <LogOut :size="18" aria-hidden="true" />
+            退出登录
+          </button>
+        </section>
       </template>
     </main>
 
@@ -494,52 +508,90 @@
       class="profile-dialog"
       aria-labelledby="profile-dialog-title"
       @click="handleProfileDialogBackdrop"
+      @keydown.esc.prevent="closeProfileDialog"
       @close="resetProfileDialog"
     >
       <form class="dialog-sheet" novalidate @submit.prevent="saveProfile">
         <header class="dialog-header">
           <div>
-            <h2 id="profile-dialog-title">编辑个人资料</h2>
+            <p v-if="profileStep === 'crop'" class="eyebrow">AVATAR CROP / 头像裁剪</p>
+            <h2 id="profile-dialog-title">{{ profileStep === 'crop' ? '选取头像区域' : '编辑个人资料' }}</h2>
           </div>
           <button class="icon-button" type="button" aria-label="关闭资料编辑" @click="closeProfileDialog">
             <X :size="19" aria-hidden="true" />
           </button>
         </header>
 
-        <div class="profile-editor">
-          <div class="avatar-preview">
+        <section v-if="profileStep === 'crop'" class="avatar-crop-step" aria-labelledby="profile-dialog-title">
+          <p class="avatar-crop-instruction">拖动图片调整位置，缩放后让需要保留的部分位于正方形框内。</p>
+          <div
+            ref="cropWorkspace"
+            class="avatar-crop-workspace"
+            tabindex="0"
+            aria-label="头像裁剪区域，可拖动图片或使用方向键调整位置"
+            @pointerdown="startCropDrag"
+            @pointermove="moveCropDrag"
+            @pointerup="endCropDrag"
+            @pointercancel="endCropDrag"
+            @wheel.prevent="onCropWheel"
+            @keydown="onCropKeydown"
+          >
             <img
-              v-if="profileForm.avatar && !profilePreviewFailed"
-              :src="profileForm.avatar"
-              alt="新头像预览"
-              width="88"
-              height="88"
-              @error="profilePreviewFailed = true"
+              v-if="cropSourceUrl"
+              :src="cropSourceUrl"
+              :style="cropImageStyle"
+              alt="待裁剪头像"
+              draggable="false"
             />
-            <UserRound v-else :size="34" aria-hidden="true" />
-            <span>头像预览</span>
+            <div class="avatar-crop-frame" aria-hidden="true"></div>
           </div>
-
-          <div class="form-field profile-avatar-field">
-            <label for="profile-avatar">头像图片地址 <span>选填</span></label>
+          <label class="avatar-zoom-control" for="avatar-crop-zoom">
+            <span>缩放</span>
             <input
-              id="profile-avatar"
-              v-model="profileForm.avatar"
-              type="url"
-              maxlength="500"
-              inputmode="url"
-              autocomplete="url"
-              placeholder="https://example.com/avatar.jpg"
-              :aria-invalid="Boolean(profileErrors.avatar)"
-              @input="onProfileInput('avatar')"
-              @blur="validateProfileField('avatar')"
+              id="avatar-crop-zoom"
+              v-model.number="cropZoom"
+              type="range"
+              min="1"
+              max="3"
+              step="0.01"
+              @input="clampCropOffset"
             />
-            <div class="field-message-slot" aria-live="polite">
-              <p v-if="profileErrors.avatar" class="field-error">{{ profileErrors.avatar }}</p>
-              <p v-else class="field-help">当前版本使用公开的 http 或 https 图片地址。</p>
-            </div>
+            <output>{{ Math.round(cropZoom * 100) }}%</output>
+          </label>
+          <footer class="avatar-crop-actions">
+            <button class="button button-secondary" type="button" @click="cancelAvatarCrop">取消</button>
+            <button class="button button-primary" type="button" @click="confirmAvatarCrop">确定</button>
+          </footer>
+        </section>
+
+        <template v-else>
+          <div class="profile-editor">
+          <input
+            id="profile-avatar"
+            ref="avatarInput"
+            class="avatar-file-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+            :aria-invalid="Boolean(profileErrors.avatar)"
+            @change="onAvatarFileSelected"
+          />
+            <label class="avatar-change-trigger" for="profile-avatar">
+              <span class="avatar-preview">
+                <img
+                  v-if="profileAvatarPreview && !profilePreviewFailed"
+                  :src="profileAvatarPreview"
+                  alt="当前头像"
+                  width="88"
+                  height="88"
+                  @error="profilePreviewFailed = true"
+                />
+                <UserRound v-else :size="34" aria-hidden="true" />
+              </span>
+              <span>更换头像</span>
+            </label>
+            <p v-if="profileErrors.avatar" class="field-error" role="status">{{ profileErrors.avatar }}</p>
+            <p v-else-if="avatarFile" class="avatar-selection-status" role="status">已裁剪，保存资料后生效</p>
           </div>
-        </div>
 
         <div class="dialog-form-grid">
           <div class="form-field">
@@ -560,20 +612,20 @@
             </div>
           </div>
 
-          <div class="form-field">
-            <label for="profile-real-name">姓名 <span>选填</span></label>
+          <div class="form-field locked-profile-field">
+            <label for="profile-real-name">姓名</label>
             <input
               id="profile-real-name"
               v-model="profileForm.realName"
               type="text"
-              maxlength="30"
               autocomplete="name"
-              :aria-invalid="Boolean(profileErrors.realName)"
-              @input="onProfileInput('realName')"
-              @blur="validateProfileField('realName')"
+              readonly
+              aria-readonly="true"
+              aria-describedby="profile-real-name-help"
             />
-            <div class="field-message-slot" aria-live="polite">
-              <p v-if="profileErrors.realName" class="field-error">{{ profileErrors.realName }}</p>
+            <div id="profile-real-name-help" class="locked-field-help">
+              <LockKeyhole :size="14" aria-hidden="true" />
+              <span>姓名已在注册时确认，不可修改</span>
             </div>
           </div>
 
@@ -651,6 +703,7 @@
             {{ profileButtonCopy }}
           </button>
         </footer>
+        </template>
       </form>
     </dialog>
 
@@ -659,6 +712,7 @@
       class="command-dialog"
       aria-labelledby="command-dialog-title"
       @click="handleCommandBackdrop"
+      @keydown.esc.prevent="closeCommandPalette"
       @close="resetCommandPalette"
     >
       <div class="command-sheet">
@@ -736,6 +790,7 @@ import '@fontsource/space-grotesk/latin-500.css'
 import '@fontsource/space-grotesk/latin-600.css'
 import '@fontsource/jetbrains-mono/latin-500.css'
 import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
+import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import { request } from '@/utils/request'
 import { badgeCatalog, badgeThumb, getBadge } from '@/data/badgeCatalog'
 
@@ -745,6 +800,8 @@ const profileDialog = ref(null)
 const commandDialog = ref(null)
 const firstProfileField = ref(null)
 const commandInput = ref(null)
+const avatarInput = ref(null)
+const cropWorkspace = ref(null)
 
 const loading = ref(true)
 const loadError = ref('')
@@ -764,14 +821,26 @@ const profileForm = ref({
   realName: '',
   studentId: '',
   phone: '',
-  bio: '',
-  avatar: ''
+  bio: ''
 })
 const profileOriginal = ref({})
 const profileErrors = ref({})
 const profileMessage = ref('')
 const profileSaveState = ref('idle')
 const profilePreviewFailed = ref(false)
+const avatarFile = ref(null)
+const avatarPreviewUrl = ref('')
+const avatarUploadProgress = ref(0)
+const profileStep = ref('edit')
+const cropSourceUrl = ref('')
+const cropSourceFile = ref(null)
+const cropNaturalSize = ref({ width: 0, height: 0 })
+const cropWorkspaceSize = ref({ width: 0, height: 0 })
+const cropZoom = ref(1)
+const cropOffset = ref({ x: 0, y: 0 })
+const cropDragging = ref(false)
+let cropPointerId = null
+let cropPointerStart = { x: 0, y: 0, offsetX: 0, offsetY: 0 }
 
 const feedbackForm = ref({ category: 'suggestion', content: '', contact: '' })
 const feedbackErrors = ref({})
@@ -787,8 +856,25 @@ const collectionTabs = computed(() => [
 ])
 
 const displayName = computed(() => userInfo.value.username || userInfo.value.realName || '校园探索者')
-const profileCode = computed(() => String(userInfo.value.id || 'LOCAL').slice(-8).toUpperCase())
 const avatarSrc = computed(() => String(userInfo.value.avatar || '').trim())
+const profileAvatarPreview = computed(() => avatarPreviewUrl.value || avatarSrc.value)
+const cropFrameSize = computed(() => Math.min(cropWorkspaceSize.value.width, cropWorkspaceSize.value.height) * 0.72)
+const cropBaseScale = computed(() => {
+  if (!cropNaturalSize.value.width || !cropNaturalSize.value.height || !cropFrameSize.value) return 1
+  return Math.max(
+    cropFrameSize.value / cropNaturalSize.value.width,
+    cropFrameSize.value / cropNaturalSize.value.height
+  )
+})
+const cropRenderedSize = computed(() => ({
+  width: cropNaturalSize.value.width * cropBaseScale.value * cropZoom.value,
+  height: cropNaturalSize.value.height * cropBaseScale.value * cropZoom.value
+}))
+const cropImageStyle = computed(() => ({
+  width: `${cropRenderedSize.value.width}px`,
+  height: `${cropRenderedSize.value.height}px`,
+  transform: `translate3d(calc(-50% + ${cropOffset.value.x}px), calc(-50% + ${cropOffset.value.y}px), 0)`
+}))
 const unlockedIds = computed(() => new Set((userInfo.value.unlockedLocations || []).map(Number)))
 const lockingIds = computed(() => new Set((userInfo.value.lockingLocations || []).map(Number)))
 const unlockedCount = computed(() => unlockedIds.value.size)
@@ -1110,14 +1196,14 @@ function openProfileDialog() {
     realName: String(userInfo.value.realName || ''),
     studentId: String(userInfo.value.studentId || ''),
     phone: editablePhone(userInfo.value.phone),
-    bio: String(userInfo.value.bio || ''),
-    avatar: String(userInfo.value.avatar || '')
+    bio: String(userInfo.value.bio || '')
   }
   profileOriginal.value = { ...profileForm.value }
   profileErrors.value = {}
   profileMessage.value = ''
   profileSaveState.value = 'idle'
   profilePreviewFailed.value = false
+  clearAvatarSelection()
   profileDialog.value?.showModal()
   nextTick(() => firstProfileField.value?.focus())
 }
@@ -1127,6 +1213,7 @@ function closeProfileDialog() {
 }
 
 function resetProfileDialog() {
+  clearAvatarSelection()
   profileErrors.value = {}
   profileMessage.value = ''
   profileSaveState.value = 'idle'
@@ -1159,9 +1246,6 @@ function validateProfileField(field) {
   if (field === 'bio' && Array.from(value).length > 160) {
     message = '个人简介最多 160 个字符。'
   }
-  if (field === 'avatar' && value && !/^https?:\/\/[^\s]+$/i.test(value)) {
-    message = '头像地址需要以 http:// 或 https:// 开头。'
-  }
   profileErrors.value = { ...profileErrors.value, [field]: message }
   return !message
 }
@@ -1173,8 +1257,211 @@ function onProfileInput(field) {
   if (Object.prototype.hasOwnProperty.call(profileErrors.value, field)) validateProfileField(field)
 }
 
+function formatFileSize(bytes) {
+  if (!Number.isFinite(Number(bytes))) return ''
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function revokeAvatarPreview() {
+  if (avatarPreviewUrl.value) URL.revokeObjectURL(avatarPreviewUrl.value)
+  avatarPreviewUrl.value = ''
+}
+
+function revokeCropSource() {
+  if (cropSourceUrl.value) URL.revokeObjectURL(cropSourceUrl.value)
+  cropSourceUrl.value = ''
+  cropSourceFile.value = null
+}
+
+function clearAvatarSelection() {
+  revokeAvatarPreview()
+  revokeCropSource()
+  avatarFile.value = null
+  avatarUploadProgress.value = 0
+  profilePreviewFailed.value = false
+  profileStep.value = 'edit'
+}
+
+function readImageSize(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+    image.onerror = () => reject(new Error('图片无法读取，请重新选择。'))
+    image.src = url
+  })
+}
+
+async function onAvatarFileSelected(event) {
+  const file = event.target.files?.[0] || null
+  event.target.value = ''
+  profileMessage.value = ''
+  profileSaveState.value = 'idle'
+  profileErrors.value = { ...profileErrors.value, avatar: '' }
+  if (!file) return
+
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    clearAvatarSelection()
+    profileErrors.value = { ...profileErrors.value, avatar: '请选择 JPG、PNG 或 WebP 图片。' }
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    clearAvatarSelection()
+    profileErrors.value = { ...profileErrors.value, avatar: '图片不能超过 5 MB。' }
+    return
+  }
+
+  revokeCropSource()
+  cropSourceFile.value = file
+  cropSourceUrl.value = URL.createObjectURL(file)
+  try {
+    cropNaturalSize.value = await readImageSize(cropSourceUrl.value)
+    cropZoom.value = 1
+    cropOffset.value = { x: 0, y: 0 }
+    profileStep.value = 'crop'
+    await nextTick()
+    measureCropWorkspace()
+    cropWorkspace.value?.focus({ preventScroll: true })
+  } catch (error) {
+    revokeCropSource()
+    profileErrors.value = { ...profileErrors.value, avatar: error?.message || '图片无法读取，请重新选择。' }
+  }
+}
+
+function measureCropWorkspace() {
+  const rect = cropWorkspace.value?.getBoundingClientRect()
+  if (!rect) return
+  cropWorkspaceSize.value = { width: rect.width, height: rect.height }
+  clampCropOffset()
+}
+
+function clampCropOffset() {
+  const maxX = Math.max(0, (cropRenderedSize.value.width - cropFrameSize.value) / 2)
+  const maxY = Math.max(0, (cropRenderedSize.value.height - cropFrameSize.value) / 2)
+  cropOffset.value = {
+    x: Math.max(-maxX, Math.min(maxX, cropOffset.value.x)),
+    y: Math.max(-maxY, Math.min(maxY, cropOffset.value.y))
+  }
+}
+
+function startCropDrag(event) {
+  if (event.button !== 0 && event.pointerType === 'mouse') return
+  cropPointerId = event.pointerId
+  cropDragging.value = true
+  cropPointerStart = {
+    x: event.clientX,
+    y: event.clientY,
+    offsetX: cropOffset.value.x,
+    offsetY: cropOffset.value.y
+  }
+  cropWorkspace.value?.setPointerCapture(event.pointerId)
+}
+
+function moveCropDrag(event) {
+  if (!cropDragging.value || event.pointerId !== cropPointerId) return
+  cropOffset.value = {
+    x: cropPointerStart.offsetX + event.clientX - cropPointerStart.x,
+    y: cropPointerStart.offsetY + event.clientY - cropPointerStart.y
+  }
+  clampCropOffset()
+}
+
+function endCropDrag(event) {
+  if (event.pointerId !== cropPointerId) return
+  cropDragging.value = false
+  cropPointerId = null
+}
+
+function changeCropZoom(nextZoom) {
+  cropZoom.value = Math.max(1, Math.min(3, nextZoom))
+  nextTick(clampCropOffset)
+}
+
+function onCropWheel(event) {
+  changeCropZoom(cropZoom.value + (event.deltaY > 0 ? -0.08 : 0.08))
+}
+
+function onCropKeydown(event) {
+  const delta = event.shiftKey ? 10 : 2
+  const movement = {
+    ArrowLeft: { x: delta, y: 0 },
+    ArrowRight: { x: -delta, y: 0 },
+    ArrowUp: { x: 0, y: delta },
+    ArrowDown: { x: 0, y: -delta }
+  }[event.key]
+  if (!movement) return
+  event.preventDefault()
+  cropOffset.value = { x: cropOffset.value.x + movement.x, y: cropOffset.value.y + movement.y }
+  clampCropOffset()
+}
+
+function cancelAvatarCrop() {
+  revokeCropSource()
+  profileStep.value = 'edit'
+  nextTick(() => avatarInput.value?.focus())
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('头像裁剪失败，请重新选择。')), 'image/webp', 0.88)
+  })
+}
+
+async function confirmAvatarCrop() {
+  const file = cropSourceFile.value
+  if (!file || !cropFrameSize.value) return
+  try {
+    const source = new Image()
+    source.src = cropSourceUrl.value
+    await source.decode()
+
+    const rendered = cropRenderedSize.value
+    const sourceX = ((rendered.width - cropFrameSize.value) / 2 - cropOffset.value.x) / rendered.width * source.naturalWidth
+    const sourceY = ((rendered.height - cropFrameSize.value) / 2 - cropOffset.value.y) / rendered.height * source.naturalHeight
+    const sourceSize = cropFrameSize.value / rendered.width * source.naturalWidth
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 512
+    const context = canvas.getContext('2d', { alpha: false })
+    context.imageSmoothingEnabled = true
+    context.imageSmoothingQuality = 'high'
+    context.drawImage(source, sourceX, sourceY, sourceSize, sourceSize, 0, 0, 512, 512)
+    const blob = await canvasToBlob(canvas)
+    const filename = `${file.name.replace(/\.[^.]+$/, '') || 'avatar'}-cropped.webp`
+
+    revokeAvatarPreview()
+    avatarFile.value = new File([blob], filename, { type: 'image/webp', lastModified: Date.now() })
+    avatarPreviewUrl.value = URL.createObjectURL(blob)
+    profilePreviewFailed.value = false
+    revokeCropSource()
+    profileStep.value = 'edit'
+  } catch (error) {
+    profileErrors.value = { ...profileErrors.value, avatar: error?.message || '头像裁剪失败，请重新选择。' }
+    profileStep.value = 'edit'
+    revokeCropSource()
+  }
+}
+
+async function uploadAvatar(file) {
+  profileMessage.value = '正在上传裁剪后的头像…'
+  const form = new FormData()
+  form.append('avatar', file, file.name)
+  const response = await request('/avatar/upload', 'POST', form, { timeout: 60000 })
+  if (!responseOkay(response)) {
+    throw new Error(responseMessage(response, '头像上传失败，请稍后重试。'))
+  }
+  avatarUploadProgress.value = 100
+  return response.data.avatar_url
+}
+
+function persistProfileUser(updatedUser) {
+  userInfo.value = updatedUser
+  const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
+  localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...updatedUser }))
+}
+
 async function saveProfile() {
-  const fields = Object.keys(profileForm.value)
+  const fields = Object.keys(profileForm.value).filter(field => field !== 'realName')
   const payload = {}
   fields.forEach(field => {
     const current = normalizedProfileValue(field, profileForm.value[field])
@@ -1182,13 +1469,13 @@ async function saveProfile() {
     if (current !== original) payload[field] = current
   })
 
-  if (!Object.keys(payload).length) {
+  if (!Object.keys(payload).length && !avatarFile.value) {
     profileMessage.value = '没有需要保存的资料变更。'
     profileSaveState.value = 'error'
     return
   }
 
-  const valid = Object.keys(payload).every(validateProfileField)
+  const valid = Object.keys(payload).every(validateProfileField) && !profileErrors.value.avatar
   if (!valid) {
     profileMessage.value = '请先修正标记的资料项。'
     profileSaveState.value = 'error'
@@ -1197,23 +1484,42 @@ async function saveProfile() {
 
   profileSaveState.value = 'loading'
   profileMessage.value = ''
-  const response = await request('/user/profile', 'PUT', payload)
+  let updatedUser = { ...userInfo.value }
 
-  if (!responseOkay(response)) {
-    const field = response?.data?.field
-    if (field && Object.prototype.hasOwnProperty.call(profileForm.value, field)) {
-      profileErrors.value = { ...profileErrors.value, [field]: responseMessage(response, '请检查这一项。') }
+  if (Object.keys(payload).length) {
+    const response = await request('/user/profile', 'PUT', payload)
+    if (!responseOkay(response)) {
+      const field = response?.data?.field
+      if (field && Object.prototype.hasOwnProperty.call(profileForm.value, field)) {
+        profileErrors.value = { ...profileErrors.value, [field]: responseMessage(response, '请检查这一项。') }
+      }
+      profileMessage.value = responseMessage(response, '资料保存失败，请稍后重试。')
+      profileSaveState.value = 'error'
+      return
     }
-    profileMessage.value = responseMessage(response, '资料保存失败，请稍后重试。')
+    updatedUser = { ...updatedUser, ...response.data.data.userInfo }
+  }
+
+  try {
+    if (avatarFile.value) {
+      const avatar = await uploadAvatar(avatarFile.value)
+      updatedUser = { ...updatedUser, avatar }
+    }
+  } catch (error) {
+    persistProfileUser(updatedUser)
+    if (Object.keys(payload).length) profileOriginal.value = { ...profileForm.value }
+    const avatarError = error?.message || '头像上传失败，请稍后重试。'
+    profileMessage.value = Object.keys(payload).length
+      ? `其他资料已保存；${avatarError}`
+      : avatarError
     profileSaveState.value = 'error'
     return
   }
 
-  userInfo.value = { ...userInfo.value, ...response.data.data.userInfo }
+  persistProfileUser(updatedUser)
   profileOriginal.value = { ...profileForm.value }
   avatarFailed.value = false
-  const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
-  localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...userInfo.value }))
+  clearAvatarSelection()
   profileMessage.value = '资料已保存，主页内容已更新。'
   profileSaveState.value = 'success'
 }
@@ -1348,8 +1654,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
-  profileDialog.value?.close()
-  commandDialog.value?.close()
+  if (profileDialog.value?.open) profileDialog.value.close()
+  if (commandDialog.value?.open) commandDialog.value.close()
+  revokeAvatarPreview()
 })
 </script>
 
