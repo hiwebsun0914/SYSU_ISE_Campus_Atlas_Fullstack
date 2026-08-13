@@ -1,7 +1,7 @@
 import { ref, computed, nextTick as vueNextTick } from 'vue'
 import routes from '@/data/routes'
 import { request } from '@/utils/request'
-import { backendToPlaceId, placeIdToBackend } from '@/data/locationMap'
+import { backendToPlaceId, placeIdToBackend } from '@/data/campusPlaces'
 
 export const points = ref(0)
 export const checkedPlaces = ref([])
@@ -9,7 +9,15 @@ export const completedRoutes = ref([])
 export const checkinRecords = ref([])
 export const nickName = ref('')
 
-export const checkedSet = computed(() => new Set(checkedPlaces.value))
+export const checkedSet = computed(() => {
+  const s = new Set(checkedPlaces.value) // 前端 slug
+  // 同时加入对应的后端 backendId，便于与路线中的 backendId 比对打卡进度
+  for (const slug of checkedPlaces.value) {
+    const bid = placeIdToBackend[slug]
+    if (bid != null) s.add(bid)
+  }
+  return s
+})
 export const completedSet = computed(() => new Set(completedRoutes.value))
 
 /**

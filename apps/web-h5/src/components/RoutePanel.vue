@@ -6,7 +6,7 @@
       @click="onHiddenClick"
       title="隐藏打卡点"
     >
-      🧭
+      隐藏打卡点
     </button>
     <!-- 收起态浮动按钮 -->
     <button
@@ -15,7 +15,7 @@
       @click="expanded = true"
       title="推荐路线"
     >
-      🗺️
+      推荐路线
     </button>
 
     <!-- 展开面板 -->
@@ -135,17 +135,20 @@ function onHiddenClick() {
 
 /* ---- 隐藏打卡点入口浮动按钮（位于推荐路线上方） ---- */
 .extra-fab {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a2e3b;
+  white-space: nowrap;
+  cursor: pointer;
   transition: box-shadow 0.18s ease;
   outline: none;
   -webkit-tap-highlight-color: transparent;
@@ -157,17 +160,20 @@ function onHiddenClick() {
 }
 /* ---- 收起态浮动按钮 ---- */
 .route-fab {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a2e3b;
+  white-space: nowrap;
+  cursor: pointer;
   transition: box-shadow 0.18s ease;
   outline: none;
   -webkit-tap-highlight-color: transparent;

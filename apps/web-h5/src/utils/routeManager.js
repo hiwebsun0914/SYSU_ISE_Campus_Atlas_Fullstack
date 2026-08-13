@@ -81,12 +81,7 @@ export async function planWalkingRoute(AMapNS, mapInstance, places) {
     const start = normalizeLngLat(places[i].lnglat)
     const end = normalizeLngLat(places[i + 1].lnglat)
 
-    let segmentPath = await planWalkingSegment(AMapNS, start, end)
-
-    // 降级：如果规划失败，使用直线连接
-    if (!segmentPath || segmentPath.length === 0) {
-      segmentPath = [start, end]
-    }
+    const segmentPath = await planWalkingSegmentWithFallback(AMapNS, start, end)
 
     if (i === 0) {
       fullPath.push(...segmentPath)
@@ -157,6 +152,33 @@ function planWalkingSegment(AMapNS, start, end) {
       resolve(null)
     }
   })
+}
+
+/**
+ * 规划相邻两点之间的步行路径（含中点重试与直线兜底）
+ * 优先级：A→B 真实路线 → A→M→B 真实路线 → A→B 直线
+ */
+async function planWalkingSegmentWithFallback(AMapNS, start, end) {
+  // 1. 直接规划 A → B
+  const directPath = await planWalkingSegment(AMapNS, start, end)
+  if (directPath && directPath.length >= 2) {
+    return directPath
+  }
+
+  // 2. 计算中点 M，分别规划 A → M、M → B
+  const mid = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
+  const [pathAM, pathMB] = await Promise.all([
+    planWalkingSegment(AMapNS, start, mid),
+    planWalkingSegment(AMapNS, mid, end),
+  ])
+
+  if (pathAM && pathAM.length >= 2 && pathMB && pathMB.length >= 2) {
+    // 拼接两段，去除重复的中点
+    return [...pathAM, ...pathMB.slice(1)]
+  }
+
+  // 3. 中点规划仍失败，使用直线连接
+  return [start, end]
 }
 
 /**

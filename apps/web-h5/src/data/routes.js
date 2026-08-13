@@ -1,57 +1,32 @@
 export default [
   {
-    id: 'freshman-route',
-    name: '新生入门路线',
+    id: 'military-training-route',
+    name: '军训沿途',
     icon: '🌱',
     type: 'freshman',
-    description: '南校初体验~\n冷知识:来中大要在鹭江下车',
+    description: '',
     points: [
-      "loc-------",
-      "ying-dong-stadium",
-      "south-library-main",
-      "xing-pavilion",
-      "sun-yat-sen-bronze-statue",
-      "swasey-hall"
+      65, 66, 64, 102, 103, 104, 105, 106, 59, 107, 43, 108, 34, 38, 109, 37, 93
     ],
   },
   {
-    id: 'study-route',
-    name: '学习探索路线',
-    icon: '📚',
-    type: 'study',
-    description: '看看你未来每天上课的地方',
-    points: [
-      "yifu-bldg",
-      "feng-sheng-hall",
-      "teaching-bldg-1",
-      "loc------",
-      "lin-hu-hall-complex"
-    ],
-  },
-  {
-    id: 'scenery-route',
-    name: '校园风景路线',
-    icon: '🌿',
+    id: 'central-axis-route',
+    name: '中轴线',
+    icon: '🏛️',
     type: 'scenery',
-    description: '最美高校中轴线——别忘了看两侧的风景',
+    description: '',
     points: [
-      "north-gate-arch",
-      "ling-nan-hall",
-      "xing-pavilion",
-      "sun-yat-sen-bronze-statue",
-      "swasey-hall"
+      71, 70, 69, 67, 76, 21, 19, 18, 12, 84, 16, 14, 54, 50, 88, 81, 82, 83, 80, 87, 79, 78, 75, 73, 72
     ],
   },
   {
-    id: 'life-route',
-    name: '生活服务路线',
-    icon: '🍜',
-    type: 'life',
-    description: '打卡点少干货多',
+    id: 'west-campus-explore-route',
+    name: '探索西区',
+    icon: '🔍',
+    type: 'explore',
+    description: '',
     points: [
-      "new-womens-school",
-      "song-tao-garden",
-      "new-gym"
+      110, 39, 40, 31, 33, 29, 30, 32, 25, 26, 23, 27, 95, 96, 98
     ],
   },
 ]

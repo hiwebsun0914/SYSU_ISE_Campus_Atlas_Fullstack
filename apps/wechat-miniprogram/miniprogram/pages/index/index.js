@@ -132,7 +132,7 @@ Page({
     await Promise.allSettled(slice.map(async (it) => {
       if (!it?.image) return;
       const thumb = await imgCache.get(toThumb(it.image));
-      const idx = (this.data.locations || []).findIndex(x => x.id === it.id);
+      const idx = (this.data.locations || []).findIndex(x => x.backendId === it.backendId);
       if (idx === -1) return;
       const updated = [...this.data.locations];
       const old = updated[idx];
@@ -143,7 +143,7 @@ Page({
 
   // 进入视口再拉“大图”（1440）——省流；点击时再拉“原图”
   async _loadFullForItem(id, url) {
-    const idx = this.data.locations.findIndex(x => x.id === id);
+    const idx = this.data.locations.findIndex(x => x.backendId === id);
     if (idx === -1) return;
     const item = this.data.locations[idx];
     if (!url || item.imageFullLocal || !item.imageThumbLocal) return;
@@ -161,7 +161,7 @@ Page({
     this._observer.relativeToViewport({ bottom: 200 }).observe('.js-card', (res) => {
       const id = Number(res?.dataset?.id);
       if (!id) return;
-      const item = (this.data.locations || []).find(x => x.id === id);
+      const item = (this.data.locations || []).find(x => x.backendId === id);
       if (!item) return;
       if (item.image && !item.imageFullLocal && item.imageThumbLocal) {
         this._loadFullForItem(id, item.image);
@@ -172,7 +172,7 @@ Page({
 
   /* ===================== 点击强制拉“原图”（地点） ===================== */
   async _ensureFullLocalById(id) {
-    const idx = (this.data.locations || []).findIndex(x => x.id === id);
+    const idx = (this.data.locations || []).findIndex(x => x.backendId === id);
     if (idx === -1) return '';
     const item = this.data.locations[idx];
 
@@ -307,7 +307,7 @@ Page({
     }
 
     // 2) 兜底：大图或缩略图
-    const item = (this.data.locations || []).find(x => x.id === id);
+    const item = (this.data.locations || []).find(x => x.backendId === id);
     const fallback = item?.imageFullLocal || item?.imageThumbLocal || item?.image;
     if (fallback) wx.previewImage({ current: fallback, urls: [fallback] });
     else wx.showToast({ icon: 'none', title: '暂无图片可预览' });
@@ -316,7 +316,7 @@ Page({
   toggleDescription(e) {
     const id = Number(e.currentTarget.dataset.id);
     const updated = (this.data.locations || []).map(x =>
-      x.id === id ? { ...x, expanded: !x.expanded } : x
+      x.backendId === id ? { ...x, expanded: !x.expanded } : x
     );
     this.setData({ locations: updated });
   },
