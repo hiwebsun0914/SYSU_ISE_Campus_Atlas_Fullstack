@@ -52,7 +52,7 @@
 
         <section class="profile-hero" aria-labelledby="profile-title">
           <div class="profile-identity">
-            <div class="profile-avatar" aria-hidden="true">
+            <div class="profile-avatar">
               <img
                 v-if="avatarSrc && !avatarFailed"
                 :src="avatarSrc"
@@ -66,50 +66,51 @@
             </div>
             <div class="profile-heading">
               <p class="eyebrow">STUDENT PROFILE / {{ profileCode }}</p>
-              <h1 id="profile-title">{{ displayName }}</h1>
+              <div class="profile-title-row">
+                <h1 id="profile-title">{{ displayName }}</h1>
+                <button class="button button-secondary hero-edit" type="button" @click="openProfileDialog">
+                  <Pencil :size="16" aria-hidden="true" />
+                  <span class="hero-edit-label">编辑资料</span>
+                </button>
+              </div>
               <p class="profile-bio">{{ userInfo.bio || '记录走过的校园，也记录正在形成的自己。' }}</p>
-              <dl class="profile-identifiers">
-                <div>
-                  <dt>姓名</dt>
-                  <dd>{{ userInfo.realName || '未填写' }}</dd>
-                </div>
-                <div>
-                  <dt>学号</dt>
-                  <dd>{{ userInfo.studentId || '未填写' }}</dd>
-                </div>
-                <div>
-                  <dt>账户</dt>
-                  <dd>{{ userInfo.id || '未同步' }}</dd>
-                </div>
-              </dl>
             </div>
+            <dl class="profile-identifiers">
+              <div>
+                <dt>姓名</dt>
+                <dd>{{ userInfo.realName || '未填写' }}</dd>
+              </div>
+              <div>
+                <dt>学号</dt>
+                <dd>{{ userInfo.studentId || '未填写' }}</dd>
+              </div>
+              <div>
+                <dt>账户</dt>
+                <dd>{{ userInfo.id || '未同步' }}</dd>
+              </div>
+            </dl>
           </div>
-          <button class="button button-secondary hero-edit" type="button" @click="openProfileDialog">
-            <Pencil :size="16" aria-hidden="true" />
-            编辑资料
-          </button>
-        </section>
-
-        <section class="stat-strip" aria-label="个人概览">
-          <div>
-            <span>POINTS</span>
-            <strong>{{ userInfo.points || 0 }}</strong>
-            <small>当前积分</small>
-          </div>
-          <div>
-            <span>PROGRESS</span>
-            <strong>{{ unlockedCount }}<i>/{{ totalBadges }}</i></strong>
-            <small>地点已解锁</small>
-          </div>
-          <div>
-            <span>REVIEW</span>
-            <strong>{{ submissionCounts.pending }}</strong>
-            <small>投稿待审核</small>
-          </div>
-          <div>
-            <span>ROUTES</span>
-            <strong>{{ completedRouteCount }}</strong>
-            <small>路线已完成</small>
+          <div class="stat-strip" aria-label="个人概览">
+            <div>
+              <span>POINTS</span>
+              <strong>{{ userInfo.points || 0 }}</strong>
+              <small>当前积分</small>
+            </div>
+            <div>
+              <span>PROGRESS</span>
+              <strong>{{ unlockedCount }}<i>/{{ totalBadges }}</i></strong>
+              <small>地点已解锁</small>
+            </div>
+            <div>
+              <span>REVIEW</span>
+              <strong>{{ submissionCounts.pending }}</strong>
+              <small>投稿待审核</small>
+            </div>
+            <div>
+              <span>ROUTES</span>
+              <strong>{{ completedRouteCount }}</strong>
+              <small>路线已完成</small>
+            </div>
           </div>
         </section>
 
@@ -542,9 +543,9 @@
             <button v-if="avatarFile" class="avatar-clear-button" type="button" @click="clearAvatarSelection">
               移除已选图片
             </button>
-            <div class="field-message-slot" aria-live="polite">
+            <div id="profile-avatar-help" class="field-message-slot" aria-live="polite">
               <p v-if="profileErrors.avatar" class="field-error">{{ profileErrors.avatar }}</p>
-              <p v-else id="profile-avatar-help" class="field-help">
+              <p v-else class="field-help">
                 {{ avatarFile ? `已选择 ${formatFileSize(avatarFile.size)}，保存资料时上传。` : '选择后可先预览，保存资料时正式上传。' }}
               </p>
             </div>
