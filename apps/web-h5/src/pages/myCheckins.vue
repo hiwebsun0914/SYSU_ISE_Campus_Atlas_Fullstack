@@ -2,24 +2,6 @@
   <div class="profile-page">
     <a class="profile-skip-link" href="#profile-main">跳到主要内容</a>
 
-    <header class="profile-nav">
-      <button class="profile-brand" type="button" aria-label="返回校园首页" @click="router.push('/')">
-        <span class="profile-brand-mark">SYSU</span>
-        <span class="profile-brand-name">笃行校园探索</span>
-      </button>
-      <button
-        class="command-trigger"
-        type="button"
-        aria-haspopup="dialog"
-        aria-keyshortcuts="Control+K Meta+K"
-        @click="openCommandPalette"
-      >
-        <Command :size="17" aria-hidden="true" />
-        <span>快速前往</span>
-        <kbd>⌘ K</kbd>
-      </button>
-    </header>
-
     <main id="profile-main" class="profile-shell">
       <section v-if="loading" class="profile-loading" aria-busy="true" aria-label="正在加载个人主页">
         <div class="skeleton skeleton-title"></div>
@@ -67,13 +49,18 @@
             <div class="profile-heading">
               <p class="eyebrow">STUDENT PROFILE</p>
               <div class="profile-title-row">
-                <h1 id="profile-title">{{ displayName }}</h1>
-                <button class="button button-secondary hero-edit" type="button" @click="openProfileDialog">
-                  <Pencil :size="16" aria-hidden="true" />
+                <h1 id="profile-title" :title="displayName">{{ displayName }}</h1>
+                <button
+                  class="button button-secondary hero-edit"
+                  type="button"
+                  aria-label="编辑资料"
+                  title="编辑资料"
+                  @click="openProfileDialog"
+                >
+                  <Pencil :size="14" aria-hidden="true" />
                   <span class="hero-edit-label">编辑资料</span>
                 </button>
               </div>
-              <p class="profile-bio">{{ userInfo.bio || '记录走过的校园，也记录正在形成的自己。' }}</p>
             </div>
             <div class="profile-personality-space" aria-hidden="true"></div>
             <dl class="profile-identifiers">
@@ -503,17 +490,10 @@
           <ChevronRight :size="18" aria-hidden="true" />
         </button>
 
-        <section class="profile-session" aria-labelledby="profile-session-title">
-          <div class="profile-session-copy">
-            <p class="eyebrow">ACCOUNT SESSION / 账户会话</p>
-            <h2 id="profile-session-title">退出当前账号</h2>
-            <p>退出后将清除这台设备上的登录信息，本地未提交的内容不会自动保存。</p>
-          </div>
-          <button class="profile-logout-button" type="button" @click="logout">
-            <LogOut :size="18" aria-hidden="true" />
-            退出登录
-          </button>
-        </section>
+        <button class="profile-logout-button profile-logout-standalone" type="button" @click="logout">
+          <LogOut :size="18" aria-hidden="true" />
+          退出登录
+        </button>
       </template>
     </main>
 
@@ -787,7 +767,6 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
-  Command,
   Compass,
   Home,
   Image as ImageIcon,

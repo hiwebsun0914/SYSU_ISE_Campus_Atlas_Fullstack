@@ -125,7 +125,7 @@
 
       <footer class="site-footer">
         <span>中山大学智能工程学院 · 2026 级迎新</span>
-        <span class="footer-code">SYSU / ISE / GZ</span>
+        <span class="footer-code">SYSU / ISE</span>
       </footer>
     </main>
 
@@ -284,7 +284,7 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 .skip-link { position: fixed; z-index: 2000; top: 8px; left: 8px; padding: 10px 14px; color: #fff; background: var(--ink); border-radius: 10px; transform: translateY(-150%); }
 .skip-link:focus { transform: translateY(0); }
 
-.site-header { width: min(calc(100% - 24px), 1240px); min-height: 72px; display: flex; align-items: center; gap: 10px; margin: 12px auto 0; padding: 11px 14px; border: 1px solid rgba(214,228,223,.68); border-radius: 14px; background: rgba(243,247,245,.56); box-shadow: 0 16px 42px rgba(10,46,59,.06), inset 0 1px 0 rgba(255,255,255,.62); backdrop-filter: blur(20px) saturate(1.22); position: relative; z-index: 30; }
+.site-header { width: min(calc(100% - 24px), 1240px); min-height: 72px; display: flex; align-items: center; gap: 10px; margin: calc(12px + env(safe-area-inset-top, 0px)) auto 0; padding: 11px 14px; border: 1px solid rgba(214,228,223,.68); border-radius: 14px; background: rgba(243,247,245,.56); box-shadow: 0 16px 42px rgba(10,46,59,.06), inset 0 1px 0 rgba(255,255,255,.62); backdrop-filter: blur(20px) saturate(1.22); position: relative; z-index: 30; }
 .brand { display: inline-flex; align-items: center; min-width: 0; text-decoration: none; color: var(--ink); }
 .brand-logo { width: min(260px, 72vw); height: 44px; display: flex; align-items: center; }
 .brand-logo img { display: block; width: 100%; max-height: 100%; object-fit: contain; object-position: left center; filter: brightness(0) saturate(100%) invert(15%) sepia(28%) saturate(1349%) hue-rotate(146deg) brightness(90%) contrast(96%); }

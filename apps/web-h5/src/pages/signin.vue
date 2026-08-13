@@ -538,7 +538,7 @@ async function goNext() {
 .bg-img { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
 
 /* LOGO */
-.logo-container { display: flex; justify-content: center; margin-top: 25px; padding: 50px; }
+.logo-container { display: flex; justify-content: center; margin-top: calc(25px + env(safe-area-inset-top, 0px)); padding: 50px; }
 .logo-img { width: 200px; }
 
 /* 模式切换 */
