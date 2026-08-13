@@ -37,45 +37,64 @@
           <div class="explore-head">
             <span class="icon-tile icon-tile-accent"><MapPinned :size="24" aria-hidden="true" /></span>
             <div>
-              <p class="card-kicker">CAMPUS EXPLORE · 校园探索</p>
-              <h2>{{ userInfo ? '继续你的校园探索' : '从第一处校园坐标出发' }}</h2>
+              <p class="card-kicker">MAP ROUTES · 新生路线</p>
+              <h2>从一条新生路线认识校园</h2>
             </div>
           </div>
 
-          <div v-if="loading" class="progress-skeleton" aria-label="正在加载校园进度">
+          <div v-if="loading" class="progress-skeleton" aria-label="正在加载路线进度">
             <span></span><span></span><span></span>
-          </div>
-
-          <div v-else-if="loadError" class="load-error" role="alert">
-            <WifiOff :size="22" aria-hidden="true" />
-            <div><strong>校园数据暂时没有抵达</strong><span>{{ loadError }}</span></div>
-            <button type="button" @click="loadDashboard">重试</button>
           </div>
 
           <div v-else class="progress-content">
             <div class="progress-number">
-              <span>{{ completedCount }}</span><small>/ {{ totalCount || '—' }} 站</small>
+              <span>{{ completedCount }}</span><small>/ {{ totalCount }} 站</small>
             </div>
-            <p>{{ totalCount ? `已完成 ${progressPercent}%` : '打卡点正在整理中' }}</p>
-            <div class="route-progress" role="progressbar" aria-label="校园打卡完成进度" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="progressPercent">
-              <span :style="{ '--progress-scale': progressPercent / 100 }"></span>
-              <i class="route-start"></i><i class="route-end"></i>
+            <p>{{ selectedRoute.name }} · 路线进度 {{ progressPercent }}%</p>
+
+            <div class="route-progress-list" aria-label="选择要查看的路线进度">
+              <button
+                v-for="summary in routeSummaries"
+                :key="summary.route.id"
+                type="button"
+                :class="['route-progress-option', { active: summary.route.id === selectedRoute.id }]"
+                :aria-pressed="summary.route.id === selectedRoute.id"
+                @click="selectRoute(summary.route.id)"
+              >
+                <span class="route-progress-meta">
+                  <strong>{{ summary.route.name }}</strong>
+                  <small>{{ summary.completed }}/{{ summary.total }} · {{ summary.percent }}%</small>
+                </span>
+                <span
+                  class="route-progress-track"
+                  role="progressbar"
+                  :aria-label="`${summary.route.name}路线进度`"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  :aria-valuenow="summary.percent"
+                >
+                  <i :style="{ '--progress-scale': summary.percent / 100 }"></i>
+                </span>
+              </button>
             </div>
+
             <div v-if="nextLocation" class="next-stop">
               <Navigation :size="18" aria-hidden="true" />
-              <span><small>建议下一站</small><strong>{{ nextLocation.name }}</strong></span>
-              <em>{{ nextLocation.position || `地点 ${nextLocation.backendId}` }}</em>
+              <span><small>下一站</small><strong>{{ nextLocation.name }}</strong></span>
+              <em>{{ nextLocationMeta }}</em>
+            </div>
+            <div v-else class="next-stop next-stop-complete">
+              <MapPinned :size="18" aria-hidden="true" />
+              <span><small>路线状态</small><strong>这条路线已经全部打卡</strong></span>
             </div>
           </div>
 
           <div class="explore-actions explore-meta">
-            <span class="primary-action">
-              {{ completedCount ? '下一站已定位' : '第一站已定位' }}
+            <RouterLink class="primary-action" :to="primaryMapTarget">
+              {{ primaryActionLabel }}
               <MapPinned :size="19" aria-hidden="true" />
-            </span>
-            <RouterLink class="text-action" to="/rank">
-              <Trophy :size="18" aria-hidden="true" />查看排行榜
             </RouterLink>
+            <RouterLink class="text-action" to="/map">打开完整地图</RouterLink>
           </div>
         </article>
 
@@ -125,7 +144,7 @@
 
       <footer class="site-footer">
         <span>中山大学智能工程学院 · 2026 级迎新</span>
-        <span class="footer-code">SYSU / ISE</span>
+        <span class="footer-code">SYSU / ISE / 2026</span>
       </footer>
     </main>
 
@@ -154,9 +173,11 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowRight, MapPinned, Navigation, ScanFace,
-  Send, Sparkles, Trophy, WifiOff, X,
+  Send, Sparkles, X,
 } from '@lucide/vue'
-import { request } from '@/utils/request'
+import { CATEGORY_MAP, getPlaceById } from '@/data/campusPlaces'
+import routes from '@/data/routes'
+import { checkedSet, fetchUserProgress, getRouteCheckedCount } from '@/stores/userProgress'
 
 const WELCOME_KEY = 'ise-welcome-2026-v1'
 const router = useRouter()
@@ -164,51 +185,82 @@ const mainContent = ref(null)
 const welcomeDialog = ref(null)
 const welcomeEnter = ref(null)
 const welcomeVisible = ref(false)
-const loading = ref(true)
-const loadError = ref('')
-const userInfo = ref(null)
-const locations = ref([])
-const unlockedLocations = ref([])
-const lockingLocations = ref([])
+const loading = ref(false)
+const selectedRouteId = ref(null)
 
-const totalCount = computed(() => locations.value.length)
-const completedCount = computed(() => unlockedLocations.value.length)
-const pendingCount = computed(() => lockingLocations.value.length)
-const progressPercent = computed(() => totalCount.value ? Math.min(100, Math.round((completedCount.value / totalCount.value) * 100)) : 0)
-const nextLocation = computed(() => {
-  const unlocked = new Set(unlockedLocations.value.map(Number))
-  const locking = new Set(lockingLocations.value.map(Number))
-  return locations.value.find(item => !unlocked.has(Number(item.backendId)) && !locking.has(Number(item.backendId))) || null
+function routeProgress(route) {
+  const total = route?.points?.length || 0
+  const completed = route ? getRouteCheckedCount(route.id) : 0
+  return {
+    completed,
+    total,
+    percent: total ? Math.min(100, Math.round((completed / total) * 100)) : 0,
+  }
+}
+
+const routeSummaries = computed(() => routes.map((route, index) => ({
+  route,
+  index,
+  ...routeProgress(route),
+})))
+const allRoutesComplete = computed(() => routeSummaries.value.every(item => item.total > 0 && item.completed >= item.total))
+const recommendedRouteSummary = computed(() => {
+  const incomplete = routeSummaries.value.filter(item => item.completed < item.total)
+  if (!incomplete.length) return routeSummaries.value.at(-1)
+  return [...incomplete].sort((a, b) => b.percent - a.percent || a.index - b.index)[0]
 })
+const selectedRouteSummary = computed(() => (
+  routeSummaries.value.find(item => item.route.id === selectedRouteId.value)
+  || recommendedRouteSummary.value
+))
+const selectedRoute = computed(() => selectedRouteSummary.value?.route || routes[0])
+const completedCount = computed(() => selectedRouteSummary.value?.completed || 0)
+const totalCount = computed(() => selectedRouteSummary.value?.total || 0)
+const progressPercent = computed(() => selectedRouteSummary.value?.percent || 0)
+const nextLocation = computed(() => {
+  if (allRoutesComplete.value) return null
+  for (const placeId of selectedRoute.value?.points || []) {
+    const place = getPlaceById(placeId)
+    if (place && place.isHidden !== 1 && !checkedSet.value.has(place.id) && !checkedSet.value.has(place.backendId)) return place
+  }
+  return null
+})
+const nextLocationMeta = computed(() => {
+  if (!nextLocation.value) return ''
+  const category = CATEGORY_MAP[nextLocation.value.category]?.label
+  return [category, nextLocation.value.position].filter(Boolean).join(' · ')
+})
+const primaryActionLabel = computed(() => {
+  if (allRoutesComplete.value) return '继续逛校园地图'
+  if (completedCount.value >= totalCount.value) return '打开完整地图'
+  return completedCount.value ? '继续探索' : '在地图中开始'
+})
+const primaryMapTarget = computed(() => {
+  if (allRoutesComplete.value || !nextLocation.value) return '/map'
+  return {
+    path: '/map',
+    query: { route: selectedRoute.value.id, place: nextLocation.value.id },
+  }
+})
+
+function selectRoute(routeId) {
+  selectedRouteId.value = routeId
+}
 
 function isAuthed() {
   return Boolean(localStorage.getItem('token'))
 }
 
 async function loadDashboard() {
+  if (!isAuthed()) {
+    loading.value = false
+    return
+  }
   loading.value = true
-  loadError.value = ''
   try {
-    const locationsRequest = request('/locations', 'GET', null, { credentials: 'include' })
-    const authRequests = isAuthed()
-      ? Promise.all([
-          request('/auth/me', 'GET', null, { credentials: 'include' }),
-          request('/checkin/status', 'GET', null, { credentials: 'include' }),
-        ])
-      : Promise.resolve([null, null])
-
-    const [locationsResponse, [meResponse, statusResponse]] = await Promise.all([locationsRequest, authRequests])
-    const locationList = locationsResponse?.data?.data?.locations || locationsResponse?.data?.locations
-    if (!locationsResponse?.ok || !Array.isArray(locationList)) throw new Error('请检查网络后再试一次')
-    locations.value = locationList
-
-    if (meResponse?.data?.code === 0) userInfo.value = meResponse.data.userInfo || null
-    if (statusResponse?.data?.code === 0) {
-      unlockedLocations.value = statusResponse.data.unlockedLocations || []
-      lockingLocations.value = statusResponse.data.lockingLocations || []
-    }
+    await fetchUserProgress()
   } catch (error) {
-    loadError.value = error?.message || '请稍后重新加载'
+    console.warn('[Home] fetchUserProgress failed, using local route fallback:', error)
   } finally {
     loading.value = false
   }
@@ -309,7 +361,6 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 @keyframes node-breathe { 50% { transform: scale(1.28); opacity: .72; } }
 @keyframes map-drift { 50% { transform: translate3d(-10px, 6px, 0); } }
 @keyframes route-fill { from { transform: scaleX(0); } to { transform: scaleX(var(--progress-scale, 0)); } }
-@keyframes route-node { 50% { transform: scale(1.2); opacity: .74; } }
 @keyframes scan-sweep { 50% { opacity: .35; transform: translateY(-5px); } }
 
 .explore-card, .feature-card { border: 1px solid var(--border); border-radius: 24px; position: relative; overflow: hidden; }
@@ -318,7 +369,7 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 .map-grid::after { content: ""; position: absolute; width: 310px; height: 210px; right: -80px; top: 80px; border: 1px solid rgba(199,242,74,.65); border-radius: 48% 52% 61% 39%; transform: rotate(-18deg); box-shadow: 0 0 0 28px rgba(199,242,74,.04),0 0 0 56px rgba(199,242,74,.025); }
 .coordinate { position: absolute; z-index: 1; font-family: "SFMono-Regular", Menlo, monospace; font-size: 9px; color: rgba(255,255,255,.45); letter-spacing: 0; }
 .coordinate-top { right: 22px; top: 19px; }.coordinate-side { right: -25px; bottom: 100px; transform: rotate(90deg); }
-.explore-head, .explore-actions, .progress-content, .progress-skeleton, .load-error { position: relative; z-index: 2; }
+.explore-head, .explore-actions, .progress-content, .progress-skeleton { position: relative; z-index: 2; }
 .explore-head { display: flex; align-items: flex-start; gap: 13px; padding-right: 35px; }
 .icon-tile { width: clamp(38px, 5.5vw, 46px); height: clamp(38px, 5.5vw, 46px); flex: 0 0 clamp(38px, 5.5vw, 46px); display: grid; place-items: center; border: 1px solid var(--border); border-radius: 14px 5px 14px 5px; background: #eef5f2; color: var(--ink); }
 .icon-tile svg, .feature-card svg, .desktop-nav svg, .explore-actions svg { width: 1.35em; height: 1.35em; }
@@ -330,20 +381,21 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 .progress-number span { color: var(--accent); font-family: "DIN Alternate", "Avenir Next", sans-serif; font-size: clamp(64px, 19vw, 104px); font-weight: 800; line-height: .8; letter-spacing: 0; }
 .progress-number small { font-family: "SFMono-Regular", Menlo, monospace; font-size: 12px; color: rgba(255,255,255,.6); }
 .progress-content > p { margin: 15px 0 12px; color: rgba(255,255,255,.74); font-size: 14px; }
-.route-progress { height: 5px; position: relative; background: rgba(255,255,255,.17); border-radius: 10px; }
-.route-progress span { position: absolute; inset: 0; transform: scaleX(var(--progress-scale, 0)); transform-origin: left; background: var(--accent); border-radius: inherit; transition: transform .42s cubic-bezier(.2,.75,.25,1); animation: route-fill .7s cubic-bezier(.2,.75,.25,1) .22s both; }
-.route-progress i { width: 13px; height: 13px; position: absolute; top: -4px; border: 3px solid var(--ink); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.route-start { left: 0; animation: route-node 2.6s ease-in-out .9s infinite; }.route-end { right: 0; animation: route-node 2.6s ease-in-out 1.2s infinite; }
+.route-progress-list { display: grid; gap: 7px; }
+.route-progress-option { width: 100%; min-height: 52px; display: grid; gap: 8px; padding: 9px 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; color: #fff; background: rgba(255,255,255,.055); text-align: left; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+.route-progress-option:hover { background: rgba(255,255,255,.09); }.route-progress-option:active { transform: scale(.99); }.route-progress-option:focus-visible { outline: 3px solid rgba(199,242,74,.42); outline-offset: 2px; }
+.route-progress-option.active { border-color: rgba(199,242,74,.72); background: rgba(199,242,74,.11); }
+.route-progress-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }.route-progress-meta strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }.route-progress-meta small { flex: 0 0 auto; color: rgba(255,255,255,.58); font-family: "SFMono-Regular", Menlo, monospace; font-size: 10px; }.route-progress-option.active .route-progress-meta strong,.route-progress-option.active .route-progress-meta small { color: var(--accent); }
+.route-progress-track { height: 4px; position: relative; display: block; overflow: hidden; background: rgba(255,255,255,.16); border-radius: 999px; }.route-progress-track i { position: absolute; inset: 0; transform: scaleX(var(--progress-scale,0)); transform-origin: left; background: var(--accent); border-radius: inherit; transition: transform .42s cubic-bezier(.2,.75,.25,1); animation: route-fill .7s cubic-bezier(.2,.75,.25,1) .16s both; }
 .next-stop { min-height: 60px; display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 10px; margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.12); }
 .next-stop span { display: grid; min-width: 0; }.next-stop small { color: rgba(255,255,255,.52); font-size: 11px; }.next-stop strong { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .next-stop em { display: none; color: rgba(255,255,255,.52); font-size: 11px; font-style: normal; }
+.next-stop-complete strong { color: var(--accent); }
 .explore-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .primary-action, .text-action { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; text-decoration: none; font-weight: 800; }
 .primary-action { padding: 0 19px; background: var(--accent); color: var(--ink); }.text-action { padding: 0 8px; color: #fff; }
-.explore-meta .primary-action { cursor: default; pointer-events: none; }
 .progress-skeleton { margin-top: 78px; display: grid; gap: 14px; }.progress-skeleton span { display: block; height: 18px; border-radius: 10px; background: rgba(255,255,255,.12); animation: pulse 1.2s ease-in-out infinite; }.progress-skeleton span:first-child { height: 70px; width: 45%; }.progress-skeleton span:nth-child(2) { width: 75%; }
 @keyframes pulse { 50% { opacity: .42; } }
-.load-error { margin-top: 72px; padding: 18px; display: grid; grid-template-columns: 30px 1fr; gap: 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; background: rgba(255,255,255,.07); }.load-error div { display: grid; gap: 4px; }.load-error span { color: rgba(255,255,255,.64); font-size: 13px; }.load-error button { grid-column: 2; width: max-content; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--accent); color: var(--ink); font-weight: 800; }
 
 .feature-card { width: 100%; min-height: 250px; display: flex; flex-direction: column; padding: 20px; text-align: left; text-decoration: none; color: var(--text); background: var(--surface); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
 .feature-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transform: translateY(10px); background: linear-gradient(135deg, rgba(199,242,74,.16), transparent 42%); transition: opacity .24s ease, transform .24s ease; }
@@ -386,7 +438,7 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 
 @media (max-width: 480px) {
   .site-header { padding: 9px 12px; }.brand-logo { width: min(220px, 68vw); height: 40px; }.home-main { width: min(100% - 24px, 1240px); }.intro-row { padding: 30px 0 22px; }.intro-row h1 { font-size: clamp(30px, 10vw, 44px); }.intro-copy { font-size: 14px; }
-  .feature-card { padding: 16px; }.feature-copy { margin-top: 18px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips span { font-size: 11px; padding: 6px 11px; }
+  .feature-card { padding: 16px; }.feature-copy { margin-top: 18px; }.feature-copy strong { font-size: 18px; }.feature-copy > span { font-size: 13px; }.icon-tile { width: 38px; height: 38px; flex-basis: 38px; }.award-chips span { font-size: 11px; padding: 6px 11px; }.route-progress-option { padding-inline: 10px; }
   .site-footer { padding: 0 4px; }
 }
 
@@ -395,6 +447,6 @@ onBeforeUnmount(() => { document.body.classList.remove('dialog-open') })
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-start,.route-end,.route-progress span,.scan-line { animation: none; }.route-progress span,.feature-card,.feature-card::before,.future-year,.welcome-enter-active,.welcome-leave-active,.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: none; }
+  .eyebrow,.intro-copy,.grid-item,.intro-row h1 span,.progress-skeleton span { opacity: 1; transform: none; animation: none; }.map-grid,.eyebrow span,.route-progress-track i,.scan-line { animation: none; }.route-progress-track i,.route-progress-option,.feature-card,.feature-card::before,.future-year,.welcome-enter-active,.welcome-leave-active,.welcome-enter-active .welcome-dialog,.welcome-leave-active .welcome-dialog { transition: none; }
 }
 </style>
