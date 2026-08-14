@@ -688,6 +688,7 @@ router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
     appealStatus: pending?.appealStatus === 'pending' ? 'rejected' : '',
     appealReason: pending?.appealReason || '',
     appealedAt: Number(pending?.appealedAt || 0),
+    pointsDeferred: pending?.pointsDeferred === true,
     pointsReverted,
     reviewerId: req.userId,
     reviewedAt: Date.now()
