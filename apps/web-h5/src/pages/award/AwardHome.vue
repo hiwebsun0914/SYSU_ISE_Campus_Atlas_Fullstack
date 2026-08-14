@@ -29,44 +29,66 @@
           <h2 id="category-title">你想怎样记录校园？</h2>
         </div>
 
-        <div class="category-grid">
-          <article
+        <div class="category-tabs" role="tablist" aria-label="投稿方向" @keydown="onTabKeydown">
+          <button
             v-for="(cat, index) in categories"
             :key="cat.id"
+            :id="`category-tab-${cat.id}`"
+            class="category-tab"
+            :class="{ active: activeCategory && activeCategory.id === cat.id }"
+            type="button"
+            role="tab"
+            :aria-selected="activeCategory ? activeCategory.id === cat.id : false"
+            aria-controls="category-panel"
+            :tabindex="activeCategory && activeCategory.id === cat.id ? 0 : -1"
+            @click="selectCategory(cat.id)"
+          >
+            <component :is="categoryIcon(cat.id)" :size="15" :stroke-width="2" aria-hidden="true" />
+            <span>0{{ index + 1 }} · {{ cat.name }}</span>
+          </button>
+        </div>
+
+        <Transition name="cat-fade" mode="out-in">
+          <article
+            v-if="activeCategory"
+            :key="activeCategory.id"
+            id="category-panel"
             class="category-card"
+            role="tabpanel"
+            :aria-labelledby="`category-tab-${activeCategory.id}`"
           >
             <div class="category-topline">
-              <span class="category-index">0{{ index + 1 }}</span>
+              <span class="category-index">0{{ activeCategoryIndex + 1 }}</span>
               <span class="category-rule" aria-hidden="true"></span>
-              <span class="category-code">{{ cat.id.toUpperCase() }}</span>
+              <span class="category-code">{{ activeCategory.id.toUpperCase() }}</span>
             </div>
 
             <div class="category-title-row">
               <div class="cat-icon" aria-hidden="true">
-                <component :is="categoryIcon(cat.id)" :size="22" :stroke-width="1.8" />
+                <component :is="categoryIcon(activeCategory.id)" :size="22" :stroke-width="1.8" />
               </div>
               <div>
                 <p>投稿方向</p>
-                <h3>{{ cat.name }}</h3>
+                <h3>{{ activeCategory.name }}</h3>
               </div>
             </div>
 
-            <p class="cat-tagline">{{ cat.description }}</p>
-            <p class="cat-welcome">{{ cat.welcome || cat.description }}</p>
+            <p class="cat-tagline">{{ activeCategory.description }}</p>
+            <p class="cat-welcome">{{ activeCategory.welcome || activeCategory.description }}</p>
 
             <ul class="req-list" aria-label="投稿要求">
-              <li v-for="(r, i) in cat.requirements" :key="i">
+              <li v-for="(r, i) in activeCategory.requirements" :key="i">
                 <Check :size="15" :stroke-width="2.2" aria-hidden="true" />
                 <span>{{ r }}</span>
               </li>
             </ul>
 
-            <button class="submit-btn" :class="{ closed }" type="button" @click="goSubmit(cat.id)">
-              <span>{{ closed ? '投稿已截止' : `投稿${cat.shortName || cat.name}` }}</span>
+            <button class="submit-btn" :class="{ closed }" type="button" @click="goSubmit(activeCategory.id)">
+              <span>{{ closed ? '投稿已截止' : `投稿${activeCategory.shortName || activeCategory.name}` }}</span>
               <ArrowRight :size="17" aria-hidden="true" />
             </button>
           </article>
-        </div>
+        </Transition>
       </section>
 
       <!-- 活动说明 -->
@@ -269,6 +291,27 @@ const toast = ref('')
 let toastTimer = 0
 
 const categories = computed(() => meta.value?.categories || AWARD_CONFIG.categories)
+const activeCategoryId = ref('')
+const activeCategoryIndex = computed(() => {
+  const idx = categories.value.findIndex(c => c.id === activeCategoryId.value)
+  return idx >= 0 ? idx : 0
+})
+const activeCategory = computed(() => categories.value[activeCategoryIndex.value] || null)
+
+function selectCategory(id) {
+  activeCategoryId.value = id
+}
+
+function onTabKeydown(event) {
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+  const list = categories.value
+  if (!list.length) return
+  event.preventDefault()
+  const step = event.key === 'ArrowRight' ? 1 : -1
+  const next = (activeCategoryIndex.value + step + list.length) % list.length
+  activeCategoryId.value = list[next].id
+  document.getElementById(`category-tab-${list[next].id}`)?.focus()
+}
 const deadline = computed(() => meta.value?.deadline || AWARD_CONFIG.deadline)
 const perUserPerCategory = computed(() => meta.value?.perUserPerCategory ?? AWARD_CONFIG.perUserPerCategory)
 const maxImagesPerWork = computed(() => meta.value?.maxImagesPerWork ?? AWARD_CONFIG.maxImagesPerWork)
@@ -514,8 +557,37 @@ onMounted(() => {
 .section-heading { display: grid; gap: 8px; margin-bottom: 24px; }
 .section-heading p { margin: 0; color: var(--award-primary-dark, #08766d); font: 700 10px "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: .06em; }
 .section-heading h2 { margin: 0; color: var(--award-ink); font-size: clamp(22px, 4vw, 30px); line-height: 1.2; }
-.category-grid { border-top: 1px solid var(--award-ink); }
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--award-ink);
+}
+.category-tab {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--award-border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.7);
+  color: var(--award-muted);
+  font-family: "SFMono-Regular", Menlo, Consolas, "Noto Sans SC", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+.category-tab:hover:not(.active) { border-color: var(--award-primary); color: var(--award-primary-dark, #08766d); }
+.category-tab.active { border-color: var(--award-ink); background: var(--award-ink); color: #fff; }
+.category-tab.active svg { color: var(--award-accent); }
 .category-card { position: relative; padding: 24px 0 28px; border-bottom: 1px solid var(--award-border); }
+.cat-fade-enter-active, .cat-fade-leave-active { transition: opacity .18s ease, transform .18s ease; }
+.cat-fade-enter-from { opacity: 0; transform: translateY(10px); }
+.cat-fade-leave-to { opacity: 0; transform: translateY(-6px); }
 .category-topline { display: flex; align-items: center; gap: 10px; }
 .category-index, .category-code { color: var(--award-primary-dark, #08766d); font: 700 10px "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: .08em; }
 .category-index { color: var(--award-ink); font-size: 12px; }
@@ -646,6 +718,7 @@ onMounted(() => {
 .ghost-btn:focus-visible,
 .results-link:focus-visible,
 .filter-chips button:focus-visible,
+.category-tab:focus-visible,
 .intro-btn:focus-visible,
 .vote-btn:focus-visible {
   outline: 3px solid var(--award-accent);
@@ -656,7 +729,6 @@ onMounted(() => {
 @media (min-width: 720px) {
   .header-inner { display: grid; grid-template-columns: 1.2fr .8fr; gap: 48px; align-items: end; }
   .header-summary { margin-top: 0; padding-bottom: 4px; }
-  .category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
   .rules-grid { grid-template-columns: repeat(4, 1fr); }
   .work-grid { grid-template-columns: repeat(2, 1fr); }
   .modal-card { grid-template-columns: 1.1fr 1fr; }
@@ -669,7 +741,10 @@ onMounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .back-link, .submit-btn, .work-card, .toast-enter-active, .toast-leave-active { transition: none; }
+  .back-link, .submit-btn, .work-card, .category-tab,
+  .toast-enter-active, .toast-leave-active,
+  .cat-fade-enter-active, .cat-fade-leave-active { transition: none; }
   .submit-btn:hover, .work-card:hover { transform: none; }
+  .cat-fade-enter-from, .cat-fade-leave-to { transform: none; }
 }
 </style>
