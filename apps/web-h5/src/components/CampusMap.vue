@@ -138,20 +138,19 @@ function buildMarkerHTML(place) {
   }
 
   return `
-<div style="display:flex;flex-direction:column;align-items:center;
-  pointer-events:none;transform:translate(-50%,-100%);">
+<div style="display:flex;flex-direction:column;align-items:center;">
   <div style="width:${size}px;height:${size}px;border-radius:50%;
     background:${bg};border:2.5px solid ${border};box-shadow:${shadow};
     display:flex;align-items:center;justify-content:center;
     font-size:${fontSize}px;transition:all .18s ease;position:relative;
-    cursor:pointer;pointer-events:auto;">
+    cursor:pointer;">
     ${icon}
     ${checked ? '<div style="position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;background:#16a34a;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">✓</div>' : ''}
   </div>
   <div style="margin-top:4px;padding:2px 9px;border-radius:5px;font-size:11px;
     font-weight:600;color:${labelText};background:${labelBg};
     white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;
-    box-shadow:0 1px 4px rgba(10,46,59,.1);pointer-events:none;">${escapeHTML(place.name)}</div>
+    box-shadow:0 1px 4px rgba(10,46,59,.1);">${escapeHTML(place.name)}</div>
 </div>`
 }
 
@@ -192,6 +191,9 @@ function rebuildMarkers() {
     const marker = new AMapNS.Marker({
       position: place.lnglat,
       content: buildMarkerHTML(place),
+      // 用引擎级锚点对齐（底部中心对准经纬度点），不要用 CSS transform 偏移，
+      // 否则可点击热区会停留在未偏移位置，导致点到邻近标记
+      anchor: 'bottom-center',
       zIndex: props.selectedId === place.id ? 200 : 100,
     })
 
