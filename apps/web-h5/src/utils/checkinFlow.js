@@ -56,6 +56,21 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
     return { ok: false, reason: 'unauthorized' }
   }
 
+  // 在打开文件选择器前先同步状态，避免用户对待审/已通过地点重复上传。
+  const statusResponse = await request('/checkin/status', 'GET', null, { cacheBust: true })
+  if (statusResponse?.ok && statusResponse?.data?.code === 0) {
+    const unlocked = (statusResponse.data.unlockedLocations || []).map(Number)
+    const locking = (statusResponse.data.lockingLocations || []).map(Number)
+    if (unlocked.includes(Number(locationId))) {
+      alert('该地点已经打卡成功，无需重复提交')
+      return { ok: false, reason: 'already-approved' }
+    }
+    if (locking.includes(Number(locationId))) {
+      alert('该地点正在审核中，请等待审核结果。审核期间不能重复打卡。')
+      return { ok: false, reason: 'review-pending' }
+    }
+  }
+
   const file = await pickImageOnce()
   if (!file) return { ok: false, reason: 'no-file' }
 
@@ -131,14 +146,13 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
     /* 4) 共享拍照打卡流程的本地记录（写入 localStorage） */
     const nowISO = new Date().toISOString()
     const records = JSON.parse(localStorage.getItem('checkinRecords') || '[]')
-    records.push({ locationId, time: nowISO, photo: photoUrl })
+    records.push({ locationId, time: nowISO, photo: photoUrl, status: 'pending' })
     localStorage.setItem('checkinRecords', JSON.stringify(records))
 
     if (onPhotoUrl) onPhotoUrl(photoUrl)
     if (onSubmitted) onSubmitted({ photoUrl, locationId, awardedPoints })
 
-    const rewardText = awardedPoints > 0 ? `（隐藏地点 +${awardedPoints} 积分）` : ''
-    alert(`打卡成功，等待审核${rewardText}`)
+    alert('照片已提交审核。审核期间不能重复打卡，通过后才会计入积分。')
     return { ok: true, photoUrl, locationId, awardedPoints }
   } catch (err) {
     console.error('[checkin] 未捕获错误', err)

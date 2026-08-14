@@ -4,7 +4,7 @@
   font-style: normal;
   font-display: swap;
   font-weight: 400;
-  src: url("@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff2") format("woff2");
+  src: url("@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff") format("woff");
 }
 
 @font-face {

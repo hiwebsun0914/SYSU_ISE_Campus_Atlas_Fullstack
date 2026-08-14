@@ -9,6 +9,7 @@ const path = require('path');
 const auth = require('../middleware/auth');
 const routes = require('../data/routes');
 const { getLocation } = require('../lib/locationSettings');
+const { deferLegacyPendingPoints } = require('../lib/checkinPoints');
 
 // ==== 环境变量 ====
 const {
@@ -21,11 +22,15 @@ const {
 const cos = new COS({ SecretId: TENCENT_SECRET_ID, SecretKey: TENCENT_SECRET_KEY });
 
 // ==== users.json 读取 ====
-const USERS_FILE = path.join(__dirname, '..', 'users.json');
+const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
 function readUsers() {
   try {
     const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-    return JSON.parse(raw);
+    const users = JSON.parse(raw);
+    if (deferLegacyPendingPoints(users)) {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+    }
+    return users;
   } catch (e) {
     console.error('[checkin] read users.json fail:', e);
     return [];
@@ -37,6 +42,53 @@ function getUserById(id) {
 function writeUsers(list) {
   try { fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf8'); }
   catch (e) { console.error('[checkin] write users fail:', e); }
+}
+
+function normalizeUserCheckins(user) {
+  user.unlockedLocations = Array.isArray(user.unlockedLocations) ? user.unlockedLocations.map(Number) : [];
+  user.lockingLocations = Array.isArray(user.lockingLocations) ? user.lockingLocations.map(Number) : [];
+  user.pendingCheckins = Array.isArray(user.pendingCheckins) ? user.pendingCheckins : [];
+  user.checkinReviewRecords = Array.isArray(user.checkinReviewRecords) ? user.checkinReviewRecords : [];
+  user.points = Number.isFinite(Number(user.points)) ? Number(user.points) : 0;
+  return user;
+}
+
+function publicReviewRecords(user) {
+  return [...user.checkinReviewRecords]
+    .sort((a, b) => Number(b.reviewedAt || b.appealedAt || 0) - Number(a.reviewedAt || a.appealedAt || 0))
+    .slice(0, 50)
+    .map(item => ({
+      locationId: Number(item.locationId),
+      status: item.status,
+      note: item.note || '',
+      reviewedAt: Number(item.reviewedAt || 0),
+      appealStatus: item.appealStatus || '',
+      appealReason: item.appealReason || '',
+      appealedAt: Number(item.appealedAt || 0)
+    }));
+}
+
+function checkSubmissionAvailability(req, res) {
+  const locationId = Number(req.body?.locationId);
+  if (!Number.isInteger(locationId) || locationId <= 0 || !getLocation(locationId)) {
+    res.status(400).json({ code: 1, message: '打卡地点无效' });
+    return null;
+  }
+  const user = getUserById(req.userId);
+  if (!user) {
+    res.status(404).json({ code: 1, message: '用户不存在' });
+    return null;
+  }
+  normalizeUserCheckins(user);
+  if (user.unlockedLocations.includes(locationId)) {
+    res.status(409).json({ code: 1, errorCode: 'CHECKIN_ALREADY_APPROVED', message: '该地点已经打卡成功，无需重复提交' });
+    return null;
+  }
+  if (user.lockingLocations.includes(locationId)) {
+    res.status(409).json({ code: 1, errorCode: 'CHECKIN_REVIEW_PENDING', message: '该地点正在审核中，请等待审核结果后再操作' });
+    return null;
+  }
+  return { user, locationId };
 }
 
 // ==== 工具 ====
@@ -128,6 +180,7 @@ async function listObjectsByPrefix(prefix, max = 1000) {
 
 // ==== A. 预签名 PUT ====
 router.post('/presign', auth, (req, res) => {
+  if (!checkSubmissionAvailability(req, res)) return;
   const ext = req.body?.ext;
   const key = buildKey(req, ext);
 
@@ -204,6 +257,9 @@ router.post('/commit', auth, async (req, res) => {
     return res.status(400).json({ code: 1, message: '非法 key' });
   }
 
+  const availability = checkSubmissionAvailability(req, res);
+  if (!availability) return;
+
   const head = await cos.headObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }).catch(() => null);
   if (!head) return res.status(400).json({ code: 1, message: '对象不存在或未上传成功' });
 
@@ -222,32 +278,25 @@ router.post('/commit', auth, async (req, res) => {
   // === 关键：把 locationId 写入 users.json 的 lockingLocations（仅数字） ===
   // 说明：前端打卡时会把 locationId 一并传给 commit
   const locNum = Number(req.body?.locationId);
-  let awardedPoints = 0;
   if (Number.isInteger(locNum)) {
     const users = readUsers();
     const idx = users.findIndex(u => String(u.id) === String(uid));
     if (idx !== -1) {
       const u = users[idx];
-      u.lockingLocations = Array.isArray(u.lockingLocations) ? u.lockingLocations : [];
-      u.unlockedLocations = Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [];
-      u.pendingCheckins = Array.isArray(u.pendingCheckins) ? u.pendingCheckins : [];
-
-      u.points = Number.isFinite(u.points) ? u.points : 0;
+      normalizeUserCheckins(u);
 
       // 已解锁则不再加入待审；未解锁也未待审时加入
       if (!u.unlockedLocations.includes(locNum) && !u.lockingLocations.includes(locNum)) {
         u.lockingLocations.push(locNum);
-        // 首次拍照打卡加分：隐藏地点 +2，普通地点 +1（仅首次，不与 GPS 重复）
-        const isHidden = !!getLocation(locNum)?.isHidden;
-        awardedPoints = isHidden ? 2 : 1;
-        u.points += awardedPoints;
       }
       if (!u.unlockedLocations.includes(locNum)) {
         const pending = {
           locationId: locNum,
           key,
           photo: toUrl(key),
-          submittedAt: Date.now()
+          submittedAt: Date.now(),
+          pointsDeferred: true,
+          appealStatus: ''
         };
         const pendingIndex = u.pendingCheckins.findIndex(item => Number(item.locationId) === locNum);
         if (pendingIndex === -1) u.pendingCheckins.push(pending);
@@ -258,7 +307,14 @@ router.post('/commit', auth, async (req, res) => {
     }
   }
 
-  res.json({ code: 0, key, url: toUrl(key), awardedPoints });
+  res.json({
+    code: 0,
+    key,
+    url: toUrl(key),
+    awardedPoints: 0,
+    reviewStatus: 'pending',
+    message: '照片已提交审核，审核通过后计入积分'
+  });
 });
 
 // ==== D. 获取打卡状态 ====
@@ -267,13 +323,20 @@ router.get('/status', auth, (req, res) => {
     const user = getUserById(req.userId);
     if (!user) return res.status(404).json({ code: 1, message: '用户不存在' });
 
-    const unlocked = Array.isArray(user.unlockedLocations) ? user.unlockedLocations : [];
-    const locking  = Array.isArray(user.lockingLocations)  ? user.lockingLocations  : [];
+    normalizeUserCheckins(user);
+    const unlocked = user.unlockedLocations;
+    const locking  = user.lockingLocations;
 
     return res.json({
       code: 0,
       unlockedLocations: unlocked,
       lockingLocations : locking,
+      pendingCheckins: user.pendingCheckins.map(item => ({
+        locationId: Number(item.locationId),
+        submittedAt: Number(item.submittedAt || 0),
+        appealStatus: item.appealStatus || ''
+      })),
+      checkinReviewRecords: publicReviewRecords(user),
       unlockedCount: unlocked.length,
       lockingCount : locking.length,
       total: unlocked.length + locking.length
@@ -305,22 +368,25 @@ router.post('/map', auth, (req, res) => {
     if (idx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
 
     const user = users[idx];
-    user.unlockedLocations = Array.isArray(user.unlockedLocations) ? user.unlockedLocations : [];
-    user.lockingLocations = Array.isArray(user.lockingLocations) ? user.lockingLocations : [];
+    normalizeUserCheckins(user);
     user.completedRoutes = Array.isArray(user.completedRoutes) ? user.completedRoutes : [];
     user.checkinRecords = Array.isArray(user.checkinRecords) ? user.checkinRecords : [];
-    user.pendingCheckins = Array.isArray(user.pendingCheckins) ? user.pendingCheckins : [];
-    user.points = Number.isFinite(user.points) ? user.points : 0;
 
     const alreadyUnlocked = user.unlockedLocations.includes(locNum);
-    const alreadyPending = user.lockingLocations.includes(locNum); // 已通过拍照打卡（已加分）
+    const alreadyPending = user.lockingLocations.includes(locNum);
+
+    if (alreadyPending) {
+      return res.status(409).json({
+        code: 1,
+        errorCode: 'CHECKIN_REVIEW_PENDING',
+        message: '该地点的照片正在审核中，暂时不能重复打卡'
+      });
+    }
 
     // 未解锁时才写入积分与记录
     if (!alreadyUnlocked) {
       user.unlockedLocations.push(locNum);
-      const pointsAwarded = alreadyPending
-        ? 0
-        : (Number.isInteger(Number(location.points)) ? Number(location.points) : 1);
+      const pointsAwarded = Number.isInteger(Number(location.points)) ? Number(location.points) : 1;
       user.points += pointsAwarded;
       user.pendingCheckins = user.pendingCheckins.filter(item => Number(item.locationId) !== locNum);
 
@@ -366,6 +432,56 @@ router.post('/map', auth, (req, res) => {
     console.error('[checkin/map] error:', e);
     return res.status(500).json({ code: 1, message: '打卡失败' });
   }
+});
+
+// ==== F. 对被驳回的照片打卡发起申诉 ====
+router.post('/appeal', auth, (req, res) => {
+  const locationId = Number(req.body?.locationId);
+  const reason = String(req.body?.reason || '').normalize('NFC').trim().slice(0, 500);
+  if (!Number.isInteger(locationId) || locationId <= 0) {
+    return res.status(400).json({ code: 1, message: '打卡地点无效' });
+  }
+  if (Array.from(reason).length < 4) {
+    return res.status(400).json({ code: 1, errorCode: 'CHECKIN_APPEAL_REASON_SHORT', message: '请填写至少 4 个字符的申诉说明' });
+  }
+
+  const users = readUsers();
+  const index = users.findIndex(user => String(user.id) === String(req.userId));
+  if (index === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
+  const user = normalizeUserCheckins(users[index]);
+  if (user.unlockedLocations.includes(locationId)) {
+    return res.status(409).json({ code: 1, message: '该地点已经审核通过' });
+  }
+  if (user.lockingLocations.includes(locationId)) {
+    return res.status(409).json({ code: 1, errorCode: 'CHECKIN_REVIEW_PENDING', message: '该地点已有审核或申诉正在处理中' });
+  }
+
+  const rejected = [...user.checkinReviewRecords]
+    .reverse()
+    .find(item => Number(item.locationId) === locationId && item.status === 'rejected');
+  if (!rejected) return res.status(404).json({ code: 1, message: '没有可申诉的驳回记录' });
+  if (!rejected.photo && !rejected.key) {
+    return res.status(409).json({ code: 1, errorCode: 'CHECKIN_APPEAL_PHOTO_MISSING', message: '历史驳回记录没有保留照片，请重新打卡提交' });
+  }
+
+  rejected.appealStatus = 'pending';
+  rejected.appealReason = reason;
+  rejected.appealedAt = Date.now();
+  user.lockingLocations.push(locationId);
+  user.pendingCheckins.push({
+    locationId,
+    key: rejected.key || '',
+    photo: rejected.photo || (rejected.key ? toUrl(rejected.key) : ''),
+    submittedAt: Number(rejected.submittedAt || rejected.reviewedAt || Date.now()),
+    pointsDeferred: true,
+    appealStatus: 'pending',
+    appealReason: reason,
+    appealedAt: rejected.appealedAt
+  });
+  user.updatedAt = Date.now();
+  writeUsers(users);
+
+  return res.json({ code: 0, message: '申诉已提交，请等待管理员复核', data: { locationId, appealStatus: 'pending' } });
 });
 
 // ================== 新增：取图接口 ==================

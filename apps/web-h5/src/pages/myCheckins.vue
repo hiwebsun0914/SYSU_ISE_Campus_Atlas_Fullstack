@@ -122,6 +122,31 @@
           </div>
         </section>
 
+        <section v-if="checkinReviewFeed.length" class="checkin-review-panel" aria-labelledby="checkin-review-title">
+          <div class="checkin-review-head">
+            <div>
+              <p class="eyebrow">CHECK-IN REVIEW</p>
+              <h2 id="checkin-review-title">照片打卡审核进度</h2>
+            </div>
+            <span>{{ activeCheckinReviewCount }} 项处理中</span>
+          </div>
+          <div class="checkin-review-grid">
+            <article v-for="item in checkinReviewFeed" :key="`${item.locationId}-${item.status}-${item.reviewedAt || item.submittedAt}`" :class="['checkin-review-card', 'is-' + item.status]">
+              <component :is="reviewStatusMeta(item.status).icon" :size="19" aria-hidden="true" />
+              <div>
+                <span>{{ reviewStatusMeta(item.status).label }}</span>
+                <strong>{{ badgeName(item.locationId) }}</strong>
+                <p v-if="item.status === 'rejected'">{{ item.note || '照片未满足打卡要求，可以重新提交或发起申诉。' }}</p>
+                <p v-else-if="item.status === 'approved'">审核已通过，地点与积分已经计入账户。</p>
+                <p v-else>审核期间无法重复打卡，处理结果会同步显示在这里。</p>
+              </div>
+              <button v-if="item.status === 'rejected'" class="text-link" type="button" @click="openCheckinReview(item)">
+                查看并申诉<ChevronRight :size="15" aria-hidden="true" />
+              </button>
+            </article>
+          </div>
+        </section>
+
         <div class="profile-workbench profile-workbench-single">
           <div v-if="false" class="workbench-main">
             <section class="profile-section atlas-section" aria-labelledby="atlas-title">
@@ -854,7 +879,6 @@ import {
 import '@fontsource/space-grotesk/latin-500.css'
 import '@fontsource/space-grotesk/latin-600.css'
 import '@fontsource/jetbrains-mono/latin-500.css'
-import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import { request } from '@/utils/request'
 import {
@@ -865,6 +889,7 @@ import {
   saveAccountPersonality
 } from '@/utils/personalityStorage'
 import { badgeCatalog, badgeThumb, getBadge } from '@/data/badgeCatalog'
+import { backendToPlaceId } from '@/data/campusPlaces'
 import ddlPersonalityScene from '../assets/place/main/ddl.webp'
 import donePersonalityScene from '../assets/place/main/done.webp'
 import growPersonalityScene from '../assets/place/main/grow.webp'
@@ -1000,6 +1025,26 @@ const unlockedIds = computed(() => new Set((userInfo.value.unlockedLocations || 
 const lockingIds = computed(() => new Set((userInfo.value.lockingLocations || []).map(Number)))
 const unlockedCount = computed(() => unlockedIds.value.size)
 const lockingCount = computed(() => lockingIds.value.size)
+const activeCheckinReviewCount = computed(() => (userInfo.value.pendingCheckins || []).length)
+const checkinReviewFeed = computed(() => {
+  const active = (userInfo.value.pendingCheckins || []).map(item => ({
+    ...item,
+    locationId: Number(item.locationId),
+    status: item.appealStatus === 'pending' ? 'appealed' : 'pending'
+  }))
+  const activeIds = new Set(active.map(item => item.locationId))
+  const seen = new Set()
+  const history = [...(userInfo.value.checkinReviewRecords || [])]
+    .sort((a, b) => Number(b.reviewedAt || b.appealedAt || 0) - Number(a.reviewedAt || a.appealedAt || 0))
+    .filter(item => {
+      const id = Number(item.locationId)
+      if (activeIds.has(id) || seen.has(id)) return false
+      seen.add(id)
+      return item.status === 'approved' || item.status === 'rejected'
+    })
+    .slice(0, 6)
+  return [...active, ...history]
+})
 const completedRouteCount = computed(() => (userInfo.value.completedRoutes || []).length)
 const atlasProgress = computed(() => Math.min(100, Math.round((unlockedCount.value / totalBadges) * 100)))
 const atlasProgressStyle = computed(() => ({ '--atlas-scale': String(atlasProgress.value / 100) }))
@@ -1153,6 +1198,8 @@ async function fetchDashboard() {
     if (responseOkay(statusResponse)) {
       serverUser.unlockedLocations = statusResponse.data.unlockedLocations || serverUser.unlockedLocations || []
       serverUser.lockingLocations = statusResponse.data.lockingLocations || serverUser.lockingLocations || []
+      serverUser.pendingCheckins = statusResponse.data.pendingCheckins || serverUser.pendingCheckins || []
+      serverUser.checkinReviewRecords = statusResponse.data.checkinReviewRecords || serverUser.checkinReviewRecords || []
     } else {
       pageNotice.value = '打卡审核状态暂时未更新，页面已显示最近一次账户数据。'
     }
@@ -1243,6 +1290,21 @@ function safeJsonParse(value, fallback) {
 
 function badgeName(locationId) {
   return getBadge(locationId)?.name || ('地点 ' + (locationId || '未知'))
+}
+
+function reviewStatusMeta(status) {
+  return {
+    pending: { label: '等待审核', icon: Clock3 },
+    appealed: { label: '申诉复核中', icon: RotateCcw },
+    approved: { label: '审核通过', icon: CheckCircle2 },
+    rejected: { label: '审核未通过', icon: XCircle },
+  }[status] || { label: '状态更新', icon: AlertCircle }
+}
+
+function openCheckinReview(item) {
+  const placeId = backendToPlaceId[Number(item.locationId)]
+  if (placeId) router.push(`/hidden-checkpoints/${encodeURIComponent(placeId)}`)
+  else router.push({ path: '/map', query: { place: String(item.locationId) } })
 }
 
 function recordKey(record) {
