@@ -4,27 +4,21 @@
  */
 module.exports = [
   {
-    id: 'freshman-route',
-    name: '新生入门路线',
-    points: [61, 59, 12, 84, 85, 50],
+    id: 'military-training-route',
+    name: '军训沿途',
+    points: [65, 66, 64, 102, 103, 104, 105, 106, 59, 107, 43, 108, 34, 38, 109, 37, 93],
     bonus: 5,
   },
   {
-    id: 'study-route',
-    name: '学习探索路线',
-    points: [37, 73, 19, 67, 69],
+    id: 'central-axis-route',
+    name: '中轴线',
+    points: [71, 70, 69, 67, 76, 21, 19, 18, 12, 84, 16, 14, 54, 50, 88, 81, 82, 83, 80, 87, 79, 78, 75, 73, 72],
     bonus: 5,
   },
   {
-    id: 'scenery-route',
-    name: '校园风景路线',
-    points: [71, 76, 84, 85, 50],
-    bonus: 5,
-  },
-  {
-    id: 'life-route',
-    name: '生活服务路线',
-    points: [60, 64, 65],
+    id: 'west-campus-explore-route',
+    name: '探索西区',
+    points: [110, 39, 40, 31, 33, 29, 30, 32, 25, 26, 23, 27, 95, 96, 98],
     bonus: 5,
   },
 ]

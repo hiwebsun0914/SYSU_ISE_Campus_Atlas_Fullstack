@@ -320,7 +320,8 @@ test('blocks repeat check-ins during review and supports rejected-photo appeals'
     body: JSON.stringify({ note: '申诉复核通过。' })
   });
   assert.equal(approved.response.status, 200);
-  assert.equal(approved.body.data.pointsAwarded, 1);
+  // 地点 3（宾省校屋）是隐藏打卡点，默认 1.5 分
+  assert.equal(approved.body.data.pointsAwarded, 1.5);
 
   const rejectedQueue = await api(2, '/admin/checkins?status=rejected');
   assert.equal(rejectedQueue.response.status, 200);

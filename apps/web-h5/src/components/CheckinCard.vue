@@ -48,10 +48,10 @@
           <span>正在获取位置...</span>
         </div>
 
-        <!-- 距离检测通过（临时展示，马上完成打卡） -->
+        <!-- 距离检测通过（进入拍照上传） -->
         <div v-if="geoStatus === 'success'" class="checkin-geo-row checkin-geo-row--ok">
           <span class="checkin-geo-icon">✅</span>
-          <span>距离 {{ geoDistance }} 米，附近打卡</span>
+          <span>距离 {{ geoDistance }} 米，在打卡范围内，请拍照上传</span>
         </div>
 
         <!-- 距离不足 -->
@@ -85,7 +85,7 @@
             type="button"
             @click="emit('geo-checkin')"
           >
-            <Camera :size="18" />开始定位打卡
+            <Camera :size="18" />定位并拍照打卡
           </button>
 
           <!-- 定位中 -->

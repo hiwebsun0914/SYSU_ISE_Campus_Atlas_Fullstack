@@ -7,7 +7,6 @@ const STS = require('qcloud-cos-sts');
 const fs = require('fs');
 const path = require('path');
 const auth = require('../middleware/auth');
-const routes = require('../data/routes');
 const { getLocation } = require('../lib/locationSettings');
 const { deferLegacyPendingPoints } = require('../lib/checkinPoints');
 
@@ -348,10 +347,12 @@ router.get('/status', auth, (req, res) => {
 });
 
 
-// ==== E. 地图 GPS 打卡（无需上传图片）====
+// ==== E. 地图 GPS 打卡（已关闭即时计分）====
+// 规则：所有打卡统一走「50 米范围内拍照上传 → 审核通过」流程，
+// 本接口不再直接加分，避免绕过审核刷分；仅保留状态提示能力。
 router.post('/map', auth, (req, res) => {
   try {
-    const { locationId, distance, method = 'geo' } = req.body || {};
+    const { locationId } = req.body || {};
     const locNum = Number(locationId);
 
     if (!Number.isInteger(locNum) || locNum <= 0) {
@@ -364,18 +365,12 @@ router.post('/map', auth, (req, res) => {
     }
 
     const users = readUsers();
-    const idx = users.findIndex(u => String(u.id) === String(req.userId));
-    if (idx === -1) return res.status(404).json({ code: 1, message: '用户不存在' });
+    const user = users.find(u => String(u.id) === String(req.userId));
+    if (!user) return res.status(404).json({ code: 1, message: '用户不存在' });
 
-    const user = users[idx];
     normalizeUserCheckins(user);
-    user.completedRoutes = Array.isArray(user.completedRoutes) ? user.completedRoutes : [];
-    user.checkinRecords = Array.isArray(user.checkinRecords) ? user.checkinRecords : [];
 
-    const alreadyUnlocked = user.unlockedLocations.includes(locNum);
-    const alreadyPending = user.lockingLocations.includes(locNum);
-
-    if (alreadyPending) {
+    if (user.lockingLocations.includes(locNum)) {
       return res.status(409).json({
         code: 1,
         errorCode: 'CHECKIN_REVIEW_PENDING',
@@ -383,50 +378,18 @@ router.post('/map', auth, (req, res) => {
       });
     }
 
-    // 未解锁时才写入积分与记录
-    if (!alreadyUnlocked) {
-      user.unlockedLocations.push(locNum);
-      const pointsAwarded = Number.isInteger(Number(location.points)) ? Number(location.points) : 1;
-      user.points += pointsAwarded;
-      user.pendingCheckins = user.pendingCheckins.filter(item => Number(item.locationId) !== locNum);
-
-      user.checkinRecords.push({
-        locationId: locNum,
-        distance: Number.isFinite(Number(distance)) ? Math.round(Number(distance) * 10) / 10 : null,
-        method: String(method || 'geo').slice(0, 20),
-        pointsAwarded,
-        time: new Date().toISOString()
+    if (user.unlockedLocations.includes(locNum)) {
+      return res.status(409).json({
+        code: 1,
+        errorCode: 'CHECKIN_ALREADY_APPROVED',
+        message: '该地点已打卡成功，无需重复打卡'
       });
     }
 
-    // 路线完成判断（只要路线所有点都在 unlockedLocations 中即完成）
-    const newlyCompletedRoutes = [];
-    for (const route of routes) {
-      if (user.completedRoutes.includes(route.id)) continue;
-      if (!route.points || route.points.length === 0) continue;
-
-      const allUnlocked = route.points.every(id => user.unlockedLocations.includes(id));
-      if (allUnlocked) {
-        user.completedRoutes.push(route.id);
-        newlyCompletedRoutes.push(route.id);
-      }
-    }
-
-    user.updatedAt = Date.now();
-    writeUsers(users);
-
-    return res.json({
-      code: 0,
-      data: {
-        locationId: locNum,
-        locationName: location.name,
-        newlyUnlocked: !alreadyUnlocked,
-        newlyCompletedRoutes,
-        points: user.points,
-        unlockedLocations: user.unlockedLocations,
-        completedRoutes: user.completedRoutes,
-        checkinRecords: user.checkinRecords.slice(-20) // 只返回最近 20 条
-      }
+    return res.status(403).json({
+      code: 1,
+      errorCode: 'CHECKIN_PHOTO_REQUIRED',
+      message: '请在打卡点 50 米范围内拍照上传，审核通过后即可获得积分'
     });
   } catch (e) {
     console.error('[checkin/map] error:', e);

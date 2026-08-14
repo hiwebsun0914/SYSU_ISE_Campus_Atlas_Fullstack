@@ -722,7 +722,7 @@ module.exports = {
 </ul>`
     },
     {
-      backendId: 33, isHidden: true,
+      backendId: 33, isHidden: false,
       name: '中山楼',
       position: '南校园474号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_033_zhongshan_building.jpg',
@@ -1681,7 +1681,7 @@ module.exports = {
 </ul>`
     },
     {
-      backendId: 82, isHidden: true,
+      backendId: 82, isHidden: false,
       name: '八角亭',
       position: '博物馆（543）前',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_082_octagonal_pavilion.jpg',
@@ -1802,7 +1802,7 @@ module.exports = {
 <p><strong>历史与价值：</strong> 作为岭南大学理科教育与科研的核心基地，史达理堂不仅见证了岭南大学在自然科学领域的拓展，也成为当时南中国科学教育的重要象征。它体现了中西合璧的建筑风格与岭南大学“实事求是、兼容并包”的教育精神。</p>`
     },
     {
-      backendId: 87, isHidden: true,
+      backendId: 87, isHidden: false,
       name: '激光光学大楼',
       position: '南校园558号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_087_long_kanghou_sculpture.jpg',
@@ -1912,7 +1912,7 @@ module.exports = {
 <p><strong>现状用途：</strong> 如今，该建筑作为<strong>中山大学人口研究所</strong>所在地，延续其在教育与科研领域的功能属性，继续在校园学术体系中发挥作用。</p>`
     },
     {
-      backendId: 93, isHidden: true,
+      backendId: 93, isHidden: false,
       name: '学人书境',
       position: '南校园517号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_093_SYSU_publishinghouse.jpg',
@@ -2007,20 +2007,6 @@ module.exports = {
       description: `<p><strong>震寰堂（Zhenhuan Hall）</strong>原由中山大学管理学院使用，现在为数学学院使用，是学院重要的学术与培训活动场所。</p>
 
 <p><strong>建筑与功能：</strong> 震寰堂作为数学学院的核心大楼之一，常年承载教学、培训、学术会议与社会服务功能。其庄重的建筑风格与学院整体环境相融合，成为学术交流与校企合作的重要平台。</p>`
-    },
-    {
-      backendId: 101, isHidden: true,
-      name: '你的见闻',
-      position: '-',
-      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_101_your_observations.jpg',
-      description: `<p>
-  拍摄了这么多，<br>
-  那你是否也有了自己最想记录与分享的风景？<br>
-  是西大夜空下闪烁的繁星，<br>
-  还是雨中康乐园里静谧的慢步，<br>
-  抑或是心中那段独属于你的校园记忆……
-</p>
-`
     },
     {
       backendId: 102,
