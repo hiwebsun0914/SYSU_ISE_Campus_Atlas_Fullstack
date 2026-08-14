@@ -189,58 +189,6 @@ export function getRouteCheckedCount(routeId) {
 }
 
 /**
- * 打卡一个地点
- * @param {string} placeId - 前端字符串地点ID
- * @param {{ distance?: number, method?: string }} [record] - 打卡记录信息
- * @returns {Promise<{ success: boolean, newlyCompletedRoutes: string[], points: number }>}
- */
-export async function checkinPlace(placeId, record = {}) {
-  const backendId = placeIdToBackend[placeId]
-  if (!backendId) {
-    throw new Error(`未知地点ID: ${placeId}`)
-  }
-
-  const res = await request('/checkin/map', 'POST', {
-    locationId: backendId,
-    distance: record.distance,
-    method: record.method || 'geo',
-  })
-
-  if (!res.ok) {
-    throw new Error(res.data?.message || '打卡请求失败')
-  }
-  if (res.data?.code !== 0) {
-    throw new Error(res.data?.message || '打卡失败')
-  }
-
-  const result = res.data.data || {}
-
-  // 用响应数据直接更新本地状态（响应已包含完整进度信息）
-  if (Array.isArray(result.unlockedLocations)) {
-    checkedPlaces.value = normalizeCheckedPlaces(result.unlockedLocations)
-  }
-  if (Array.isArray(result.completedRoutes)) {
-    completedRoutes.value = result.completedRoutes
-  }
-  if (Number.isFinite(result.points)) {
-    points.value = result.points
-  }
-  if (Array.isArray(result.checkinRecords)) {
-    checkinRecords.value = normalizeCheckinRecords(result.checkinRecords)
-  }
-
-  // 后台静默拉取一次完整进度，确保 nickName 等额外字段同步；失败不阻塞
-  fetchUserProgress().catch(() => {})
-
-  return {
-    success: result.newlyUnlocked !== false,
-    newlyUnlocked: result.newlyUnlocked !== false,
-    newlyCompletedRoutes: Array.isArray(result.newlyCompletedRoutes) ? result.newlyCompletedRoutes : [],
-    points: points.value,
-  }
-}
-
-/**
  * 重置所有进度
  */
 export function resetProgress() {

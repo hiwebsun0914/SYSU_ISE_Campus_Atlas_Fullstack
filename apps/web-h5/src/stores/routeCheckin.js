@@ -6,7 +6,6 @@ import {
   isPlaceChecked,
   isRouteCompleted,
   getRouteCheckedCount,
-  checkinPlace as checkinUserPlace,
 } from './userProgress'
 
 /**
@@ -79,19 +78,6 @@ export function startExplore(route) {
   }
 
   return true
-}
-
-/**
- * 完成当前地点打卡，并进入下一地点
- * @returns {Promise<boolean>} 是否还有下一站
- */
-export async function checkinCurrentPlace() {
-  if (!currentRoute.value || !currentPlace.value) return false
-
-  const id = currentPlace.value.id
-  await checkinUserPlace(id)
-
-  return advanceRoute()
 }
 
 /**

@@ -109,7 +109,6 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import auth from '@/utils/auth'
 import {
   ArrowLeft, Crosshair, Layers, List,
   RotateCcw, Search, X,
@@ -118,7 +117,7 @@ import CampusMap from '@/components/CampusMap.vue'
 import RoutePanel from '@/components/RoutePanel.vue'
 import PointDisplay from '@/components/PointDisplay.vue'
 import CheckinCard from '@/components/CheckinCard.vue'
-import { campusLocations, CATEGORY_MAP, MAP_CONFIG, searchPlaces, getPlaceById } from '@/data/campusPlaces'
+import { campusLocations, CATEGORY_MAP, MAP_CONFIG, searchPlaces, getPlaceById, placeIdToBackend } from '@/data/campusPlaces'
 import routes from '@/data/routes'
 
 import {
@@ -129,8 +128,9 @@ import {
   advanceRoute,
   resetRouteCheckin,
 } from '@/stores/routeCheckin'
-import { checkinPlace as checkinUserPlace, fetchUserProgress } from '@/stores/userProgress'
+import { fetchUserProgress } from '@/stores/userProgress'
 import { CHECKIN_RADIUS } from '@/utils/geoCheckin'
+import checkinFlow from '@/utils/checkinFlow'
 
 const router = useRouter()
 const route = useRoute()
@@ -300,15 +300,9 @@ async function onGeoCheckin() {
     geoDistance.value = dist
 
     if (dist <= CHECKIN_RADIUS) {
-      // 在范围内，先校验登录（与拍照打卡流程一致）
-      if (!auth.isLoggedIn()) {
-        const redirect = encodeURIComponent(route.fullPath)
-        router.push({ path: '/signin', query: { redirect } })
-        return
-      }
-      // 在范围内，直接打卡
+      // 在 50m 范围内：进入拍照打卡流程，照片通过审核后才计分
       geoStatus.value = 'success'
-      executeCheckin(dist)
+      submitPhotoCheckin()
     } else {
       // 距离过远
       geoStatus.value = 'too_far'
@@ -319,31 +313,32 @@ async function onGeoCheckin() {
   }
 }
 
-/** 执行实际打卡，统一处理积分、路线完成、探索进度 */
-async function executeCheckin(distance) {
+/** 50m 范围内进入拍照打卡：上传照片并通过审核才计分、解锁地点 */
+async function submitPhotoCheckin() {
   const placeId = selectedPlace.value.id
-  const record = { distance, method: 'geo' }
+  const backendId = placeIdToBackend[placeId]
+  if (!backendId) {
+    geoStatus.value = 'error'
+    geoError.value = '地点数据异常，请稍后重试'
+    return
+  }
 
   try {
-    const result = await checkinUserPlace(placeId, record)
+    const result = await checkinFlow.runCheckin({
+      locationId: backendId,
+      onError: (reason) => {
+        if (reason === 'unauthorized') {
+          checkinFlow.pushOrRedirect('/signin', route, router)
+        }
+      },
+      // 提交成功后只进入待审核状态；审核通过后才解锁并计分
+      onSubmitted: async () => {
+        try { await fetchUserProgress() } catch (e) { /* 忽略刷新异常 */ }
+      },
+    })
 
-    if (!result.newlyUnlocked) {
-      showToast('该地点已打卡，无需重复打卡')
-      geoStatus.value = 'idle'
-      return
-    }
-
-    showToast('打卡成功！积分 +1（附近打卡）')
-
-    if (result.newlyCompletedRoutes?.length > 0) {
-      result.newlyCompletedRoutes.forEach(routeId => {
-        const routeName = getRouteName(routeId)
-        if (routeName) showToast(`🎉 完成路线「${routeName}」，积分 +5`)
-      })
-    }
-
-    // 路线探索模式：自动进入下一站
-    if (isExploring.value && currentPlace.value?.id === placeId) {
+    // 照片进入待审后即可前往路线下一站
+    if (result?.ok && isExploring.value && currentPlace.value?.id === placeId) {
       const hasNext = advanceRoute()
       if (hasNext && currentPlace.value) {
         selectedPlace.value = currentPlace.value
@@ -357,20 +352,14 @@ async function executeCheckin(distance) {
       }
     }
 
-    // 重置打卡状态
+    // 回到可重试状态（成功提交后卡片会显示“照片审核中”）
     geoStatus.value = 'idle'
   } catch (err) {
-    console.error('[executeCheckin] error:', err)
+    console.error('[submitPhotoCheckin] error:', err)
     showToast(err?.message || '打卡失败，请重试')
     geoStatus.value = 'error'
     geoError.value = err?.message || '打卡失败'
   }
-}
-
-/** 根据 routeId 获取路线名称（用于 Toast 提示） */
-function getRouteName(routeId) {
-  const route = routes.find(r => r.id === routeId)
-  return route?.name || routeId
 }
 
 function queryValue(value) {
