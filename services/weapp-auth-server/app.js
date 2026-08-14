@@ -388,6 +388,7 @@ app.get('/rank/points', (_req, res) => {
   try {
     const users = readUsers();
     const list = users
+      .filter(u => effectiveRole(u) !== 'owner') // 超管不参与积分排名
       .map(u => ({
         userId: u.id,
         username: u.username || '匿名用户',
