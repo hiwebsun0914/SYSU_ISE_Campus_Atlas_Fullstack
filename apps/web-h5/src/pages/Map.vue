@@ -38,7 +38,7 @@
 
       <div v-if="mapReady" class="map-filters" ref="filterScroll">
         <button
-          v-for="[key, meta] in filterCategories"
+          v-for="[key, meta] in Object.entries(CATEGORY_MAP)"
           :key="key"
           type="button"
           :class="['filter-chip', { active: activeCategory === key }]"
@@ -162,11 +162,6 @@ const filteredPlaces = computed(() => {
   if (activeCategory.value === 'all') return list
   return list.filter(p => p.category === activeCategory.value)
 })
-
-// 底部筛选栏不展示「地标」类（该类点位仅在高缩放级别显示，筛选体验不佳）
-const filterCategories = computed(() =>
-  Object.entries(CATEGORY_MAP).filter(([key]) => key !== 'landmark')
-)
 
 function showToast(msg) {
   toastMessage.value = msg
