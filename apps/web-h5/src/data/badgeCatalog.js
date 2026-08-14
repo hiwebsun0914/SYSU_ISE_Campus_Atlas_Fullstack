@@ -100,8 +100,7 @@ export const badgeCatalog = [
   { id: 97, name: '蒲园食堂', icon: `${base}/sysu_097_puyuan_canteen.png` },
   { id: 98, name: '中山大学西门', icon: `${base}/sysu_098_west_gate.png` },
   { id: 99, name: '中山大学小西门', icon: `${base}/sysu_099_small_west_gate.png` },
-  { id: 100, name: '震寰堂', icon: `${base}/sysu_100_zhenhuan_hall.png` },
-  { id: 101, name: '你的见闻', icon: `${base}/sysu_101_your_observations.png` }
+  { id: 100, name: '震寰堂', icon: `${base}/sysu_100_zhenhuan_hall.png` }
 ]
 
 export function badgeThumb(url, size = 256, quality = 75) {

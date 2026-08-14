@@ -1,5 +1,5 @@
 // src/data/campusPlaces.js
-// 校园地图地点数据中心 — 101 个校园地点
+// 校园地图地点数据中心 — 109 个校园地点
 
 export const CATEGORY_MAP = {
   landmark:  { label: "地标",     icon: "⭐", color: "#e8a838" },
@@ -1616,22 +1616,6 @@ export const campusLocations = [
     description: "<p><strong>震寰堂（Zhenhuan Hall）</strong>原由中山大学管理学院使用，现在为数学学院使用，是学院重要的学术与培训活动场所。</p>\n\n<p><strong>建筑与功能：</strong> 震寰堂作为数学学院的核心大楼之一，常年承载教学、培训、学术会议与社会服务功能。其庄重的建筑风格与学院整体环境相融合，成为学术交流与校企合作的重要平台。</p>",
     checkinStatus: "unchecked",
     popularity: 61,
-    isRecommended: false,
-  },
-  {
-    id: "your-observations",
-    backendId: 101,
-    name: "你的见闻",
-    image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_101_your_observations.jpg",
-    lnglat: [113.303943,23.094742],
-    isHidden: 1,
-    category: "landmark",
-    position: "-",
-    tags: ["校园"],
-    shortDesc: "拍摄了这么多， 那你是否也有了自己最想记录与分享的风景？ 是西大夜空下闪烁的繁星， 还是雨中康乐园里静谧的慢步， 抑或是心中那段独属于你的校园记忆……",
-    description: "<p>\n  拍摄了这么多，<br>\n  那你是否也有了自己最想记录与分享的风景？<br>\n  是西大夜空下闪烁的繁星，<br>\n  还是雨中康乐园里静谧的慢步，<br>\n  抑或是心中那段独属于你的校园记忆……\n</p>\n",
-    checkinStatus: "unchecked",
-    popularity: 18,
     isRecommended: false,
   },
   {

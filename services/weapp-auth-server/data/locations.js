@@ -2009,20 +2009,6 @@ module.exports = {
 <p><strong>建筑与功能：</strong> 震寰堂作为数学学院的核心大楼之一，常年承载教学、培训、学术会议与社会服务功能。其庄重的建筑风格与学院整体环境相融合，成为学术交流与校企合作的重要平台。</p>`
     },
     {
-      backendId: 101, isHidden: true,
-      name: '你的见闻',
-      position: '-',
-      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_101_your_observations.jpg',
-      description: `<p>
-  拍摄了这么多，<br>
-  那你是否也有了自己最想记录与分享的风景？<br>
-  是西大夜空下闪烁的繁星，<br>
-  还是雨中康乐园里静谧的慢步，<br>
-  抑或是心中那段独属于你的校园记忆……
-</p>
-`
-    },
-    {
       backendId: 102,
       name: '春晖园',
       position: '东北区353号',
