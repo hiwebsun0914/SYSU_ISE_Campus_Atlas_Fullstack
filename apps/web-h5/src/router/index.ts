@@ -4,6 +4,12 @@ import { request } from '@/utils/request'
 
 const router = createRouter({
   history: createWebHashHistory(),
+  // 路由切换时回到页面顶端；浏览器前进/后退时恢复原滚动位置
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.hash) return { el: to.hash }
+    return { top: 0, left: 0 }
+  },
   routes: [
     { path: '/', component: () => import('../pages/Home.vue') },
     { path: '/map', component: () => import('../pages/Map.vue') },
