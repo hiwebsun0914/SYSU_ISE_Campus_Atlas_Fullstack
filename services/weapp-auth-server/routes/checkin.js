@@ -408,6 +408,8 @@ router.post('/map', auth, (req, res) => {
       const allUnlocked = route.points.every(id => user.unlockedLocations.includes(id));
       if (allUnlocked) {
         user.completedRoutes.push(route.id);
+        // 与照片审核通过路径一致：每完成一条路线加 bonus 分
+        user.points += route.bonus || 5;
         newlyCompletedRoutes.push(route.id);
       }
     }
