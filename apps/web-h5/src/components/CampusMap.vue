@@ -46,7 +46,6 @@ let mapInstance = null
 let AMapNS = null
 const markerMap = new Map()
 const markerLevels = new Map()
-const markerCategories = new Map()
 let layerIndex = 0
 
 // 路线探索模式状态
@@ -69,12 +68,11 @@ const CONFIG = {
   styles: ['amap://styles/normal', 'amap://styles/dark'],
 }
 
-const LANDMARK_ZOOM_THRESHOLD = 17
 const ROUTE_MAX_ZOOM = 17
 
 const CATEGORY_ICONS = {
   landmark: '⭐', teaching: '📚', canteen: '🍜', dormitory: '🏠',
-  library: '📖', sports: '⚽', landscape: '🌳', service: '🏪',
+  library: '📖', sports: '⚽', service: '🏪',
 }
 
 function loadAMapScript() {
@@ -168,20 +166,17 @@ function clearAllMarkers() {
   }
   markerMap.clear()
   markerLevels.clear()
-  markerCategories.clear()
 }
 
 function showHideByZoom() {
   if (!mapInstance) return
   const zoom = mapInstance.getZoom()
   for (const [id, marker] of markerMap.entries()) {
-    const category = markerCategories.get(id)
     const level = markerLevels.get(id) ?? 2
 
-    const landmarkOk = category !== 'landmark' || zoom >= LANDMARK_ZOOM_THRESHOLD
     const levelOk = level === 1 || (level === 2 && zoom >= 14) || (level === 3 && zoom >= 17)
 
-    marker.setMap(landmarkOk && levelOk ? mapInstance : null)
+    marker.setMap(levelOk ? mapInstance : null)
   }
 }
 
@@ -204,7 +199,6 @@ function rebuildMarkers() {
     marker.setMap(mapInstance)
     markerMap.set(place.id, marker)
     markerLevels.set(place.id, place.level ?? 2)
-    markerCategories.set(place.id, place.category)
   }
 
   showHideByZoom()
