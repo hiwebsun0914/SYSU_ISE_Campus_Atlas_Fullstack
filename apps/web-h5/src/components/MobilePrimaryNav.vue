@@ -1,5 +1,10 @@
 <template>
-  <nav class="mobile-primary-nav" aria-label="移动端主要导航">
+  <nav
+    class="mobile-primary-nav"
+    :class="{ 'sheet-linked': uiChrome.sheetAnimating }"
+    :style="navStyle"
+    aria-label="移动端主要导航"
+  >
     <RouterLink to="/" :aria-current="route.path === '/' ? 'page' : undefined">
       <House :size="21" aria-hidden="true" />
       <span>首页</span>
@@ -21,11 +26,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { CircleUserRound, House, MapPinned } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
+import { uiChrome } from '@/stores/uiChrome'
 
 const route = useRoute()
 const router = useRouter()
+
+// 地图页简介卡弹出时，导航以相同速度向下滑出屏幕；卡片拖动时跟手联动
+const navStyle = computed(() => {
+  const reveal = uiChrome.sheetReveal
+  if (!reveal) return {}
+  return { transform: `translateY(calc(${reveal} * (100% + 18px)))` }
+})
 
 function goToProfile() {
   const path = '/myCheckins'
@@ -70,6 +84,16 @@ function goToProfile() {
 .mobile-primary-nav :is(a, button)[aria-current="page"] {
   color: #c7f24a;
   background: rgba(255, 255, 255, .08);
+}
+
+.mobile-primary-nav.sheet-linked {
+  transition: transform .28s cubic-bezier(.2, .75, .25, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-primary-nav.sheet-linked {
+    transition: none;
+  }
 }
 
 @media (min-width: 1024px) {
