@@ -31,6 +31,9 @@
           class="checkin-tag"
         >{{ tag }}</span>
         <span v-if="checked" class="checkin-status-tag checkin-status-tag--checked">已打卡</span>
+        <span v-else-if="reviewState.status === 'pending'" class="checkin-status-tag">审核中</span>
+        <span v-else-if="reviewState.status === 'appealed'" class="checkin-status-tag">申诉复核中</span>
+        <span v-else-if="reviewState.status === 'rejected'" class="checkin-status-tag checkin-status-tag--rejected">上次未通过</span>
       </div>
 
       <h2 class="checkin-title">{{ place.name }}</h2>
@@ -38,7 +41,7 @@
       <div class="checkin-description" v-html="place.description || '<p>暂无描述</p>'" />
 
       <!-- 定位打卡状态区 -->
-      <div v-if="!checked && geoStatus !== 'idle'" class="checkin-geo-status">
+      <div v-if="!checked && !reviewPending && geoStatus !== 'idle'" class="checkin-geo-status">
         <!-- 定位中 -->
         <div v-if="geoStatus === 'locating'" class="checkin-geo-row checkin-geo-row--locating">
           <span class="checkin-geo-spinner" />
@@ -67,9 +70,17 @@
       <div class="checkin-actions">
         <!-- 未打卡：定位打卡流程 -->
         <template v-if="!checked">
+          <button
+            v-if="reviewPending"
+            class="checkin-btn checkin-btn--locating"
+            type="button"
+            disabled
+          >
+            <Clock3 :size="18" />{{ reviewState.status === 'appealed' ? '申诉复核中' : '照片审核中' }}
+          </button>
           <!-- 空闲 → 开始定位打卡 -->
           <button
-            v-if="geoStatus === 'idle' || geoStatus === 'success'"
+            v-else-if="geoStatus === 'idle' || geoStatus === 'success'"
             class="checkin-btn checkin-btn--primary"
             type="button"
             @click="emit('geo-checkin')"
@@ -115,8 +126,8 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Camera, Check, X } from '@lucide/vue'
-import { isPlaceChecked } from '@/stores/userProgress'
+import { Camera, Check, Clock3, X } from '@lucide/vue'
+import { getPlaceReviewState, isPlaceChecked } from '@/stores/userProgress'
 
 const props = defineProps({
   place: { type: Object, default: null },
@@ -138,6 +149,8 @@ watch(() => props.place?.id, () => {
 })
 
 const checked = computed(() => props.place ? isPlaceChecked(props.place.id) : false)
+const reviewState = computed(() => props.place ? getPlaceReviewState(props.place.id) : { status: 'idle' })
+const reviewPending = computed(() => reviewState.value.status === 'pending' || reviewState.value.status === 'appealed')
 
 const categoryLabel = computed(() => {
   const map = {
@@ -276,6 +289,7 @@ const coverStyle = computed(() => {
   background: #e8f5e9;
   color: #388e6e;
 }
+.checkin-status-tag--rejected { background: #fce8e6; color: #b42318; }
 
 .checkin-title {
   font-size: 20px;

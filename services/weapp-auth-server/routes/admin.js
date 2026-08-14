@@ -9,6 +9,7 @@ const auth = require('../middleware/auth');
 const routes = require('../data/routes');
 const { effectiveRole, isAdminRole, canManageRoles, isConfiguredOwner } = require('../lib/roles');
 const { getLocations, getLocation, updateLocation } = require('../lib/locationSettings');
+const { deferLegacyPendingPoints } = require('../lib/checkinPoints');
 const { readFeedback, writeFeedback } = require('../lib/feedbackStore');
 
 // ====== 常量 / 配置 ======
@@ -52,7 +53,11 @@ function readUsers() {
   try {
     const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
     const arr = JSON.parse(raw);
-    return (Array.isArray(arr) ? arr : []).map(u => ({
+    const users = Array.isArray(arr) ? arr : [];
+    if (deferLegacyPendingPoints(users)) {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+    }
+    return users.map(u => ({
       ...u,
       role: u.role || DEFAULT_ROLE,
       avatar: u.avatar || DEFAULT_AVATAR,
@@ -62,6 +67,7 @@ function readUsers() {
       completedRoutes  : Array.isArray(u.completedRoutes)   ? u.completedRoutes   : [],
       checkinRecords   : Array.isArray(u.checkinRecords)    ? u.checkinRecords    : [],
       pendingCheckins  : Array.isArray(u.pendingCheckins)   ? u.pendingCheckins   : [],
+      checkinReviewRecords: Array.isArray(u.checkinReviewRecords) ? u.checkinReviewRecords : [],
       points: Number.isFinite(Number(u.points)) ? Number(u.points) : 0,
     }));
   } catch (e) {
@@ -448,33 +454,63 @@ router.patch('/locations/:id', auth, adminOnly, (req, res) => {
   }
 });
 
-// ====== 打卡审核列表（区分 pending/approved/all） ======
-// GET /admin/checkins?status=pending|approved|all
+// ====== 打卡审核列表（待审、申诉、通过、驳回与全部） ======
+// GET /admin/checkins?status=pending|appealed|approved|rejected|all
 router.get('/checkins', auth, adminOnly, async (req, res) => {
   const statusQ = String(req.query.status || 'pending').toLowerCase();
+  const allowed = new Set(['pending', 'appealed', 'approved', 'rejected', 'all']);
+  if (!allowed.has(statusQ)) return res.status(400).json({ code: 1, message: '无效的审核状态' });
   const users = readUsers();
 
-  // 组装任务：pending 来自 lockingLocations；approved 来自 unlockedLocations
+  // 活跃审核以 lockingLocations/pendingCheckins 为准；驳回历史来自审核记录。
   const tasks = [];
   for (const u of users) {
     const pendings  = Array.isArray(u.lockingLocations)  ? u.lockingLocations  : [];
     const approveds = Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [];
+    const latestRejected = new Map();
+    [...u.checkinReviewRecords]
+      .sort((a, b) => Number(b.reviewedAt || 0) - Number(a.reviewedAt || 0))
+      .forEach(record => {
+        const locId = Number(record.locationId);
+        if (record.status === 'rejected' && !latestRejected.has(locId)) latestRejected.set(locId, record);
+      });
 
     if (statusQ === 'pending' || statusQ === 'all') {
-      pendings.forEach(locId => tasks.push({ u, locId: Number(locId), status: 'pending' }));
+      pendings.forEach(locId => {
+        const pending = u.pendingCheckins.find(item => Number(item.locationId) === Number(locId));
+        if (pending?.appealStatus !== 'pending') tasks.push({ u, locId: Number(locId), status: 'pending', source: pending });
+      });
+    }
+    if (statusQ === 'appealed' || statusQ === 'all') {
+      pendings.forEach(locId => {
+        const pending = u.pendingCheckins.find(item => Number(item.locationId) === Number(locId));
+        if (pending?.appealStatus === 'pending') tasks.push({ u, locId: Number(locId), status: 'appealed', source: pending });
+      });
     }
     if (statusQ === 'approved' || statusQ === 'all') {
       approveds.forEach(locId => tasks.push({ u, locId: Number(locId), status: 'approved' }));
     }
+    if (statusQ === 'rejected' || statusQ === 'all') {
+      latestRejected.forEach((record, locId) => {
+        if (!pendings.map(Number).includes(locId) && !approveds.map(Number).includes(locId)) {
+          tasks.push({ u, locId, status: 'rejected', source: record });
+        }
+      });
+    }
   }
 
   // COS 查每条的“最新一张图”
-  const rows = await Promise.all(tasks.map(async ({ u, locId, status }) => {
+  const rows = await Promise.all(tasks.map(async ({ u, locId, status, source }) => {
     const pending = u.pendingCheckins.find(item => Number(item.locationId) === locId);
     const approvedRecord = u.checkinRecords
       .filter(item => Number(item.locationId) === locId)
       .sort((a, b) => timestampOf(b.time) - timestampOf(a.time))[0];
-    const storedPhoto = pending?.photo || (pending?.key ? toUrl(pending.key) : '');
+    const reviewRecord = source || [...u.checkinReviewRecords]
+      .reverse()
+      .find(item => Number(item.locationId) === locId && item.status === status);
+    const storedPhoto = pending?.photo || reviewRecord?.photo
+      || (pending?.key ? toUrl(pending.key) : '')
+      || (reviewRecord?.key ? toUrl(reviewRecord.key) : '');
     const found = storedPhoto ? null : await listLatestPhoto(u.id, u.username, locId);
     const location = getLocation(locId);
     return {
@@ -486,8 +522,12 @@ router.get('/checkins', auth, adminOnly, async (req, res) => {
       locationName: location?.name || `未知地点 #${locId}`,
       points: location?.points ?? 1,
       status,                     // 'pending' or 'approved'
+      reviewNote: reviewRecord?.note || '',
+      appealStatus: pending?.appealStatus || reviewRecord?.appealStatus || '',
+      appealReason: pending?.appealReason || reviewRecord?.appealReason || '',
+      appealedAt: Number(pending?.appealedAt || reviewRecord?.appealedAt || 0),
       photo: storedPhoto || (found ? found.url : ''),
-      uploadTime: timestampOf(pending?.submittedAt || approvedRecord?.time) || (found ? found.uploadTime : 0)
+      uploadTime: timestampOf(pending?.submittedAt || reviewRecord?.submittedAt || reviewRecord?.reviewedAt || approvedRecord?.time) || (found ? found.uploadTime : 0)
     };
   }));
 
@@ -496,11 +536,18 @@ router.get('/checkins', auth, adminOnly, async (req, res) => {
 
   // 统计始终基于完整队列，避免切换筛选时数字跳成 0
   const stat = users.reduce((acc, user) => {
-    acc.pending += user.lockingLocations.length;
+    const appealed = user.pendingCheckins.filter(item => item.appealStatus === 'pending').length;
+    acc.appealed += appealed;
+    acc.pending += Math.max(0, user.lockingLocations.length - appealed);
     acc.approved += user.unlockedLocations.length;
-    acc.all += user.lockingLocations.length + user.unlockedLocations.length;
+    const activeIds = new Set([...user.lockingLocations, ...user.unlockedLocations].map(Number));
+    const rejectedIds = new Set(user.checkinReviewRecords
+      .filter(item => item.status === 'rejected' && !activeIds.has(Number(item.locationId)))
+      .map(item => Number(item.locationId)));
+    acc.rejected += rejectedIds.size;
+    acc.all += user.lockingLocations.length + user.unlockedLocations.length + rejectedIds.size;
     return acc;
-  }, { all: 0, pending: 0, approved: 0 });
+  }, { all: 0, pending: 0, appealed: 0, approved: 0, rejected: 0 });
 
   return res.json({ code: 0, list: rows, stat });
 });
@@ -531,7 +578,9 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
   const newlyCompletedRoutes = [];
   const pending = u.pendingCheckins.find(item => Number(item.locationId) === locationId);
   const location = getLocation(locationId);
-  const pointsAwarded = Number.isInteger(Number(location?.points)) ? Number(location.points) : 1;
+  const configuredPoints = Number.isInteger(Number(location?.points)) ? Number(location.points) : 1;
+  // 所有待审记录均已迁移为积分延后，只有审核通过才计分。
+  const pointsAwarded = pending?.pointsDeferred === true ? configuredPoints : 0;
   u.pendingCheckins = u.pendingCheckins.filter(item => Number(item.locationId) !== locationId);
 
   // 未解锁时才追加积分与打卡记录
@@ -562,10 +611,21 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
     }
   }
 
+  const appealedRecord = [...u.checkinReviewRecords]
+    .reverse()
+    .find(item => Number(item.locationId) === locationId && item.status === 'rejected' && item.appealStatus === 'pending');
+  if (appealedRecord) appealedRecord.appealStatus = 'approved';
+
   u.checkinReviewRecords.push({
     locationId,
     status: 'approved',
     note: String(req.body?.note || '').trim(),
+    photo: pending?.photo || '',
+    key: pending?.key || '',
+    submittedAt: Number(pending?.submittedAt || 0),
+    appealStatus: pending?.appealStatus === 'pending' ? 'approved' : '',
+    appealReason: pending?.appealReason || '',
+    appealedAt: Number(pending?.appealedAt || 0),
     reviewerId: req.userId,
     reviewedAt: Date.now()
   });
@@ -598,18 +658,38 @@ router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
   const userId = uidStr;
   const locationId = Number(locStr);
   if (!userId || !locationId) return res.status(400).json({ code: 1, message: '参数不正确' });
+  const note = String(req.body?.note || '').normalize('NFC').trim().slice(0, 500);
+  if (Array.from(note).length < 4) {
+    return res.status(400).json({ code: 1, message: '请填写至少 4 个字符的驳回理由，便于用户修改' });
+  }
 
   const users = readUsers();
   const u = users.find(x => String(x.id) === String(userId));
   if (!u) return res.status(404).json({ code: 1, message: '用户不存在' });
 
   u.lockingLocations = (u.lockingLocations || []).filter(x => Number(x) !== locationId);
-  u.pendingCheckins = (u.pendingCheckins || []).filter(item => Number(item.locationId) !== locationId);
+  u.pendingCheckins = Array.isArray(u.pendingCheckins) ? u.pendingCheckins : [];
+  u.points = Number.isFinite(Number(u.points)) ? Number(u.points) : 0;
+  const pending = u.pendingCheckins.find(item => Number(item.locationId) === locationId);
+  const pointsReverted = 0;
+  u.pendingCheckins = u.pendingCheckins.filter(item => Number(item.locationId) !== locationId);
   u.checkinReviewRecords = Array.isArray(u.checkinReviewRecords) ? u.checkinReviewRecords : [];
+  const appealedRecord = [...u.checkinReviewRecords]
+    .reverse()
+    .find(item => Number(item.locationId) === locationId && item.status === 'rejected' && item.appealStatus === 'pending');
+  if (appealedRecord) appealedRecord.appealStatus = 'rejected';
   u.checkinReviewRecords.push({
     locationId,
     status: 'rejected',
-    note: String(req.body?.note || '').trim(),
+    note,
+    photo: pending?.photo || '',
+    key: pending?.key || '',
+    submittedAt: Number(pending?.submittedAt || 0),
+    appealStatus: pending?.appealStatus === 'pending' ? 'rejected' : '',
+    appealReason: pending?.appealReason || '',
+    appealedAt: Number(pending?.appealedAt || 0),
+    pointsDeferred: pending?.pointsDeferred === true,
+    pointsReverted,
     reviewerId: req.userId,
     reviewedAt: Date.now()
   });
@@ -617,7 +697,7 @@ router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
   u.updatedAt = Date.now();
   writeUsers(users);
 
-  res.json({ code: 0, message: '已驳回' });
+  res.json({ code: 0, message: '已驳回', data: { pointsReverted, points: u.points } });
 });
 
 // ================================================================

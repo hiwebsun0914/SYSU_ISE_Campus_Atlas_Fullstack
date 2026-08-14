@@ -767,6 +767,7 @@ body {
 }
 
 .status-pending,
+.status-appealed,
 .status-submitted,
 .status-in_progress,
 .severity-medium {

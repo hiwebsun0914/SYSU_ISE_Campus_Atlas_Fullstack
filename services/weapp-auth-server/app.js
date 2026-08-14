@@ -20,6 +20,7 @@ const feedbackRouter = require('./routes/feedback');
 const gallery       = require('./data/gallery');
 const { getLocations } = require('./lib/locationSettings');
 const { effectiveRole, isAdminRole } = require('./lib/roles');
+const { deferLegacyPendingPoints } = require('./lib/checkinPoints');
 
 // === 新增：COS SDK 与配置（用于列目录 + 生成签名 URL） ===
 const COS = require('cos-nodejs-sdk-v5');
@@ -158,7 +159,11 @@ ensureFile(USERS_FILE, '[]');
 function readUsers() {
   try {
     const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-    return JSON.parse(raw);
+    const users = JSON.parse(raw);
+    if (deferLegacyPendingPoints(users)) {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+    }
+    return users;
   } catch (e) {
     console.error('读取 users.json 失败：', e);
     return [];
@@ -236,6 +241,8 @@ function createUser({ username, passwordPlain, phone, realName }) {
     lockingLocations: [],
     completedRoutes: [],
     checkinRecords: [],
+    pendingCheckins: [],
+    checkinReviewRecords: [],
     points: 0,
     lastToken: '',
     createdAt: now,
@@ -518,6 +525,20 @@ app.get('/auth/me', auth, (req, res) => {
       lockingLocations: u.lockingLocations || [],
       completedRoutes: u.completedRoutes || [],
       checkinRecords: u.checkinRecords || [],
+      pendingCheckins: (u.pendingCheckins || []).map(item => ({
+        locationId: Number(item.locationId),
+        submittedAt: Number(item.submittedAt || 0),
+        appealStatus: item.appealStatus || ''
+      })),
+      checkinReviewRecords: (u.checkinReviewRecords || []).slice(-50).map(item => ({
+        locationId: Number(item.locationId),
+        status: item.status,
+        note: item.note || '',
+        reviewedAt: Number(item.reviewedAt || 0),
+        appealStatus: item.appealStatus || '',
+        appealReason: item.appealReason || '',
+        appealedAt: Number(item.appealedAt || 0)
+      })),
       createdAt: u.createdAt,
       updatedAt: u.updatedAt
     }
@@ -531,7 +552,21 @@ app.get('/checkin/status', auth, (req, res) => {
   res.json({
     code: 0,
     unlockedLocations: u.unlockedLocations || [],
-    lockingLocations: u.lockingLocations || []
+    lockingLocations: u.lockingLocations || [],
+    pendingCheckins: (u.pendingCheckins || []).map(item => ({
+      locationId: Number(item.locationId),
+      submittedAt: Number(item.submittedAt || 0),
+      appealStatus: item.appealStatus || ''
+    })),
+    checkinReviewRecords: (u.checkinReviewRecords || []).slice(-50).map(item => ({
+      locationId: Number(item.locationId),
+      status: item.status,
+      note: item.note || '',
+      reviewedAt: Number(item.reviewedAt || 0),
+      appealStatus: item.appealStatus || '',
+      appealReason: item.appealReason || '',
+      appealedAt: Number(item.appealedAt || 0)
+    }))
   });
 });
 

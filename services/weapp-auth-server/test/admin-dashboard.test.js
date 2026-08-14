@@ -51,12 +51,14 @@ const users = [
       {
         locationId: 2,
         photo: 'https://example.com/checkin.jpg',
-        submittedAt: now - 72 * 60 * 60 * 1000
+        submittedAt: now - 72 * 60 * 60 * 1000,
+        pointsDeferred: true
       },
       {
         locationId: 3,
         photo: 'https://example.com/reject.jpg',
-        submittedAt: now - 30 * 60 * 1000
+        submittedAt: now - 30 * 60 * 1000,
+        pointsDeferred: true
       }
     ],
     checkinRecords: [
@@ -133,9 +135,11 @@ process.env.CHECKIN_ANOMALY_DISTANCE_M = '200';
 process.env.CHECKIN_PENDING_STALE_HOURS = '48';
 
 const adminRouter = require('../routes/admin');
+const checkinRouter = require('../routes/checkin');
 const app = express();
 app.use(express.json({ limit: '64kb' }));
 app.use('/admin', adminRouter);
+app.use('/checkin', checkinRouter);
 
 const server = app.listen(0, '127.0.0.1');
 let baseUrl = '';
@@ -287,6 +291,40 @@ test('rejects a pending photo and keeps the review reason', async () => {
   assert.equal(student.pendingCheckins.some(item => Number(item.locationId) === 3), false);
   assert.equal(student.checkinReviewRecords.at(-1).status, 'rejected');
   assert.equal(student.checkinReviewRecords.at(-1).note, '照片无法识别建筑特征。');
+  assert.equal(student.checkinReviewRecords.at(-1).photo, 'https://example.com/reject.jpg');
+});
+
+test('blocks repeat check-ins during review and supports rejected-photo appeals', async () => {
+  const appealed = await api(3, '/checkin/appeal', {
+    method: 'POST',
+    body: JSON.stringify({ locationId: 3, reason: '照片右侧可以清楚看到建筑门牌，请重新核对。' })
+  });
+  assert.equal(appealed.response.status, 200);
+  assert.equal(appealed.body.data.appealStatus, 'pending');
+
+  const duplicateMapCheckin = await api(3, '/checkin/map', {
+    method: 'POST',
+    body: JSON.stringify({ locationId: 3, distance: 5, method: 'geo' })
+  });
+  assert.equal(duplicateMapCheckin.response.status, 409);
+  assert.equal(duplicateMapCheckin.body.errorCode, 'CHECKIN_REVIEW_PENDING');
+
+  const appealQueue = await api(2, '/admin/checkins?status=appealed');
+  assert.equal(appealQueue.response.status, 200);
+  assert.equal(appealQueue.body.list.length, 1);
+  assert.equal(appealQueue.body.list[0].status, 'appealed');
+  assert.match(appealQueue.body.list[0].appealReason, /门牌/);
+
+  const approved = await api(2, '/admin/checkins/3_3/approve', {
+    method: 'POST',
+    body: JSON.stringify({ note: '申诉复核通过。' })
+  });
+  assert.equal(approved.response.status, 200);
+  assert.equal(approved.body.data.pointsAwarded, 1);
+
+  const rejectedQueue = await api(2, '/admin/checkins?status=rejected');
+  assert.equal(rejectedQueue.response.status, 200);
+  assert.equal(rejectedQueue.body.list.length, 0);
 });
 
 test('marks only approved submissions as featured and supports toggling', async () => {

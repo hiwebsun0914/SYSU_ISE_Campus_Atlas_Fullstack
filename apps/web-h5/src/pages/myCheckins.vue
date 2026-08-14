@@ -105,9 +105,9 @@
               <small>当前积分</small>
             </div>
             <div>
-              <span>WORKS</span>
-              <strong>{{ submissionCounts.all }}</strong>
-              <small>投稿总数</small>
+              <span>ROUTES</span>
+              <strong>{{ completedRouteCount }}</strong>
+              <small>路线已完成</small>
             </div>
             <div>
               <span>REVIEW</span>
@@ -115,9 +115,9 @@
               <small>投稿待审核</small>
             </div>
             <div>
-              <span>ROUTES</span>
-              <strong>{{ completedRouteCount }}</strong>
-              <small>路线已完成</small>
+              <span>WORKS</span>
+              <strong>{{ submissionCounts.all }}</strong>
+              <small>投稿总数</small>
             </div>
           </div>
         </section>
@@ -854,7 +854,6 @@ import {
 import '@fontsource/space-grotesk/latin-500.css'
 import '@fontsource/space-grotesk/latin-600.css'
 import '@fontsource/jetbrains-mono/latin-500.css'
-import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import { request } from '@/utils/request'
 import {
@@ -1153,6 +1152,8 @@ async function fetchDashboard() {
     if (responseOkay(statusResponse)) {
       serverUser.unlockedLocations = statusResponse.data.unlockedLocations || serverUser.unlockedLocations || []
       serverUser.lockingLocations = statusResponse.data.lockingLocations || serverUser.lockingLocations || []
+      serverUser.pendingCheckins = statusResponse.data.pendingCheckins || serverUser.pendingCheckins || []
+      serverUser.checkinReviewRecords = statusResponse.data.checkinReviewRecords || serverUser.checkinReviewRecords || []
     } else {
       pageNotice.value = '打卡审核状态暂时未更新，页面已显示最近一次账户数据。'
     }

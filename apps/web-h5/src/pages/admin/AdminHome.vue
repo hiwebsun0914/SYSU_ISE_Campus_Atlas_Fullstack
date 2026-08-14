@@ -253,15 +253,17 @@
                     </div>
                     <h3>{{ item.locationName }}</h3>
                     <p>{{ item.username }} · 地点 #{{ item.locationId }} · 通过后计 {{ item.points }} 分</p>
+                    <p v-if="item.reviewNote" class="admin-review-description">审核说明：{{ item.reviewNote }}</p>
+                    <p v-if="item.status === 'appealed'" class="admin-appeal">申诉：{{ item.appealReason || '用户申请重新复核' }}</p>
                   </div>
-                  <div v-if="item.status === 'pending'" class="admin-review-actions">
+                  <div v-if="item.status === 'pending' || item.status === 'appealed'" class="admin-review-actions">
                     <button class="admin-button admin-button-primary" type="button" :disabled="isBusy(item.id)" @click="approveCheckin(item)">
                       <Check :size="17" aria-hidden="true" />
-                      {{ isBusy(item.id) ? '处理中' : '通过' }}
+                      {{ isBusy(item.id) ? '处理中' : (item.status === 'appealed' ? '通过申诉' : '通过') }}
                     </button>
                     <button class="admin-button admin-button-danger" type="button" :disabled="isBusy(item.id)" @click="openReject('checkin', item)">
                       <Ban :size="17" aria-hidden="true" />
-                      驳回
+                      {{ item.status === 'appealed' ? '维持驳回' : '驳回' }}
                     </button>
                   </div>
                 </article>
@@ -637,7 +639,6 @@ import { useRoute, useRouter } from 'vue-router'
 import '@fontsource/space-grotesk/latin-500.css'
 import '@fontsource/space-grotesk/latin-600.css'
 import '@fontsource/jetbrains-mono/latin-500.css'
-import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 import {
   Activity,
   Ban,
@@ -696,7 +697,7 @@ const submissions = ref([])
 const anomalies = ref([])
 const feedbackItems = ref([])
 const users = ref([])
-const checkinStat = reactive({ all: 0, pending: 0, approved: 0 })
+const checkinStat = reactive({ all: 0, pending: 0, appealed: 0, approved: 0, rejected: 0 })
 const submissionStat = reactive({ all: 0, pending: 0, approved: 0, rejected: 0, down: 0, featured: 0 })
 const anomalyStat = reactive({ all: 0, high: 0, medium: 0, low: 0 })
 const feedbackStat = reactive({ all: 0, submitted: 0, in_progress: 0, resolved: 0, closed: 0 })
@@ -745,7 +746,9 @@ const activeReviewStatus = computed({
 const activeStatusOptions = computed(() => reviewQueue.value === 'checkins'
   ? [
       { value: 'pending', label: '待审核' },
+      { value: 'appealed', label: '申诉复核' },
       { value: 'approved', label: '已通过' },
+      { value: 'rejected', label: '已驳回' },
       { value: 'all', label: '全部记录' }
     ]
   : [
@@ -807,7 +810,7 @@ async function fetchDashboard() {
 async function fetchCheckins() {
   const payload = await api('/admin/checkins', 'GET', { status: checkinStatus.value })
   checkins.value = payload.list || []
-  Object.assign(checkinStat, { all: 0, pending: 0, approved: 0, ...(payload.stat || {}) })
+  Object.assign(checkinStat, { all: 0, pending: 0, appealed: 0, approved: 0, rejected: 0, ...(payload.stat || {}) })
 }
 
 async function fetchSubmissions() {
@@ -1145,7 +1148,7 @@ function submissionImage(item) {
 }
 
 function checkinStatusLabel(status) {
-  return ({ pending: '待审核', approved: '已通过' })[status] || status
+  return ({ pending: '待审核', appealed: '申诉复核', approved: '已通过', rejected: '已驳回' })[status] || status
 }
 
 function submissionStatusLabel(status) {

@@ -20,8 +20,8 @@
           draggable="false"
         />
         <div v-if="!isPlaceChecked(place.id)" class="hd-mask">
-          <span class="hd-lock">🔒</span>
-          <span class="hd-mask-text">隐藏地点 · 尚未发现</span>
+          <span class="hd-lock">{{ reviewState.status === 'pending' || reviewState.status === 'appealed' ? '⏳' : '🔒' }}</span>
+          <span class="hd-mask-text">{{ heroStatusText }}</span>
         </div>
         <span v-else class="hd-found-badge">✅ 已发现</span>
       </div>
@@ -31,9 +31,25 @@
 
         <div class="hd-tags">
           <span class="hd-tag status" :class="isPlaceChecked(place.id) ? 'found' : 'locked'">
-            {{ isPlaceChecked(place.id) ? '✅ 已发现' : '🔒 未发现' }}
+            {{ statusLabel }}
           </span>
         </div>
+
+        <aside v-if="reviewState.status === 'rejected'" class="review-feedback review-feedback--rejected" role="status">
+          <AlertCircle :size="19" aria-hidden="true" />
+          <div>
+            <strong>本次照片未通过审核</strong>
+            <p>{{ reviewState.note || '照片未满足打卡要求，你可以重新提交照片或发起申诉。' }}</p>
+          </div>
+        </aside>
+
+        <aside v-else-if="reviewState.status === 'pending' || reviewState.status === 'appealed'" class="review-feedback" role="status">
+          <Clock3 :size="19" aria-hidden="true" />
+          <div>
+            <strong>{{ reviewState.status === 'appealed' ? '申诉正在复核' : '照片正在审核' }}</strong>
+            <p>审核期间不能重复打卡；管理员处理后，这里会显示结果。</p>
+          </div>
+        </aside>
 
         <div class="hd-block">
           <p class="hd-label">地点介绍</p>
@@ -46,10 +62,28 @@
         <button
           class="hd-action"
           type="button"
+          :disabled="reviewState.status === 'pending' || reviewState.status === 'appealed' || checking"
           @click="onStartCheckin(place)"
         >
-          {{ isPlaceChecked(place.id) ? '在地图中查看' : '立即打卡' }}
+          {{ actionLabel }}
         </button>
+
+        <form v-if="reviewState.status === 'rejected'" class="appeal-form" @submit.prevent="submitAppeal">
+          <label for="checkin-appeal">认为审核结果有误？提交申诉说明</label>
+          <textarea
+            id="checkin-appeal"
+            v-model.trim="appealReason"
+            maxlength="500"
+            rows="3"
+            placeholder="请说明照片与地点的对应关系，至少 4 个字符"
+          ></textarea>
+          <div>
+            <small :class="{ error: appealError }">{{ appealError || `${appealReason.length}/500` }}</small>
+            <button type="submit" :disabled="appealing">
+              <Send :size="16" aria-hidden="true" />{{ appealing ? '正在提交' : '提交申诉' }}
+            </button>
+          </div>
+        </form>
       </section>
     </main>
 
@@ -61,11 +95,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft } from '@lucide/vue'
+import { AlertCircle, ArrowLeft, Clock3, Send } from '@lucide/vue'
 import { campusLocations } from '@/data/campusPlaces'
-import { isPlaceChecked, fetchUserProgress } from '@/stores/userProgress'
+import { appealCheckin, fetchUserProgress, getPlaceReviewState, isPlaceChecked } from '@/stores/userProgress'
 import { placeIdToBackend } from '@/data/campusPlaces'
 import { checkinFlow } from '@/utils/checkinFlow'
 
@@ -85,6 +119,32 @@ const backendLocationId = computed(() => {
 })
 
 const checking = ref(false)
+const appealing = ref(false)
+const appealReason = ref('')
+const appealError = ref('')
+const reviewState = computed(() => place.value ? getPlaceReviewState(place.value.id) : { status: 'idle' })
+const statusLabel = computed(() => ({
+  approved: '✅ 已发现',
+  pending: '⏳ 审核中',
+  appealed: '↻ 申诉复核中',
+  rejected: '⚠️ 未通过，可重新打卡',
+}[reviewState.value.status] || '🔒 未发现'))
+const heroStatusText = computed(() => ({
+  pending: '隐藏地点 · 照片审核中',
+  appealed: '隐藏地点 · 申诉复核中',
+  rejected: '隐藏地点 · 上次审核未通过',
+}[reviewState.value.status] || '隐藏地点 · 尚未发现'))
+const actionLabel = computed(() => {
+  if (isPlaceChecked(place.value?.id)) return '在地图中查看'
+  if (reviewState.value.status === 'pending') return '照片审核中，请耐心等待'
+  if (reviewState.value.status === 'appealed') return '申诉复核中'
+  if (checking.value) return '正在提交…'
+  return reviewState.value.status === 'rejected' ? '重新拍照打卡' : '立即打卡'
+})
+
+onMounted(() => {
+  if (checkinFlow.isAuthed()) fetchUserProgress().catch(() => {})
+})
 
 async function onStartCheckin(p) {
   // 已解锁：仅在地图中定位查看
@@ -109,16 +169,28 @@ async function onStartCheckin(p) {
           checkinFlow.pushOrRedirect('/signin', route, router)
         }
       },
-      // 提交成功后：刷新用户解锁状态（含隐藏地点），随后提示与触发故事
+      // 提交成功后只进入待审核状态；审核通过后才算发现地点并计分。
       onSubmitted: async () => {
         try { await fetchUserProgress() } catch (e) { /* 忽略刷新异常 */ }
-        alert('恭喜发现隐藏地点！')
-        // 触发隐藏故事：跳转至地图，由 Map 页面统一处理隐藏点故事
-        router.replace({ path: '/map', query: { placeId: p.id, hiddenStory: '1' } })
       },
     })
   } finally {
     checking.value = false
+  }
+}
+
+async function submitAppeal() {
+  const reason = appealReason.value.trim()
+  appealError.value = reason.length < 4 ? '请填写至少 4 个字符的申诉说明' : ''
+  if (appealError.value || appealing.value || !place.value) return
+  appealing.value = true
+  try {
+    await appealCheckin(place.value.id, reason)
+    appealReason.value = ''
+  } catch (error) {
+    appealError.value = error?.message || '申诉提交失败，请稍后重试'
+  } finally {
+    appealing.value = false
   }
 }
 
@@ -203,6 +275,21 @@ function goList() {
 .hd-tag.status.found { background: rgba(23,92,40,0.25); color: #7ee2a0; }
 .hd-tag.status.locked { background: rgba(154,107,31,0.22); color: #e6b863; }
 
+.review-feedback {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 13px 14px;
+  border: 1px solid rgba(199, 242, 74, .22);
+  border-radius: 14px;
+  color: #dff7d8;
+  background: rgba(199, 242, 74, .08);
+}
+.review-feedback--rejected { border-color: rgba(255, 153, 132, .3); color: #ffd5cc; background: rgba(169, 45, 31, .16); }
+.review-feedback strong { display: block; font-size: 14px; }
+.review-feedback p { margin: 4px 0 0; color: rgba(234, 243, 238, .72); font-size: 13px; line-height: 1.55; }
+
 .hd-block { margin-bottom: 20px; }
 .hd-label {
   margin: 0 0 8px;
@@ -249,6 +336,16 @@ function goList() {
   cursor: pointer;
 }
 .hd-action:active { transform: scale(0.98); }
+.hd-action:disabled { cursor: wait; opacity: .58; filter: saturate(.55); }
+
+.appeal-form { display: grid; gap: 9px; margin-top: 14px; padding: 15px; border: 1px solid rgba(255, 255, 255, .13); border-radius: 16px; background: rgba(255, 255, 255, .055); }
+.appeal-form label { font-size: 13px; font-weight: 700; }
+.appeal-form textarea { width: 100%; resize: vertical; border: 1px solid rgba(255, 255, 255, .16); border-radius: 11px; padding: 11px 12px; color: #fff; background: rgba(4, 22, 19, .55); font: inherit; line-height: 1.55; }
+.appeal-form textarea:focus-visible { outline: 2px solid #c7f24a; outline-offset: 2px; }
+.appeal-form > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.appeal-form small { color: rgba(234, 243, 238, .55); }.appeal-form small.error { color: #ffb4a5; }
+.appeal-form button { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 14px; border-radius: 999px; color: #0f2e2a; background: #c7f24a; font-weight: 800; }
+.appeal-form button:disabled { opacity: .55; }
 
 .hd-empty {
   padding: 60px 20px;

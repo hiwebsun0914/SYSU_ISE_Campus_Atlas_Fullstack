@@ -22,8 +22,9 @@ export function isLoggedIn() {
 }
 
 function goSignin(redirect) {
-  // 如果没传 redirect，就用当前地址
-  const back = redirect || window.location.pathname + window.location.search
+  // Hash 路由下 window.location.pathname 通常只有 “/”，应从路由实例读取完整地址。
+  const currentPath = router.currentRoute.value.fullPath
+  const back = redirect || (currentPath === '/signin' ? '/' : currentPath)
   router.push({ path: '/signin', query: { redirect: back } })
 }
 
@@ -40,24 +41,30 @@ export async function getUserInfo(redirect = '') {
   }
 
   try {
-    // 结合你的后端协议调整
-    const data = await request({ url: '/auth/me', method: 'GET' })
-    // 约定：未登录/过期时后端返回 code === 1（可按你实际调整）
-    if (data?.code === 1) {
+    const response = await request('/auth/me', 'GET', null, { cacheBust: true })
+    const data = response?.data || {}
+    const unauthorized = response?.status === 401
+      || response?.status === 403
+      || data?.code === 1
+
+    if (unauthorized) {
+      clearToken()
+      localStorage.removeItem(USERINFO_KEY)
       goSignin(redirect)
       return null
     }
 
-    const userInfo = data?.userInfo || {}
+    if (!response?.ok || data?.code !== 0) {
+      console.warn('[getUserInfo] request failed:', data?.message || response?.status || 'NETWORK_ERROR')
+      return null
+    }
+
+    const userInfo = data?.userInfo || data?.data?.userInfo || null
+    if (!userInfo) return null
     const old = JSON.parse(localStorage.getItem(USERINFO_KEY) || '{}')
     localStorage.setItem(USERINFO_KEY, JSON.stringify({ ...old, ...userInfo }))
     return userInfo
   } catch (e) {
-    // axios 的 401
-    if (e?.response?.status === 401) {
-      goSignin(redirect)
-      return null
-    }
     console.error('[getUserInfo] error:', e)
     return null
   }

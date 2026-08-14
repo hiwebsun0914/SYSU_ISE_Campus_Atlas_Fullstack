@@ -7,6 +7,8 @@ export const points = ref(0)
 export const checkedPlaces = ref([])
 export const completedRoutes = ref([])
 export const checkinRecords = ref([])
+export const pendingCheckins = ref([])
+export const checkinReviewRecords = ref([])
 export const nickName = ref('')
 
 export const checkedSet = computed(() => {
@@ -19,6 +21,7 @@ export const checkedSet = computed(() => {
   return s
 })
 export const completedSet = computed(() => new Set(completedRoutes.value))
+export const pendingSet = computed(() => new Set(pendingCheckins.value.map(item => item.placeId)))
 
 /**
  * 等待下一个微任务
@@ -48,6 +51,22 @@ function normalizeCheckinRecords(records = []) {
   }))
 }
 
+function normalizePendingCheckins(records = []) {
+  return records.map(record => ({
+    ...record,
+    locationId: Number(record.locationId),
+    placeId: backendToPlaceId[record.locationId] || String(record.locationId),
+  }))
+}
+
+function normalizeReviewRecords(records = []) {
+  return records.map(record => ({
+    ...record,
+    locationId: Number(record.locationId),
+    placeId: backendToPlaceId[record.locationId] || String(record.locationId),
+  }))
+}
+
 /**
  * 清空前端状态（后端无数据或请求失败时调用）
  */
@@ -56,6 +75,8 @@ function clearProgress() {
   checkedPlaces.value = []
   completedRoutes.value = []
   checkinRecords.value = []
+  pendingCheckins.value = []
+  checkinReviewRecords.value = []
   nickName.value = ''
 }
 
@@ -83,6 +104,8 @@ export async function fetchUserProgress() {
   const newCheckedPlaces = normalizeCheckedPlaces(info.unlockedLocations)
   const newCompletedRoutes = Array.isArray(info.completedRoutes) ? info.completedRoutes : []
   const newCheckinRecords = normalizeCheckinRecords(info.checkinRecords)
+  const newPendingCheckins = normalizePendingCheckins(info.pendingCheckins)
+  const newReviewRecords = normalizeReviewRecords(info.checkinReviewRecords)
 
   // 先清空再赋值，确保 Vue 能检测到数组引用变化，触发 CampusMap 的 watch
   checkedPlaces.value = []
@@ -93,6 +116,8 @@ export async function fetchUserProgress() {
   checkedPlaces.value = newCheckedPlaces
   completedRoutes.value = newCompletedRoutes
   checkinRecords.value = newCheckinRecords
+  pendingCheckins.value = newPendingCheckins
+  checkinReviewRecords.value = newReviewRecords
   nickName.value = info.nickName || ''
 
   await nextTick()
@@ -102,6 +127,8 @@ export async function fetchUserProgress() {
     checkedPlaces: checkedPlaces.value,
     completedRoutes: completedRoutes.value,
     checkinRecords: checkinRecords.value,
+    pendingCheckins: pendingCheckins.value,
+    checkinReviewRecords: checkinReviewRecords.value,
   }
 }
 
@@ -110,6 +137,35 @@ export async function fetchUserProgress() {
  */
 export function isPlaceChecked(placeId) {
   return checkedSet.value.has(placeId)
+}
+
+export function isPlacePending(placeId) {
+  return pendingSet.value.has(placeId)
+}
+
+export function getPlaceReviewState(placeId) {
+  if (isPlaceChecked(placeId)) return { status: 'approved' }
+  const pending = pendingCheckins.value.find(item => item.placeId === placeId)
+  if (pending) {
+    return {
+      ...pending,
+      status: pending.appealStatus === 'pending' ? 'appealed' : 'pending'
+    }
+  }
+  return [...checkinReviewRecords.value]
+    .reverse()
+    .find(item => item.placeId === placeId) || { status: 'idle' }
+}
+
+export async function appealCheckin(placeId, reason) {
+  const backendId = placeIdToBackend[placeId]
+  if (!backendId) throw new Error(`未知地点ID: ${placeId}`)
+  const response = await request('/checkin/appeal', 'POST', { locationId: backendId, reason })
+  if (!response?.ok || response?.data?.code !== 0) {
+    throw new Error(response?.data?.message || '申诉提交失败')
+  }
+  await fetchUserProgress()
+  return response.data.data || {}
 }
 
 /**
@@ -192,4 +248,6 @@ export function resetProgress() {
   checkedPlaces.value = []
   completedRoutes.value = []
   checkinRecords.value = []
+  pendingCheckins.value = []
+  checkinReviewRecords.value = []
 }

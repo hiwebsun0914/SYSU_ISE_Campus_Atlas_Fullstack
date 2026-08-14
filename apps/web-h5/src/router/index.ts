@@ -35,7 +35,7 @@ const router = createRouter({
       redirect: to => ({ path: '/admin', query: { ...to.query, section: 'review', queue: 'submissions' } })
     },
 
-    { path: '/:pathMatch(.*)*', component: { render: () => '404' } }
+    { path: '/:pathMatch(.*)*', component: () => import('../pages/NotFound.vue') }
   ]
 })
 
