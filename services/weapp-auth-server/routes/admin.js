@@ -578,7 +578,7 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
   const newlyCompletedRoutes = [];
   const pending = u.pendingCheckins.find(item => Number(item.locationId) === locationId);
   const location = getLocation(locationId);
-  const configuredPoints = Number.isInteger(Number(location?.points)) ? Number(location.points) : 1;
+  const configuredPoints = Number.isFinite(Number(location?.points)) ? Number(location.points) : 1;
   // 所有待审记录均已迁移为积分延后，只有审核通过才计分。
   const pointsAwarded = pending?.pointsDeferred === true ? configuredPoints : 0;
   u.pendingCheckins = u.pendingCheckins.filter(item => Number(item.locationId) !== locationId);

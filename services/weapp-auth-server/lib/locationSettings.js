@@ -5,6 +5,7 @@ const path = require('path');
 const baseLocationData = require('../data/locations');
 
 const DEFAULT_POINTS = 1;
+const HIDDEN_DEFAULT_POINTS = 1.5;
 
 function settingsFile() {
   return path.resolve(
@@ -41,13 +42,14 @@ function getLocations() {
   const settings = readSettings();
   return baseLocations().map(location => {
     const override = settings[String(location.backendId)] || {};
+    const overridePoints = Number(override.points);
     return {
       ...location,
       ...override,
       backendId: Number(location.backendId),
-      points: Number.isInteger(Number(override.points))
-        ? Number(override.points)
-        : DEFAULT_POINTS
+      points: Number.isFinite(overridePoints) && override.points !== undefined && override.points !== ''
+        ? overridePoints
+        : (location.isHidden ? HIDDEN_DEFAULT_POINTS : DEFAULT_POINTS)
     };
   });
 }
@@ -96,8 +98,8 @@ function validatePatch(input = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'points')) {
     const points = Number(input.points);
-    if (!Number.isInteger(points) || points < 0 || points > 100) {
-      throw new Error('单点积分必须是 0–100 的整数');
+    if (!Number.isFinite(points) || points < 0 || points > 100 || Math.round(points * 2) !== points * 2) {
+      throw new Error('单点积分必须是 0–100 之间、以 0.5 为步进的分值');
     }
     patch.points = points;
   }
@@ -127,6 +129,7 @@ function updateLocation(backendId, input) {
 
 module.exports = {
   DEFAULT_POINTS,
+  HIDDEN_DEFAULT_POINTS,
   getLocations,
   getLocation,
   updateLocation,

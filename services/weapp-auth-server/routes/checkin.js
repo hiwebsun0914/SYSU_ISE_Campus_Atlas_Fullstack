@@ -386,7 +386,7 @@ router.post('/map', auth, (req, res) => {
     // 未解锁时才写入积分与记录
     if (!alreadyUnlocked) {
       user.unlockedLocations.push(locNum);
-      const pointsAwarded = Number.isInteger(Number(location.points)) ? Number(location.points) : 1;
+      const pointsAwarded = Number.isFinite(Number(location.points)) ? Number(location.points) : 1;
       user.points += pointsAwarded;
       user.pendingCheckins = user.pendingCheckins.filter(item => Number(item.locationId) !== locNum);
 
