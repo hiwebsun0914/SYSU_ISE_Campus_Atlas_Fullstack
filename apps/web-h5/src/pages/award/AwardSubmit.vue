@@ -2,10 +2,18 @@
   <div class="submit-page">
     <header class="submit-header">
       <a class="back-link" href="#/award" @click.prevent="router.push('/award')">‹ 返回投稿首页</a>
-      <h1>{{ currentCategory?.name || '作品投稿' }}</h1>
-      <span class="deadline" :class="{ closed }">
-        {{ closed ? '投稿已截止' : `截止 ${deadlineText}` }}
-      </span>
+      <div class="header-inner">
+        <div class="header-title">
+          <p class="eyebrow"><span></span> SUBMISSION / 作品投稿</p>
+          <h1>{{ currentCategory?.name || '作品投稿' }}</h1>
+        </div>
+        <div class="header-side">
+          <span class="deadline" :class="{ closed }">
+            <CalendarDays :size="14" aria-hidden="true" />
+            {{ closed ? '投稿已截止' : `截止 ${deadlineText}` }}
+          </span>
+        </div>
+      </div>
     </header>
 
     <main class="submit-main">
@@ -17,25 +25,29 @@
       <form v-else-if="!closed" class="submit-form" @submit.prevent="onSubmitClick">
         <!-- 奖项 -->
         <section class="form-section">
-          <h2>1. 选择奖项</h2>
+          <h2><span class="step">01</span> 选择奖项</h2>
           <div class="cat-picker">
             <button
               v-for="cat in categories"
               :key="cat.id"
               type="button"
               :class="{ active: form.category === cat.id }"
+              :aria-pressed="form.category === cat.id"
               @click="pickCategory(cat.id)"
             >
-              <span class="cat-icon">{{ cat.icon }}</span>
+              <span class="cat-icon" aria-hidden="true">
+                <component :is="categoryIcon(cat.id)" :size="20" :stroke-width="1.8" />
+              </span>
               <b>{{ cat.name }}</b>
               <small>{{ cat.description }}</small>
+              <Check v-if="form.category === cat.id" class="cat-check" :size="15" :stroke-width="2.6" aria-hidden="true" />
             </button>
           </div>
         </section>
 
         <!-- 作品信息 -->
         <section class="form-section">
-          <h2>2. 作品信息</h2>
+          <h2><span class="step">02</span> 作品信息</h2>
           <label class="field">
             <span>作品名称 <em>（{{ title.length }}/30）</em></span>
             <input v-model="form.title" maxlength="30" placeholder="给你的作品起个名字" />
@@ -55,7 +67,7 @@
 
         <!-- 图片上传 -->
         <section class="form-section">
-          <h2>3. 上传作品图片 <em>（{{ images.length }}/{{ maxImagesPerWork }}）</em></h2>
+          <h2><span class="step">03</span> 上传作品图片 <em>（{{ images.length }}/{{ maxImagesPerWork }}）</em></h2>
           <div class="upload-grid">
             <div v-for="(img, i) in images" :key="img.uid" class="upload-item">
               <img :src="img.preview" :alt="`作品图 ${i + 1}`" />
@@ -72,7 +84,7 @@
               :disabled="uploading"
               @click="pickFile"
             >
-              <span class="plus">＋</span>
+              <Plus :size="26" :stroke-width="1.8" aria-hidden="true" />
               <span>{{ uploading ? '上传中…' : '选择图片' }}</span>
               <small>JPG / PNG / WebP / GIF，单张 ≤ {{ maxImageMB }}MB</small>
             </button>
@@ -99,7 +111,7 @@
     <!-- 提交成功提示 -->
     <div v-if="successVisible" class="success-mask">
       <div class="success-card">
-        <span class="success-icon">✓</span>
+        <span class="success-icon"><Check :size="26" :stroke-width="2.6" aria-hidden="true" /></span>
         <h2>投稿成功</h2>
         <p>你的作品已提交，等待管理员审核。</p>
         <div class="success-actions">
@@ -112,7 +124,7 @@
     <!-- 已提交同类别作品提示 -->
     <div v-if="dupModalVisible" class="success-mask">
       <div class="success-card">
-        <span class="success-icon warn">!</span>
+        <span class="success-icon warn"><TriangleAlert :size="24" :stroke-width="2.2" aria-hidden="true" /></span>
         <h2>已提交过{{ existingActive?.categoryName }}</h2>
         <p>
           你已提交过{{ existingActive?.categoryName }}（{{ existingStateText }}）。
@@ -140,6 +152,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request } from '@/utils/request'
 import { AWARD_CONFIG } from '@/data/awards'
+import { CalendarDays, Camera, Check, Lightbulb, Plus, TriangleAlert } from '@lucide/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -177,6 +190,10 @@ const form = ref({
 const title = computed(() => form.value.title)
 const description = computed(() => form.value.description)
 const currentCategory = computed(() => categories.value.find(c => c.id === form.value.category) || null)
+
+function categoryIcon(category) {
+  return category === 'photography' ? Camera : Lightbulb
+}
 
 const images = ref([])
 const uploading = ref(false)
@@ -374,70 +391,256 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.submit-page { min-height: 100vh; color: #17231e; background: #f6f4ef; font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; }
-.submit-header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 24px clamp(16px, 4vw, 52px); background: #102a2e; color: #fff; }
-.back-link { color: rgba(255,255,255,.7); text-decoration: none; font-size: 13px; }
-.submit-header h1 { margin: 0; font-size: 22px; flex: 1; }
-.deadline { font-size: 12px; color: #c7f24a; background: rgba(199,242,74,.12); padding: 6px 12px; border-radius: 999px; }
-.deadline.closed { color: rgba(255,255,255,.75); background: rgba(255,255,255,.1); }
+.submit-page {
+  --ink: #0a2e3b;
+  --primary: #0d9488;
+  --primary-dark: #08766d;
+  --accent: #c7f24a;
+  --canvas: #f3f7f5;
+  --surface: #ffffff;
+  --text: #102a2e;
+  --muted: #5e7271;
+  --border: #d6e4df;
+  min-height: 100vh;
+  color: var(--text);
+  background-color: var(--canvas);
+  background-image:
+    linear-gradient(rgba(10, 46, 59, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 46, 59, .035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
 
-.submit-main { max-width: 820px; margin: 0 auto; padding: 26px clamp(16px, 4vw, 52px) 100px; }
-.submit-form { display: grid; gap: 20px; }
-.form-section { padding: 22px; border-radius: 16px; background: #fff; border: 1px solid #e8e4da; }
-.form-section h2 { margin: 0 0 16px; font-size: 17px; }
+/* 轻量页头：无深色大色块，与其他奖项页面同一语言 */
+.submit-header {
+  padding: 20px clamp(16px, 4vw, 52px) 26px;
+  border-top: 4px solid var(--ink);
+  border-bottom: 1px solid var(--border);
+  background: rgba(243, 247, 245, .92);
+}
+.back-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color .2s ease;
+}
+.back-link:hover { color: var(--primary); }
+.header-inner { max-width: 820px; margin: 10px auto 0; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.header-title { flex: 1 1 auto; min-width: 0; }
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: var(--primary-dark);
+  font: 700 10px "SFMono-Regular", Menlo, Consolas, monospace;
+  letter-spacing: .08em;
+}
+.eyebrow span { width: 18px; height: 3px; background: var(--accent); box-shadow: 8px 0 0 var(--ink); }
+.submit-header h1 {
+  margin: 12px 0 0;
+  color: var(--ink);
+  font-family: "DIN Alternate", "Avenir Next", "Noto Sans SC", sans-serif;
+  font-size: clamp(28px, 5.5vw, 40px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -.03em;
+}
+.header-side { flex: 0 0 auto; }
+.deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid #bfd0ca;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .72);
+  color: var(--ink);
+  font: 700 11px "SFMono-Regular", Menlo, Consolas, monospace;
+}
+.deadline svg { color: var(--primary); }
+.deadline.closed { border-color: var(--border); color: var(--muted); }
+
+.submit-main { max-width: 820px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 52px) 100px; }
+.submit-form { display: grid; gap: 16px; }
+.form-section { padding: 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.form-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-size: 17px;
+}
+.form-section h2 .step {
+  color: var(--primary-dark);
+  font: 700 11px "SFMono-Regular", Menlo, Consolas, monospace;
+  letter-spacing: .06em;
+}
 .form-section h2 em { color: #8a958f; font-size: 12px; font-style: normal; font-weight: 400; }
 
 .cat-picker { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.cat-picker button { display: grid; grid-template-columns: 40px 1fr; gap: 2px 10px; align-items: center; text-align: left; padding: 14px; border: 1px solid #e2e0d8; border-radius: 12px; background: #faf9f5; color: #17231e; cursor: pointer; }
-.cat-picker button.active { border-color: #0d9488; background: #f0faf7; box-shadow: inset 0 0 0 1px #0d9488; }
-.cat-icon { grid-row: span 2; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px 4px 12px 4px; background: #e9f0ec; font-size: 18px; }
-.cat-picker b { font-size: 14px; }
-.cat-picker small { grid-column: 2; color: #7b857f; font-size: 11px; line-height: 1.5; }
+.cat-picker button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 2px 12px;
+  align-items: center;
+  text-align: left;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease;
+}
+.cat-picker button:hover { border-color: #b9cdc6; }
+.cat-picker button.active { border-color: var(--primary); background: #f2f8f6; box-shadow: inset 0 0 0 1px var(--primary); }
+.cat-icon {
+  grid-row: span 2;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 14px 5px 14px 5px;
+  background: var(--surface);
+  color: var(--primary-dark);
+}
+.cat-picker b { font-size: 14px; color: var(--ink); }
+.cat-picker small { grid-column: 2; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.cat-check {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink);
+  box-sizing: content-box;
+}
 
 .field { display: grid; gap: 8px; margin-top: 16px; }
-.field > span { color: #49584f; font-size: 13px; }
-.field em { color: #8a958f; font-style: normal; font-size: 11px; }
-.field input, .field textarea, .field select { width: 100%; border: 1px solid #d8d4c9; border-radius: 10px; background: #fff; padding: 12px 14px; font-size: 14px; color: #17231e; outline: none; box-sizing: border-box; font-family: inherit; }
-.field input:focus, .field textarea:focus, .field select:focus { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.12); }
+.field > span { color: #405a5c; font-size: 13px; font-weight: 700; }
+.field em { color: #8a958f; font-style: normal; font-size: 11px; font-weight: 400; }
+.field input, .field textarea, .field select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13, 148, 136, .12); }
 .field textarea { resize: vertical; line-height: 1.7; }
 
 .upload-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.upload-item { position: relative; border-radius: 12px; overflow: hidden; background: #f1efe8; border: 1px solid #e2e0d8; }
+.upload-item { position: relative; border-radius: 12px; overflow: hidden; background: #eef4f1; border: 1px solid var(--border); }
 .upload-item img { width: 100%; height: 150px; object-fit: cover; display: block; }
 .upload-ops { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; }
-.upload-ops span { font-size: 11px; color: #7b857f; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-ops span { font-size: 11px; color: var(--muted); max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .remove-btn { border: 1px solid #e2b6b1; background: transparent; color: #b42318; border-radius: 999px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
-.upload-add { min-height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px dashed #b9c4bd; border-radius: 12px; background: #faf9f5; color: #49584f; cursor: pointer; }
-.upload-add .plus { font-size: 30px; line-height: 1; color: #0d9488; }
+.upload-add {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed #a9bfb8;
+  border-radius: 12px;
+  background: transparent;
+  color: #405a5c;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .18s ease, color .18s ease;
+}
+.upload-add:hover { border-color: var(--primary); color: var(--primary-dark); }
+.upload-add svg { color: var(--primary); }
 .upload-add small { color: #8a958f; font-size: 11px; }
 .upload-add:disabled { opacity: .6; cursor: wait; }
 .tip { margin: 10px 0 0; color: #8a958f; font-size: 12px; }
 
-.form-error { margin: 0; padding: 12px 14px; border-radius: 10px; background: #fdeeee; color: #b42318; font-size: 13px; }
+.form-error { margin: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid #f0ccc9; background: #fdf4f3; color: #b42318; font-size: 13px; }
 .form-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .hint { color: #8a958f; font-size: 12px; }
-.primary-btn { border: 0; background: #0d9488; color: #fff; padding: 12px 26px; border-radius: 999px; font-size: 14px; font-weight: 800; cursor: pointer; }
-.primary-btn:disabled { background: #b5c9c4; cursor: wait; }
-.ghost-btn { border: 1px solid #0d9488; background: transparent; color: #0d9488; padding: 11px 20px; border-radius: 999px; font-size: 13px; cursor: pointer; }
 
-.notice-card { padding: 26px; border-radius: 16px; background: #fff; border: 1px solid #e8e4da; text-align: center; }
-.notice-card h3 { margin: 0 0 8px; font-size: 19px; }
-.notice-card p { margin: 0 0 18px; color: #5f6d66; font-size: 14px; }
-.notice-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+/* 主 CTA：酸橙胶囊 + 深青文字；次级操作为描边按钮 */
+.primary-btn {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ink);
+  padding: 0 26px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .2s cubic-bezier(.16, 1, .3, 1), background .2s ease;
+}
+.primary-btn:hover:not(:disabled) { transform: translateY(-2px); background: #d3fa61; }
+.primary-btn:active:not(:disabled) { transform: scale(.99); }
+.primary-btn:disabled { border-color: var(--border); background: var(--border); color: var(--muted); cursor: wait; }
+.ghost-btn {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--primary);
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+}
+.ghost-btn:hover { background: var(--primary); color: #fff; }
 
-.empty { padding: 60px 0; text-align: center; color: #8a958f; }
+.empty { padding: 60px 0; text-align: center; color: #8a958f; font-size: 14px; }
 .empty p { margin: 0 0 16px; }
 
-.success-mask { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(8,18,15,.72); }
-.success-card { width: min(380px, 100%); padding: 34px 26px; border-radius: 20px; background: #fff; text-align: center; }
-.success-icon { width: 58px; height: 58px; display: grid; place-items: center; margin: 0 auto; border-radius: 50%; background: #e6f7ef; color: #0a7a54; font-size: 26px; font-weight: 800; }
+.success-mask { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(8, 18, 15, .72); }
+.success-card { width: min(380px, 100%); padding: 34px 26px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); text-align: center; }
+.success-icon { width: 58px; height: 58px; display: grid; place-items: center; margin: 0 auto; border-radius: 50%; background: #e6f7ef; color: #0a7a54; }
 .success-icon.warn { background: #fff7e6; color: #b45309; }
-.success-card h2 { margin: 16px 0 8px; font-size: 22px; }
-.success-card p { margin: 0 0 22px; color: #5f6d66; font-size: 14px; }
+.success-card h2 { margin: 16px 0 8px; color: var(--ink); font-size: 22px; }
+.success-card p { margin: 0 0 22px; color: var(--muted); font-size: 14px; line-height: 1.7; }
 .success-actions { display: grid; gap: 10px; }
+.success-actions .primary-btn, .success-actions .ghost-btn { width: 100%; }
+
+.back-link:focus-visible,
+.primary-btn:focus-visible,
+.ghost-btn:focus-visible,
+.cat-picker button:focus-visible,
+.upload-add:focus-visible,
+.remove-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 1px var(--ink);
+}
 
 @media (min-width: 720px) {
   .cat-picker { grid-template-columns: repeat(2, 1fr); }
   .upload-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-link, .primary-btn, .ghost-btn, .cat-picker button, .upload-add,
+  .field input, .field textarea, .field select { transition: none; }
+  .primary-btn:hover:not(:disabled) { transform: none; }
 }
 </style>
