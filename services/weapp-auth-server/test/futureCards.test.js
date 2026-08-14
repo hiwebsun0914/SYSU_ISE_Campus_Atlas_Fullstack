@@ -208,14 +208,14 @@ test('does not allow another user to upload an image to an owned card', async ()
   assert.equal(putCalls.length, before);
 });
 
-test('enforces 60/500 limits and style allowlists', async () => {
-  const sixty = await api(101, '/future-cards', { method: 'POST', body: JSON.stringify(payload('expectation', '愿'.repeat(60))) });
-  assert.equal(sixty.response.status, 201);
-  assert.equal(sixty.body.code, 0);
+test('enforces 500-character limits and style allowlists', async () => {
+  const expectationFiveHundred = await api(101, '/future-cards', { method: 'POST', body: JSON.stringify(payload('expectation', '愿'.repeat(500))) });
+  assert.equal(expectationFiveHundred.response.status, 201);
+  assert.equal(expectationFiveHundred.body.code, 0);
 
-  const sixtyOne = await api(101, '/future-cards', { method: 'POST', body: JSON.stringify(payload('expectation', '愿'.repeat(61))) });
-  assert.equal(sixtyOne.response.status, 400);
-  assert.equal(sixtyOne.body.errorCode, 'CONTENT_TOO_LONG');
+  const expectationFiveHundredOne = await api(101, '/future-cards', { method: 'POST', body: JSON.stringify(payload('expectation', '愿'.repeat(501))) });
+  assert.equal(expectationFiveHundredOne.response.status, 400);
+  assert.equal(expectationFiveHundredOne.body.errorCode, 'CONTENT_TOO_LONG');
 
   const fiveHundred = await api(101, '/future-cards', { method: 'POST', body: JSON.stringify(payload('letter', '前'.repeat(500))) });
   assert.equal(fiveHundred.response.status, 201);
@@ -225,6 +225,33 @@ test('enforces 60/500 limits and style allowlists', async () => {
 
   const invalidStyle = await api(101, '/future-cards', { method: 'POST', body: JSON.stringify(payload('expectation', '你好', { templateId: 'user-upload' })) });
   assert.equal(invalidStyle.body.errorCode, 'INVALID_STYLE');
+});
+
+test('accepts a custom signature and validates its length', async () => {
+  const custom = await api(101, '/future-cards', {
+    method: 'POST',
+    body: JSON.stringify(payload('expectation', '保持好奇。', {
+      style: { fontId: 'sans', size: 'medium', align: 'left', signatureMode: 'custom', signatureText: '智工探索者' }
+    }))
+  });
+  assert.equal(custom.response.status, 201);
+  assert.equal(custom.body.data.card.style.signatureText, '智工探索者');
+
+  const empty = await api(101, '/future-cards', {
+    method: 'POST',
+    body: JSON.stringify(payload('expectation', '继续前进。', {
+      style: { fontId: 'sans', size: 'medium', align: 'left', signatureMode: 'custom', signatureText: '   ' }
+    }))
+  });
+  assert.equal(empty.body.errorCode, 'INVALID_SIGNATURE');
+
+  const tooLong = await api(101, '/future-cards', {
+    method: 'POST',
+    body: JSON.stringify(payload('expectation', '去看更大的世界。', {
+      style: { fontId: 'sans', size: 'medium', align: 'left', signatureMode: 'custom', signatureText: '署'.repeat(25) }
+    }))
+  });
+  assert.equal(tooLong.body.errorCode, 'INVALID_SIGNATURE');
 });
 
 test('rejects blank, obfuscated sensitive content, and HTML-like markup', async () => {

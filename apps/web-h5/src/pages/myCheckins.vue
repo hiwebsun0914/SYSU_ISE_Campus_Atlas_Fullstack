@@ -105,9 +105,9 @@
               <small>当前积分</small>
             </div>
             <div>
-              <span>WORKS</span>
-              <strong>{{ submissionCounts.all }}</strong>
-              <small>投稿总数</small>
+              <span>ROUTES</span>
+              <strong>{{ completedRouteCount }}</strong>
+              <small>路线已完成</small>
             </div>
             <div>
               <span>REVIEW</span>
@@ -115,9 +115,9 @@
               <small>投稿待审核</small>
             </div>
             <div>
-              <span>ROUTES</span>
-              <strong>{{ completedRouteCount }}</strong>
-              <small>路线已完成</small>
+              <span>WORKS</span>
+              <strong>{{ submissionCounts.all }}</strong>
+              <small>投稿总数</small>
             </div>
           </div>
         </section>

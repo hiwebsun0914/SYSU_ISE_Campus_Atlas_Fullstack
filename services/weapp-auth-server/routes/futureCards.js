@@ -9,12 +9,12 @@ const auth = require('../middleware/auth');
 const STORE_FILE = path.resolve(
   process.env.FUTURE_CARDS_FILE || path.join(__dirname, '..', 'future_cards.json')
 );
-const MODE_LIMITS = Object.freeze({ expectation: 60, letter: 500 });
+const MODE_LIMITS = Object.freeze({ expectation: 500, letter: 500 });
 const TEMPLATES = new Set(['sysu-editorial', 'lake-morning', 'engineering-blueprint']);
 const FONTS = new Set(['song', 'sans', 'hand']);
 const SIZES = new Set(['small', 'medium', 'large']);
 const ALIGNS = new Set(['left', 'center']);
-const SIGNATURE_MODES = new Set(['default', 'nickname']);
+const SIGNATURE_MODES = new Set(['default', 'nickname', 'custom']);
 function readPositiveLimit(name, fallback) {
   const value = Number(process.env[name]);
   if (!Number.isFinite(value) || value <= 0) return fallback;
@@ -213,6 +213,19 @@ function validatePayload(body, user) {
   }
 
   const nickname = typeof user?.username === 'string' ? user.username.trim() : '';
+  const customSignature = normalizeContent(styleInput.signatureText);
+  if (signatureMode === 'custom') {
+    const signatureLength = visibleLength(customSignature);
+    if (!signatureLength || signatureLength > 24) {
+      throw new ApiError(400, 'INVALID_SIGNATURE', '署名需要 1 至 24 个可见字符');
+    }
+    if (contentRejected(customSignature)) {
+      throw new ApiError(400, 'CONTENT_REJECTED', '署名未通过安全检查，请调整后重试');
+    }
+  }
+  const signatureText = signatureMode === 'custom'
+    ? customSignature
+    : (signatureMode === 'nickname' && nickname ? Array.from(nickname).slice(0, 24).join('') : '一名智工新生');
   return {
     mode,
     content,
@@ -222,7 +235,7 @@ function validatePayload(body, user) {
       size,
       align,
       signatureMode,
-      signatureText: signatureMode === 'nickname' && nickname ? nickname.slice(0, 24) : '一名智工新生'
+      signatureText
     }
   };
 }
