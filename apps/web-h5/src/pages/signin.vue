@@ -1,78 +1,109 @@
-<!-- src/pages/signin.vue -->
+<!-- src/pages/signin.vue · 登录/注册：按 design.md 浅色画布语言 -->
 <template>
   <div class="signin-page">
-    <!-- 背景 -->
-    <img class="bg-img" src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/bg.jpg" alt="bg" />
+    <main class="signin-shell">
+      <header class="signin-header">
+        <img
+          class="signin-logo"
+          src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png"
+          alt="中山大学智能工程学院"
+        />
+        <p class="signin-eyebrow"><span class="signin-node" aria-hidden="true"></span>SYSU · ISE / 2026</p>
+        <h1>{{ adminMode ? '管理员登录' : (mode === 'login' ? '欢迎回来' : '注册新账号') }}</h1>
+        <p class="signin-desc">
+          {{ adminMode
+            ? '请使用管理员账号登录，进入审核与管理台。'
+            : (mode === 'login' ? '登录后继续你的校园探索路线。' : '注册后即可打卡、点亮校园坐标。') }}
+        </p>
+      </header>
 
-    <!-- LOGO -->
-    <div class="logo-container">
-      <img class="logo-img" src="https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png" alt="logo" />
-    </div>
-
-    <!-- 模式切换 -->
-    <div v-if="!adminMode" class="mode-tabs">
-      <button :class="['tab', mode==='login' && 'active']" @click="mode='login'">登录</button>
-      <button :class="['tab', mode==='register' && 'active']" @click="mode='register'">注册</button>
-    </div>
-
-    <div v-else class="admin-login-notice" role="status">
-      <strong>切换到管理员账号</strong>
-      <p>当前账号没有管理员权限，请重新登录后进入管理员模式。</p>
-    </div>
-
-    <!-- 表单 -->
-    <div class="login-box">
-      <input
-        class="input"
-        :placeholder="adminMode ? '请输入管理员账号' : '请输入昵称'"
-        autocomplete="username"
-        v-model.trim="username"
-      />
-      <input v-if="mode==='register'"
-             class="input"
-             placeholder="请输入真实姓名（必填）"
-             autocomplete="name"
-             required
-             aria-required="true"
-             v-model.trim="realName" />
-      <input class="input" placeholder="请输入密码" type="password" autocomplete="current-password" v-model="password" />
-    </div>
-
-    <div class="btn-row">
-      <button class="login-btn"
-              :disabled="submitting || uploading"
-              @click="onSubmit">
-        <span v-if="uploading">
-          {{ uploadStatusText }}
-        </span>
-        <span v-else>
-          {{ submitting ? '提交中…' : (adminMode ? '进入管理员模式' : (mode==='login' ? '登录' : '注册并上传头像')) }}
-        </span>
-      </button>
-    </div>
-
-    <!-- 头像上传进度与操作（仅注册后） -->
-    <div v-if="showUploadPanel" class="upload-panel">
-      <div class="upload-row">
-        <input ref="fileInput" type="file" accept="image/*" style="display:none" @change="onAvatarChosen" />
-        <button class="secondary-btn" @click="triggerChoose" :disabled="uploading">选择头像</button>
-        <button class="secondary-btn" @click="skipAvatar" :disabled="uploading">跳过</button>
-      </div>
-
-      <div v-if="uploading" class="progress-wrap">
-        <div class="progress-bar">
-          <div class="progress-inner" :style="{ width: progress + '%' }"></div>
+      <section class="signin-card" aria-label="登录注册表单">
+        <!-- 模式切换 -->
+        <div v-if="!adminMode" class="mode-tabs" role="tablist" aria-label="切换登录或注册">
+          <button
+            type="button" role="tab"
+            :aria-selected="mode === 'login'"
+            :class="['tab', mode === 'login' && 'active']"
+            @click="mode = 'login'"
+          >登录</button>
+          <button
+            type="button" role="tab"
+            :aria-selected="mode === 'register'"
+            :class="['tab', mode === 'register' && 'active']"
+            @click="mode = 'register'"
+          >注册</button>
         </div>
-        <div class="progress-text">
-          <span>{{ progress.toFixed(0) }}%</span>
-          <span v-if="speedText">｜{{ speedText }}</span>
-          <span v-if="etaText">｜剩余 {{ etaText }}</span>
-          <button class="link-btn" @click="cancelUpload">取消上传</button>
-        </div>
-      </div>
 
-      <div class="tip-text">支持 jpg/png/webp；会自动压缩到较小体积以加快上传。</div>
-    </div>
+        <div v-else class="admin-login-notice" role="status">
+          <strong>切换到管理员账号</strong>
+          <p>当前账号没有管理员权限，请重新登录后进入管理员模式。</p>
+        </div>
+
+        <!-- 表单 -->
+        <form class="login-box" @submit.prevent="onSubmit">
+          <label class="field">
+            <span class="field-label">{{ adminMode ? '管理员账号' : '昵称' }}</span>
+            <input
+              class="input"
+              :placeholder="adminMode ? '请输入管理员账号' : '请输入昵称'"
+              autocomplete="username"
+              v-model.trim="username"
+            />
+          </label>
+          <label v-if="mode === 'register'" class="field">
+            <span class="field-label">真实姓名（必填）</span>
+            <input
+              class="input"
+              placeholder="请输入真实姓名"
+              autocomplete="name"
+              required
+              aria-required="true"
+              v-model.trim="realName"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">密码</span>
+            <input
+              class="input"
+              placeholder="请输入密码"
+              type="password"
+              :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
+              v-model="password"
+            />
+          </label>
+
+          <button class="login-btn" type="submit" :disabled="submitting || uploading">
+            <span v-if="uploading">{{ uploadStatusText }}</span>
+            <span v-else>
+              {{ submitting ? '提交中…' : (adminMode ? '进入管理员模式' : (mode === 'login' ? '登录' : '注册并上传头像')) }}
+            </span>
+          </button>
+        </form>
+      </section>
+
+      <!-- 头像上传进度与操作（仅注册后） -->
+      <section v-if="showUploadPanel" class="upload-panel" aria-label="上传头像">
+        <div class="upload-row">
+          <input ref="fileInput" type="file" accept="image/*" style="display:none" @change="onAvatarChosen" />
+          <button type="button" class="secondary-btn" @click="triggerChoose" :disabled="uploading">选择头像</button>
+          <button type="button" class="secondary-btn secondary-btn-plain" @click="skipAvatar" :disabled="uploading">跳过</button>
+        </div>
+
+        <div v-if="uploading" class="progress-wrap">
+          <div class="progress-bar" role="progressbar" :aria-valuenow="Math.round(progress)" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-inner" :style="{ width: progress + '%' }"></div>
+          </div>
+          <div class="progress-text">
+            <span>{{ progress.toFixed(0) }}%</span>
+            <span v-if="speedText">｜{{ speedText }}</span>
+            <span v-if="etaText">｜剩余 {{ etaText }}</span>
+            <button type="button" class="link-btn" @click="cancelUpload">取消上传</button>
+          </div>
+        </div>
+
+        <div class="tip-text">支持 jpg/png/webp；会自动压缩到较小体积以加快上传。</div>
+      </section>
+    </main>
   </div>
 </template>
 
@@ -539,71 +570,319 @@ async function goNext() {
 </script>
 
 <style scoped>
-/* 背景整页铺满 */
-.signin-page { position: relative; min-height: 100vh; padding-bottom: 40px; }
-.bg-img { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+@import "../../../../tokens.css";
 
-/* LOGO */
-.logo-container { display: flex; justify-content: center; margin-top: calc(25px + env(safe-area-inset-top, 0px)); padding: 50px; }
-.logo-img { width: 200px; }
+.signin-page {
+  --ise-ink: #0a2e3b;
+  --ise-primary: #0d9488;
+  --ise-primary-dark: #08766d;
+  --ise-accent: #c7f24a;
+  --ise-canvas: #f3f7f5;
+  --ise-surface: #ffffff;
+  --ise-text: #102a2e;
+  --ise-muted: #5e7271;
+  --ise-border: #d6e4df;
+  --ise-soft: #edf5f2;
 
-/* 模式切换 */
-.mode-tabs { display:flex; gap:10px; justify-content:center; margin-top:-20px; }
-.tab { padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,.7); background:rgba(255,255,255,.25); cursor:pointer; color:#102822; }
-.tab.active { background:#176B52; color:#fff; border-color:#176B52; }
-
-.admin-login-notice {
-  width: min(86%, 440px);
-  margin: -20px auto 0;
-  padding: 14px 16px;
-  background: rgba(255,255,255,.78);
-  color: #102822;
-  border: 1px solid rgba(23,107,82,.35);
-  border-radius: 10px;
+  min-height: 100vh;
+  color: var(--ise-text);
+  background-color: var(--ise-canvas);
+  background-image:
+    linear-gradient(rgb(10 46 59 / 0.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(10 46 59 / 0.032) 1px, transparent 1px);
+  background-size: 32px 32px;
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
+
+.signin-shell {
+  width: min(100% - 2 * var(--space-md), 26rem);
+  margin-inline: auto;
+  padding-top: max(var(--space-2xl), env(safe-area-inset-top));
+  padding-bottom: var(--space-2xl);
+}
+
+/* 头部 */
+.signin-header {
+  text-align: center;
+}
+
+.signin-logo {
+  width: 11rem;
+  margin-inline: auto;
+}
+
+.signin-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: var(--space-lg) 0 0;
+  color: var(--ise-primary-dark);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.signin-node {
+  width: 7px;
+  height: 7px;
+  background: var(--ise-accent);
+  border: 1px solid var(--ise-ink);
+  border-radius: 50%;
+}
+
+.signin-header h1 {
+  margin: var(--space-sm) 0 0;
+  color: var(--ise-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.signin-desc {
+  margin: var(--space-2xs) auto 0;
+  max-width: 20rem;
+  color: var(--ise-muted);
+  font-size: var(--text-sm);
+}
+
+/* 卡片 */
+.signin-card {
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--ise-surface);
+  border: 1px solid var(--ise-border);
+  border-radius: 20px;
+}
+
+/* 模式切换：分段控件，当前项用细边框与酸橙标记 */
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--ise-soft);
+  border: 1px solid var(--ise-border);
+  border-radius: var(--radius-pill);
+}
+
+.tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  color: var(--ise-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab.active {
+  color: var(--ise-ink);
+  background: var(--ise-surface);
+  border-color: var(--ise-ink);
+}
+
+.tab.active::before {
+  width: 6px;
+  height: 6px;
+  background: var(--ise-accent);
+  border: 1px solid var(--ise-ink);
+  border-radius: 50%;
+  content: "";
+}
+
+/* 管理员提示 */
+.admin-login-notice {
+  padding: var(--space-sm) var(--space-md);
+  color: var(--ise-text);
+  background: var(--ise-soft);
+  border: 1px solid var(--ise-border);
+  border-radius: 12px;
+}
+
 .admin-login-notice strong,
 .admin-login-notice p { display: block; }
-.admin-login-notice p { margin: 6px 0 0; font-size: 13px; line-height: 1.6; }
+.admin-login-notice p { margin: 4px 0 0; color: var(--ise-muted); font-size: var(--text-xs); line-height: 1.6; }
 
 /* 表单 */
-.login-box{
-  margin-top: 30px;
-  width: 86%;
-  margin-left: auto; margin-right: auto;
-  display: flex; flex-direction: column; gap: 12px;
+.login-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
 }
-.input{
-  height: 44px; padding: 0 12px;
-  border-radius: 8px;
-  background: rgba(255,255,255,.28);
-  border: 1px solid rgba(255,255,255,.6);
-  color: #102822;
-  box-shadow: 0 4px 10px rgba(0,0,0,.08);
-  outline: none;
-}
-.input:focus { border-color: rgba(23,107,82,.8); box-shadow: 0 5px 12px rgba(23,107,82,.18); }
 
-/* 按钮 */
-.btn-row{ width: 100%; display: flex; justify-content: center; margin-top: 15px; }
-.login-btn{
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 0 20px; height: 46px; line-height: 46px;
-  background: #176B52; color: #fff; font-weight: 600; font-size: 15px; letter-spacing: 1px;
-  border-radius: 23px; border: none; cursor: pointer;
+.field {
+  display: block;
 }
-.login-btn:disabled{ opacity:.7; cursor: not-allowed; }
+
+.field-label {
+  display: block;
+  margin-bottom: var(--space-3xs);
+  color: var(--ise-ink);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  padding: 0 var(--space-sm);
+  color: var(--ise-text);
+  background: var(--ise-surface);
+  border: 1px solid var(--ise-border);
+  border-radius: 12px;
+  font: inherit;
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.input::placeholder {
+  color: var(--ise-muted);
+}
+
+.input:focus {
+  border-color: var(--ise-ink);
+  box-shadow: 0 0 0 3px rgb(199 242 74 / 0.55);
+}
+
+/* 主行动：酸橙胶囊，深青文字 */
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  margin-top: var(--space-2xs);
+  padding: 0 var(--space-lg);
+  color: var(--ise-ink);
+  background: var(--ise-accent);
+  border: 1px solid var(--ise-ink);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-base);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.login-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
 
 /* 上传面板 */
-.upload-panel { width: 86%; margin: 14px auto 0; background: rgba(255,255,255,.28); border: 1px solid rgba(255,255,255,.6); border-radius: 12px; padding: 12px; }
-.upload-row { display:flex; gap:10px; }
-.secondary-btn{
-  padding: 0 14px; height: 38px;
-  background: #fff; color: #176B52; border: 1px solid #176B52; border-radius: 8px; cursor: pointer;
+.upload-panel {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--ise-surface);
+  border: 1px solid var(--ise-border);
+  border-radius: 16px;
 }
-.progress-wrap { margin-top: 10px; }
-.progress-bar { width: 100%; height: 10px; background: rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; }
-.progress-inner { height: 100%; background: linear-gradient(90deg,#1e9e78,#176B52); width: 0; transition: width .2s ease; }
-.progress-text { margin-top: 6px; font-size: 13px; color: #102822; display:flex; gap:10px; align-items:center; }
-.link-btn { background: transparent; color: #176B52; border: none; cursor: pointer; text-decoration: underline; font-size: 13px; }
-.tip-text { margin-top: 6px; color: #2b3b36; font-size: 12px; opacity: .85; }
+
+.upload-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.secondary-btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  color: var(--ise-primary-dark);
+  background: var(--ise-surface);
+  border: 1px solid var(--ise-primary-dark);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-btn-plain {
+  color: var(--ise-muted);
+  border-color: var(--ise-border);
+}
+
+.secondary-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.progress-wrap {
+  margin-top: var(--space-sm);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--ise-soft);
+  border: 1px solid var(--ise-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-inner {
+  height: 100%;
+  width: 0;
+  background: var(--ise-accent);
+  transition: width var(--duration-base) var(--ease-standard);
+}
+
+.progress-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--ise-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.link-btn {
+  margin-left: auto;
+  padding: 0;
+  color: var(--ise-primary-dark);
+  background: transparent;
+  border: none;
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.tip-text {
+  margin-top: var(--space-2xs);
+  color: var(--ise-muted);
+  font-size: var(--text-xs);
+}
+
+/* 焦点 */
+.signin-page :where(a, button, input):focus-visible {
+  outline: 3px solid var(--ise-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px var(--ise-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signin-page *,
+  .signin-page *::before,
+  .signin-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
 </style>
