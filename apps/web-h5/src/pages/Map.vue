@@ -172,7 +172,8 @@ let lastConsumedDeepLink = ''
 /* ===== 移动端手势底卡状态 =====
  * sheetOffset：卡片顶端相对“全屏覆盖”位置向下平移的像素值。
  * 0 = 完全遮挡地图（打开即停在此最高位）；sheetHeight = 滑出屏幕。
- * 下拉超过阈值即退出屏幕；底部导航通过 uiChrome.sheetReveal 以相同时长/缓动反向联动。
+ * 拖动顶部抓手下拉超过阈值即退出屏幕；内容区滑动只滚动简介，不会误关卡片。
+ * 底部导航通过 uiChrome.sheetReveal 以相同时长/缓动反向联动。
  */
 const SHEET_CLOSE_RATIO = 0.34
 const SHEET_ANIM_MS = 300
@@ -262,10 +263,8 @@ function onSheetTouchMove(event) {
   const touch = event.touches[0]
   const dy = touch.clientY - dragStartY
   if (!dragEngaged) {
-    // 抓手区域始终可拖；内容区（含封面，整体滚动）仅在滚动到顶部且向下拉时接管手势
-    const scrollable = event.target.closest?.('.checkin-scroll, .checkin-body, .checkin-description')
-    const atTop = !scrollable || scrollable.scrollTop <= 0
-    if (dragFromHandle || (dy > 6 && atTop)) {
+    // 只有顶部抓手可拖动卡片；内容区滑动全部交给简介内容原生滚动，不再触发关卡片
+    if (dragFromHandle) {
       dragEngaged = true
       sheetDragging.value = true
       sheetAnimating.value = false
@@ -997,7 +996,7 @@ onBeforeUnmount(() => {
 
 /* ===== 移动端手势底卡（<700px 才渲染 .place-sheet--mobile） =====
  * 卡片高度撑满 header 以下全部空间，用 translateY 控制位置：
- * 打开即上滑到最高位完全遮挡地图，下拉退出屏幕。 */
+ * 打开即上滑到最高位完全遮挡地图；拖动顶部抓手下拉退出屏幕。 */
 .place-sheet--mobile {
   top: calc(56px + env(safe-area-inset-top, 0px));
   bottom: 0;
