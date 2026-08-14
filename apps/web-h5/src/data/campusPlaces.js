@@ -13,7 +13,7 @@ export const CATEGORY_MAP = {
 };
 
 export const MAP_CONFIG = {
-  campus: "南校园", defaultCenter: [113.296, 23.096], defaultZoom: 16,
+  campus: "南校园", defaultCenter: [113.2982, 23.0967], defaultZoom: 16,
   minZoom: 14, maxZoom: 19, pitch: 45, viewMode: "3D",
 };
 

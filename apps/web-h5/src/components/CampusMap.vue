@@ -60,7 +60,8 @@ const LEVEL_ZOOM = { 1: 1, 2: 14, 3: 17 }
 const CONFIG = {
   key: '12a77a7d701917410324b1be7714e45f',
   version: '2.0',
-  defaultCenter: [113.296, 23.096],
+  // 初始视野中心取“非隐藏打卡点”的质心，让标记密集区落在页面中央
+  defaultCenter: [113.2982, 23.0967],
   defaultZoom: 16,
   minZoom: 14,
   maxZoom: 19,
