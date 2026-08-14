@@ -915,7 +915,7 @@ module.exports = {
 </ul>`
     },
     {
-      backendId: 42, isHidden: true,
+      backendId: 42, isHidden: true, retired: true,
       name: '芙兰堂',
       position: '南校园262号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_042_teaching_building_3.jpg',
@@ -2155,9 +2155,9 @@ module.exports = {
     },
     {
       backendId: 110,
-      name: '第三教学楼',
+      name: '第三教学楼（芙兰堂）',
       position: '',
-      image: '',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_042_teaching_building_3.jpg',
       description: `<p><strong>第三教学楼</strong>，简称<strong>“三教”</strong>，位于<strong>中山大学南校园</strong>，是康乐园内重要的教学建筑之一，主要承担本科生的日常课堂教学任务。</p>
 
 <p><strong>功能与用途：</strong></p>

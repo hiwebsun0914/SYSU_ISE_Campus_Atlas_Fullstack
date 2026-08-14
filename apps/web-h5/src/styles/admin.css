@@ -1,5 +1,36 @@
-/* Hallmark · genre: modern-minimal · macrostructure: Stat-Led · theme: Cobalt · enrichment: none · nav: N3 side-rail (left, 16ch, filled-bar) · hero: H4 (tabular display, qualifier below, two secondary stats) · feature: F4 (01/02, vertical, rule) + F3 (3 columns, every-row rules, tabular) · cta: C1 (rectangular, compact, icon) · footer: Ft4 (log-style, build/date) · tone: technical/operational · anchor hue: cobalt · knobs: variance 6 / motion 3 / density 8 · pre-emit critique: P5 H5 E4 S5 R5 V5 · contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57) · command-hint: omitted per mobile requirement */
+/* Hallmark · genre: modern-minimal · macrostructure: Stat-Led · theme: SYSU ISE campus (design.md) · nav: N3 side-rail (left, light) · hero: stat-led light surface, engineering grid · tone: technical/operational · anchor hue: teal #0d9488 + lime #c7f24a · 2026-08-14: 按 design.md 去除钴蓝与深色大面，接入校园探索色系 */
 @import "../../../../tokens.css";
+
+/* ===== ISE 2026 迎新站配色重映射（design.md）=====
+   管理页与全站共用校园探索色系：深青墨 #0a2e3b、主青 #0d9488、
+   酸橙 #c7f24a 只用于关键 CTA 与当前项标记，不大面积铺底。
+   design.md 禁止使用深色大色块：hero、侧栏、toast、图片预览
+   一律浅色表面 + 细边框，视觉层级靠排版、字重、留白与细线建立。 */
+.admin-page {
+  --ise-accent: #c7f24a;
+  --ise-accent-hover: #b4e13c;
+  --color-paper: #f3f7f5;
+  --color-paper-muted: #edf5f2;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-ink: #0a2e3b;
+  --color-ink-soft: #102a2e;
+  --color-muted: #5e7271;
+  --color-rule: #d6e4df;
+  --color-rule-strong: #b9d2ca;
+  --color-accent: #0d9488;
+  --color-accent-hover: #08766d;
+  --color-accent-soft: #d9edea;
+  --color-accent-ink: #ffffff;
+  /* 原深色表面角色（hero/侧栏/toast/预览浮层）全部降为浅色表面 */
+  --color-graphite: #ffffff;
+  --color-graphite-soft: #d6e4df;
+  --color-graphite-ink: #0a2e3b;
+  --color-danger: #c2413a;
+  --color-focus: #0a2e3b;
+  --color-overlay: rgb(10 46 59 / 0.55);
+  --color-selection: #ddf0b8;
+}
 
 html,
 body {
@@ -46,17 +77,12 @@ body {
   opacity: 0.52;
 }
 
+/* 焦点：酸橙外圈 + 深青辅助环（design.md 可访问性约定） */
 .admin-page :focus-visible {
   border-radius: inherit;
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--ise-accent);
   outline-offset: 2px;
-}
-
-.admin-hero :focus-visible,
-.admin-rail :focus-visible,
-.admin-preview-dialog :focus-visible,
-.admin-toast :focus-visible {
-  outline-color: var(--color-graphite-ink);
+  box-shadow: 0 0 0 2px var(--color-ink);
 }
 
 .admin-page h1,
@@ -186,9 +212,10 @@ body {
   height: 2.75rem;
   place-items: center;
   flex: 0 0 auto;
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
-  border-radius: var(--radius-sm);
+  background: var(--ise-accent);
+  color: var(--color-ink);
+  border: var(--rule) solid var(--color-ink);
+  border-radius: 14px 5px 14px 5px;
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -402,10 +429,12 @@ body {
   transform: translateY(1px);
 }
 
+/* 主 CTA：酸橙胶囊 + 深青文字（design.md：每屏只保留一个主行动） */
 .admin-button-primary {
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
-  border: var(--rule) solid var(--color-accent);
+  background: var(--ise-accent);
+  color: var(--color-ink);
+  border: var(--rule) solid var(--color-ink);
+  border-radius: var(--radius-pill);
 }
 
 .admin-button-primary svg,
@@ -440,8 +469,14 @@ body {
 .admin-hero {
   margin-inline: calc(0rem - max(var(--space-md), env(safe-area-inset-left)));
   padding: var(--space-md) max(var(--space-md), env(safe-area-inset-left)) var(--space-lg);
-  background: var(--color-graphite);
+  /* 浅色表面 + 低透明 32px 工程网格，建立“地图/蓝图”语境，不铺深色底 */
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(to right, rgb(13 148 136 / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(13 148 136 / 0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
   color: var(--color-graphite-ink);
+  border-block-end: var(--rule) solid var(--color-rule);
 }
 
 .admin-hero h1,
@@ -641,8 +676,9 @@ body {
 }
 
 .admin-tab-row button[aria-selected="true"] {
-  background: var(--color-graphite);
-  color: var(--color-graphite-ink);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  box-shadow: inset 0 -2px 0 var(--ise-accent);
 }
 
 .admin-tab-row button span {
@@ -1366,6 +1402,7 @@ body {
   color: var(--color-graphite-ink);
   border: var(--rule) solid var(--color-graphite-soft);
   border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-whisper);
 }
 
 .admin-toast > svg:first-child {
@@ -1393,8 +1430,8 @@ body {
 
 @media (hover: hover) and (pointer: fine) {
   .admin-button-primary:hover {
-    background: var(--color-accent-hover);
-    color: var(--color-accent-ink);
+    background: var(--ise-accent-hover);
+    color: var(--color-ink);
   }
 
   .admin-button-quiet:hover,
@@ -1403,11 +1440,6 @@ body {
   .admin-menu-head button:hover {
     background: var(--color-paper-muted);
     color: var(--color-ink);
-  }
-
-  .admin-hero .admin-button-quiet:hover {
-    background: var(--color-graphite-soft);
-    color: var(--color-graphite-ink);
   }
 
   .admin-button-danger:hover {
@@ -1423,8 +1455,8 @@ body {
   }
 
   .admin-tab-row button[aria-selected="true"]:hover {
-    background: var(--color-graphite-soft);
-    color: var(--color-graphite-ink);
+    background: var(--color-surface);
+    color: var(--color-accent);
   }
 }
 
@@ -1544,9 +1576,10 @@ body {
     width: 3.25rem;
     height: 3.25rem;
     place-items: center;
-    background: var(--color-accent);
-    color: var(--color-accent-ink);
-    border-radius: var(--radius-sm);
+    background: var(--ise-accent);
+    color: var(--color-ink);
+    border: var(--rule) solid var(--color-ink);
+    border-radius: 14px 5px 14px 5px;
     font-family: var(--font-display);
     font-weight: 700;
   }
@@ -1599,7 +1632,7 @@ body {
   }
 
   .admin-rail-nav button.active::before {
-    background: var(--color-accent);
+    background: var(--ise-accent);
   }
 
   .admin-rail-account {
@@ -1709,4 +1742,287 @@ body {
   .admin-page button:active {
     transform: none;
   }
+}
+
+/* ===== 2026-08-14 控制台化：紧凑工作台、投稿管理、地点配置 =====
+   长滚动多 section 改为单视图切换；间距按 4/8px 节奏收紧，
+   保留 44px 触控高度。旧 hero / stat-strip / readout 样式不再被引用，留待清理。 */
+
+.admin-section {
+  padding-block: var(--space-xl) var(--space-lg);
+}
+
+.admin-workbench {
+  display: grid;
+  gap: var(--space-md);
+  padding-block: var(--space-md) var(--space-lg);
+  border-block-end: var(--rule) solid var(--color-rule);
+}
+
+.admin-workbench-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.admin-workbench-heading {
+  display: grid;
+  gap: var(--space-3xs);
+  min-width: 0;
+}
+
+.admin-workbench-heading h1 {
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  line-height: 1.15;
+}
+
+.admin-workbench-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.admin-pending-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.admin-pending-chips button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding-inline: var(--space-md);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  border: var(--rule) solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+
+.admin-pending-chips button b {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-pending-chips button:hover {
+    background: var(--color-paper-muted);
+    border-color: var(--color-rule-strong);
+  }
+}
+
+/* 总览视图的紧凑统计行：细线分隔，不使用大数字卡片 */
+.admin-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 var(--space-xl);
+  border-block-start: var(--rule) solid var(--color-rule);
+  border-inline-start: var(--rule) solid var(--color-rule);
+}
+
+.admin-mini-stats > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-inline-end: var(--rule) solid var(--color-rule);
+  border-block-end: var(--rule) solid var(--color-rule);
+}
+
+.admin-mini-stats dt {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.admin-mini-stats dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* 投稿管理：类别筛选 + 运营操作 */
+.admin-award-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-xs);
+  padding-block-end: var(--space-md);
+}
+
+.admin-award-tools > label {
+  grid-column: 1 / -1;
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.admin-award-tools select {
+  width: 100%;
+  min-height: 44px;
+  padding-inline: var(--space-sm) 2.25rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: var(--rule) solid var(--color-rule-strong);
+  border-radius: var(--radius-sm);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+.admin-award-tools select:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+.admin-award-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* 状态 tab 六个一格放两行 */
+.admin-tab-row.admin-award-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block-end: 0;
+}
+
+.admin-award-tabs button {
+  border-block-end: var(--rule) solid var(--color-rule);
+}
+
+.admin-award-tabs button:nth-child(3n) {
+  border-inline-end: 0;
+}
+
+.admin-award-tabs button:nth-last-child(-n+3) {
+  border-block-end: 0;
+}
+
+/* 地点配置：密集表格行 */
+.admin-location-list {
+  border-block-start: var(--rule) solid var(--color-rule);
+}
+
+.admin-location-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-xs);
+  padding-block: var(--space-md);
+  border-block-end: var(--rule) solid var(--color-rule);
+}
+
+.admin-location-main {
+  display: grid;
+  gap: var(--space-3xs);
+  min-width: 0;
+}
+
+.admin-location-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-location-main span {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-location-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.admin-location-points {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.admin-location-points input {
+  width: 4.75rem;
+  min-height: 44px;
+  padding-inline: var(--space-2xs);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: var(--rule) solid var(--color-rule-strong);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+.admin-location-points input:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+/* 地点编辑弹窗里的单行输入框 */
+.admin-dialog-input {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: var(--rule) solid var(--color-rule-strong);
+  border-radius: var(--radius-sm);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+.admin-dialog-input:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+/* 成功提示的 toast 变体 */
+.admin-toast.tone-ok {
+  border-color: var(--color-success);
+}
+
+.admin-toast.tone-ok > svg:first-child {
+  color: var(--color-success);
+}
+
+@media (min-width: 40rem) {
+  .admin-mini-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .admin-location-list article {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .admin-location-row {
+    justify-content: flex-end;
+  }
+}
+
+/* 删除账号等破坏性操作的醒目说明 */
+.admin-dialog-warning {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-inline-start: var(--rule) solid var(--color-danger);
 }

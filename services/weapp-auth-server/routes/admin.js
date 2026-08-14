@@ -182,6 +182,64 @@ router.patch('/users/:id/role', auth, adminOnly, ownerOnly, (req, res) => {
   });
 });
 
+// DELETE /admin/users/:id —— 仅超级管理员；删除账号，并清理其投稿、投票与反馈
+router.delete('/users/:id', auth, adminOnly, ownerOnly, (req, res) => {
+  const users = readUsers();
+  const target = users.find(user => String(user.id) === String(req.params.id));
+  if (!target) return res.status(404).json({ code: 1, message: '用户不存在' });
+  if (String(target.id) === String(req.userId)) {
+    return res.status(400).json({ code: 1, message: '不能删除自己的账号' });
+  }
+  if (isConfiguredOwner(target) || String(target.role || '') === 'owner') {
+    return res.status(400).json({ code: 1, message: '不能删除受保护的超级管理员' });
+  }
+
+  writeUsers(users.filter(user => String(user.id) !== String(target.id)));
+
+  // 清理投稿：删除该用户的投稿，并移除其在他人投稿中的投票
+  let removedSubmissions = 0;
+  try {
+    const list = readSubmissionsArray();
+    const kept = list.filter(item => {
+      const own = String(item.userId) === String(target.id);
+      if (own) removedSubmissions += 1;
+      return !own;
+    });
+    let votesChanged = false;
+    kept.forEach(item => {
+      if (!Array.isArray(item.votes)) return;
+      const filtered = item.votes.filter(vote => String(vote && vote.userId) !== String(target.id));
+      if (filtered.length !== item.votes.length) {
+        item.votes = filtered;
+        votesChanged = true;
+      }
+    });
+    if (removedSubmissions || votesChanged) writeSubmissionsArray(kept);
+  } catch (error) {
+    console.error('[DELETE /admin/users/:id] cleanup submissions fail:', error);
+  }
+
+  // 清理该用户提交的问题反馈
+  let removedFeedback = 0;
+  try {
+    const feedback = readFeedback();
+    const keptFeedback = feedback.filter(item => {
+      const own = String(item.userId) === String(target.id);
+      if (own) removedFeedback += 1;
+      return !own;
+    });
+    if (removedFeedback) writeFeedback(keptFeedback);
+  } catch (error) {
+    console.error('[DELETE /admin/users/:id] cleanup feedback fail:', error);
+  }
+
+  return res.json({
+    code: 0,
+    message: `已删除账号「${target.username || target.id}」`,
+    data: { id: target.id, removedSubmissions, removedFeedback }
+  });
+});
+
 function timestampOf(value) {
   const parsed = typeof value === 'number' ? value : Date.parse(value || '');
   return Number.isFinite(parsed) ? parsed : 0;

@@ -3,7 +3,7 @@
     <a class="admin-skip-link" href="#admin-main">跳到管理内容</a>
 
     <aside class="admin-rail" aria-label="管理员导航">
-      <button class="admin-rail-brand" type="button" aria-label="返回管理总览" @click="goSection('overview')">
+      <button class="admin-rail-brand" type="button" aria-label="返回工作台" @click="goSection('overview')">
         <span>SYSU</span>
         <strong>EXPLORE<br />CONTROL</strong>
       </button>
@@ -35,7 +35,7 @@
     </aside>
 
     <header class="admin-mobile-bar">
-      <button class="admin-mobile-brand" type="button" aria-label="返回管理总览" @click="goSection('overview')">
+      <button class="admin-mobile-brand" type="button" aria-label="返回工作台" @click="goSection('overview')">
         <span>SYSU</span>
         <strong>管理员模式</strong>
       </button>
@@ -106,82 +106,126 @@
       </section>
 
       <template v-else>
-        <section id="overview" class="admin-hero admin-observed" aria-labelledby="admin-title">
-          <div class="admin-mode-line">
-            <ShieldCheck :size="17" aria-hidden="true" />
-            <span>管理员模式</span>
-            <i aria-hidden="true"></i>
-            <small>{{ roleLabel }}</small>
-          </div>
-
-          <div class="admin-hero-grid">
-            <div class="admin-hero-stat">
-              <strong aria-hidden="true">{{ animatedPending }}</strong>
-              <div class="admin-hero-copy">
-                <h1 id="admin-title">项内容等待处理</h1>
-                <p>集中处理审核队列、用户反馈、异常记录、地点资料与权限配置。</p>
-                <div class="admin-hero-actions">
-                  <button class="admin-button admin-button-primary" type="button" @click="goSection('review')">
-                    <ClipboardCheck :size="17" aria-hidden="true" />
-                    开始审核
-                  </button>
-                  <button class="admin-button admin-button-quiet" type="button" :disabled="refreshing" @click="refreshAll">
-                    <RefreshCcw :size="17" aria-hidden="true" :class="{ spinning: refreshing }" />
-                    {{ refreshing ? '正在刷新' : '刷新数据' }}
-                  </button>
-                </div>
+        <header class="admin-workbench" aria-label="管理工作台摘要">
+          <div class="admin-workbench-top">
+            <div class="admin-workbench-heading">
+              <div class="admin-mode-line">
+                <ShieldCheck :size="17" aria-hidden="true" />
+                <span>管理员模式</span>
+                <i aria-hidden="true"></i>
+                <small>{{ roleLabel }}</small>
               </div>
-              <span class="sr-only" aria-live="polite">当前有 {{ dashboard.metrics.pendingTotal }} 项内容等待处理</span>
+              <h1>管理控制台</h1>
             </div>
-
-            <div class="admin-status-readout" aria-label="审核队列构成">
-              <div>
-                <span>打卡照片</span>
-                <strong>{{ dashboard.metrics.pendingCheckins }}</strong>
-                <small>待审核</small>
-              </div>
-              <div>
-                <span>投稿作品</span>
-                <strong>{{ dashboard.metrics.pendingSubmissions }}</strong>
-                <small>待审核或申诉中</small>
-              </div>
-              <div>
-                <span>问题反馈</span>
-                <strong>{{ dashboard.metrics.pendingFeedback }}</strong>
-                <small>待接收或处理中</small>
-              </div>
+            <div class="admin-workbench-actions">
+              <button
+                v-if="dashboard.metrics.pendingTotal > 0"
+                class="admin-button admin-button-primary"
+                type="button"
+                @click="goSection('review')"
+              >
+                <ClipboardCheck :size="17" aria-hidden="true" />
+                开始审核
+              </button>
+              <button class="admin-button admin-button-quiet" type="button" :disabled="refreshing" @click="refreshAll">
+                <RefreshCcw :size="17" aria-hidden="true" :class="{ spinning: refreshing }" />
+                {{ refreshing ? '正在刷新' : '刷新数据' }}
+              </button>
             </div>
           </div>
+          <nav class="admin-pending-chips" aria-label="待处理事项，点击直达对应视图">
+            <button type="button" @click="goSection('review', 'checkins')">
+              <b>{{ dashboard.metrics.pendingCheckins }}</b>
+              待审打卡
+            </button>
+            <button type="button" @click="goSection('review', 'submissions')">
+              <b>{{ dashboard.metrics.pendingSubmissions }}</b>
+              待审投稿
+            </button>
+            <button type="button" @click="goSection('feedback')">
+              <b>{{ feedbackStat.submitted + feedbackStat.in_progress }}</b>
+              待处理反馈
+            </button>
+            <button type="button" @click="goSection('anomalies')">
+              <b>{{ anomalyStat.all }}</b>
+              异常线索
+            </button>
+          </nav>
+        </header>
 
-          <dl class="admin-stat-strip">
+        <section v-show="activeSection === 'overview'" id="overview" class="admin-section admin-analytics-section" aria-labelledby="overview-title">
+          <div class="admin-section-head">
+            <div>
+              <h2 id="overview-title">运营总览</h2>
+              <p>近七日趋势来自带时间戳的成功打卡记录；排行榜按用户已解锁地点汇总。</p>
+            </div>
+            <span>近 7 日</span>
+          </div>
+
+          <dl class="admin-mini-stats" aria-label="总体数据">
             <div>
               <dt>用户总数</dt>
               <dd>{{ dashboard.metrics.userCount }}</dd>
-              <small>已注册账号</small>
             </div>
             <div>
               <dt>投稿总数</dt>
               <dd>{{ dashboard.metrics.submissionCount }}</dd>
-              <small>全部作品</small>
             </div>
             <div>
               <dt>打卡总数</dt>
               <dd>{{ dashboard.metrics.checkinCount }}</dd>
-              <small>已通过地点</small>
             </div>
             <div>
-              <dt>异常记录</dt>
-              <dd>{{ dashboard.metrics.anomalyCount }}</dd>
-              <small>需要复核</small>
+              <dt>优秀作品</dt>
+              <dd>{{ dashboard.metrics.featuredCount }}</dd>
             </div>
           </dl>
+
+          <div class="admin-analytics-grid">
+            <figure class="admin-activity-chart">
+              <figcaption>
+                <strong>打卡活跃度</strong>
+                <span>共 {{ activityTotal }} 条带时间记录</span>
+              </figcaption>
+              <div class="admin-bars" aria-label="近七日打卡数量柱状图">
+                <div v-for="day in dashboard.activity" :key="day.date" class="admin-bar-column">
+                  <span class="admin-bar-value">{{ day.count }}</span>
+                  <div class="admin-bar-track">
+                    <i :style="{ '--bar-scale': activityBarScale(day.count) }"></i>
+                  </div>
+                  <time :datetime="day.date">{{ day.label }}</time>
+                </div>
+              </div>
+            </figure>
+
+            <div class="admin-hotspots">
+              <div class="admin-subhead">
+                <strong>热门打卡点</strong>
+                <span>按解锁人数</span>
+              </div>
+              <ol v-if="dashboard.hotspots.length">
+                <li v-for="(item, index) in dashboard.hotspots" :key="item.locationId">
+                  <span>{{ String(index + 1).padStart(2, '0') }}</span>
+                  <div>
+                    <strong>{{ item.name }}</strong>
+                    <small>#{{ item.locationId }} · {{ item.points }} 分</small>
+                  </div>
+                  <b>{{ item.count }}</b>
+                </li>
+              </ol>
+              <div v-else class="admin-empty compact">
+                <MapPinned :size="24" aria-hidden="true" />
+                <div><strong>尚无地点排行</strong><p>产生首条成功打卡后这里会自动更新。</p></div>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <section id="review" class="admin-section admin-review-section admin-observed" aria-labelledby="review-title">
+        <section v-show="activeSection === 'review'" id="review" class="admin-section admin-review-section" aria-labelledby="review-title">
           <div class="admin-section-head">
             <div>
-              <h2 id="review-title">审核队列</h2>
-              <p>照片打卡与投稿作品共用一套处理节奏，操作结果直接写回 PR 已有的数据结构。</p>
+              <h2 id="review-title">审核中心</h2>
+              <p>照片打卡与投稿作品共用一套处理节奏，操作结果直接写回原有数据结构。</p>
             </div>
             <span>{{ activeQueueCount }} 项</span>
           </div>
@@ -339,7 +383,7 @@
           </Transition>
         </section>
 
-        <section id="feedback" class="admin-section admin-feedback-section admin-observed" aria-labelledby="admin-feedback-title">
+        <section v-show="activeSection === 'feedback'" id="feedback" class="admin-section admin-feedback-section" aria-labelledby="admin-feedback-title">
           <div class="admin-section-head">
             <div>
               <h2 id="admin-feedback-title">问题反馈</h2>
@@ -421,7 +465,7 @@
           </div>
         </section>
 
-        <section id="anomalies" class="admin-section admin-anomaly-section admin-observed" aria-labelledby="anomaly-title">
+        <section v-show="activeSection === 'anomalies'" id="anomalies" class="admin-section admin-anomaly-section" aria-labelledby="anomaly-title">
           <div class="admin-section-head">
             <div>
               <h2 id="anomaly-title">打卡异常</h2>
@@ -460,60 +504,199 @@
           </div>
         </section>
 
-        <section id="analytics" class="admin-section admin-analytics-section admin-observed" aria-labelledby="analytics-title">
+        <section v-show="activeSection === 'awards'" id="awards" class="admin-section admin-award-section" aria-labelledby="awards-title">
           <div class="admin-section-head">
             <div>
-              <h2 id="analytics-title">活跃度与热门地点</h2>
-              <p>近七日趋势来自带时间戳的成功打卡记录；排行榜按用户已解锁地点汇总。</p>
+              <h2 id="awards-title">投稿管理</h2>
+              <p>管理已发布作品的上架状态、优秀标记与奖项结果；待审核的新投稿请在审核中心处理。</p>
             </div>
-            <span>近 7 日</span>
+            <span>{{ awardStat.all }} 件作品</span>
           </div>
 
-          <div class="admin-analytics-grid">
-            <figure class="admin-activity-chart">
-              <figcaption>
-                <strong>打卡活跃度</strong>
-                <span>共 {{ activityTotal }} 条带时间记录</span>
-              </figcaption>
-              <div class="admin-bars" aria-label="近七日打卡数量柱状图">
-                <div v-for="day in dashboard.activity" :key="day.date" class="admin-bar-column">
-                  <span class="admin-bar-value">{{ day.count }}</span>
-                  <div class="admin-bar-track">
-                    <i :style="{ '--bar-scale': activityBarScale(day.count) }"></i>
-                  </div>
-                  <time :datetime="day.date">{{ day.label }}</time>
-                </div>
-              </div>
-            </figure>
-
-            <div class="admin-hotspots">
-              <div class="admin-subhead">
-                <strong>热门打卡点</strong>
-                <span>按解锁人数</span>
-              </div>
-              <ol v-if="dashboard.hotspots.length">
-                <li v-for="(item, index) in dashboard.hotspots" :key="item.locationId">
-                  <span>{{ String(index + 1).padStart(2, '0') }}</span>
-                  <div>
-                    <strong>{{ item.name }}</strong>
-                    <small>#{{ item.locationId }} · {{ item.points }} 分</small>
-                  </div>
-                  <b>{{ item.count }}</b>
-                </li>
-              </ol>
-              <div v-else class="admin-empty compact">
-                <MapPinned :size="24" aria-hidden="true" />
-                <div><strong>尚无地点排行</strong><p>产生首条成功打卡后这里会自动更新。</p></div>
-              </div>
+          <div class="admin-award-tools">
+            <label for="award-category">奖项类别</label>
+            <select id="award-category" v-model="awardCategory" @change="fetchAwards">
+              <option value="all">全部类别</option>
+              <option v-for="c in awardCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <div class="admin-award-ops">
+              <button class="admin-button admin-button-quiet" type="button" :disabled="computing" @click="computeWinners">
+                <Trophy :size="16" aria-hidden="true" />
+                {{ computing ? '正在计算' : '计算获奖' }}
+              </button>
+              <button class="admin-button admin-button-quiet" type="button" :disabled="exporting" @click="exportCsv">
+                <Download :size="16" aria-hidden="true" />
+                {{ exporting ? '正在导出' : '导出名单' }}
+              </button>
             </div>
+          </div>
+
+          <div class="admin-tab-row admin-award-tabs" role="tablist" aria-label="投稿状态筛选">
+            <button
+              v-for="tab in awardStatusTabs"
+              :key="tab.value"
+              type="button"
+              role="tab"
+              :aria-selected="awardStatus === tab.value"
+              @click="setAwardStatus(tab.value)"
+            >
+              {{ tab.label }}
+              <span>{{ awardStat[tab.value] ?? 0 }}</span>
+            </button>
+          </div>
+
+          <div v-if="awardLoading" class="admin-queue-loading" aria-label="正在加载投稿列表">
+            <div v-for="index in 3" :key="index" class="admin-review-skeleton"></div>
+          </div>
+          <template v-else>
+            <article v-for="item in awardItems" :key="item.id" class="admin-review-row admin-submission-row">
+              <button
+                class="admin-review-media"
+                type="button"
+                :disabled="!submissionImage(item)"
+                :aria-label="submissionImage(item) ? '查看投稿作品大图' : '该投稿没有可预览图片'"
+                @click="submissionImage(item) && openPreview(submissionImage(item), item.title)"
+              >
+                <img v-if="submissionImage(item)" :src="submissionImage(item)" :alt="item.title + '作品预览'" width="320" height="240" loading="lazy" />
+                <Images v-else :size="28" aria-hidden="true" />
+              </button>
+              <div class="admin-review-copy">
+                <div class="admin-review-meta">
+                  <span :class="['admin-status', 'status-' + item.status]">{{ submissionStatusLabel(item.status) }}</span>
+                  <span v-if="item.featured" class="admin-status status-featured"><Star :size="13" aria-hidden="true" />优秀</span>
+                  <time :datetime="toDateTime(item.createdAt)">{{ formatTime(item.createdAt) }}</time>
+                </div>
+                <h3>{{ item.title || '未命名作品' }}</h3>
+                <p>{{ item.username }} · {{ item.locationName || ('地点 #' + item.locationId) }} · {{ item.categoryName }} · {{ item.votes ?? 0 }} 票</p>
+                <p class="admin-review-description">{{ item.description || '未填写作品说明。' }}</p>
+              </div>
+              <div class="admin-review-actions">
+                <button
+                  v-if="canReviewSubmission(item)"
+                  class="admin-button admin-button-primary"
+                  type="button"
+                  :disabled="isBusy(item.id)"
+                  @click="approveSubmission(item)"
+                >
+                  <Check :size="17" aria-hidden="true" />
+                  通过
+                </button>
+                <button
+                  v-if="canReviewSubmission(item)"
+                  class="admin-button admin-button-danger"
+                  type="button"
+                  :disabled="isBusy(item.id)"
+                  @click="openReject('submission', item)"
+                >
+                  <Ban :size="17" aria-hidden="true" />
+                  驳回
+                </button>
+                <button
+                  v-if="item.status === 'approved'"
+                  class="admin-button admin-button-quiet"
+                  type="button"
+                  :disabled="isBusy(item.id)"
+                  @click="toggleFeature(item)"
+                >
+                  <Star :size="17" aria-hidden="true" />
+                  {{ item.featured ? '取消优秀' : '标记优秀' }}
+                </button>
+                <button
+                  v-if="item.status === 'approved'"
+                  class="admin-button admin-button-danger"
+                  type="button"
+                  :disabled="isBusy(item.id)"
+                  @click="downSubmission(item)"
+                >
+                  <Download :size="17" aria-hidden="true" />
+                  下架
+                </button>
+                <button
+                  v-if="item.status === 'down'"
+                  class="admin-button admin-button-quiet"
+                  type="button"
+                  :disabled="isBusy(item.id)"
+                  @click="restoreSubmission(item)"
+                >
+                  <RefreshCcw :size="17" aria-hidden="true" />
+                  恢复上架
+                </button>
+              </div>
+            </article>
+            <div v-if="!awardItems.length" class="admin-empty admin-empty-inline">
+              <Images :size="25" aria-hidden="true" />
+              <div><strong>当前筛选下没有投稿</strong><p>切换状态或类别可以查看其他作品。</p></div>
+            </div>
+          </template>
+        </section>
+
+        <section v-show="activeSection === 'locations'" id="locations" class="admin-section admin-location-section" aria-labelledby="locations-title">
+          <div class="admin-section-head">
+            <div>
+              <h2 id="locations-title">地点配置</h2>
+              <p>调整打卡点名称、位置、图文介绍与单点积分；保存后立即对全站生效，不影响已发放的历史积分。</p>
+            </div>
+            <span>{{ locationTotal }} 个地点</span>
+          </div>
+
+          <div class="admin-search-field">
+            <label for="location-search">查找地点</label>
+            <div>
+              <Search :size="18" aria-hidden="true" />
+              <input id="location-search" v-model.trim="locationQuery" type="search" placeholder="名称或位置" @input="queueLocationSearch" />
+            </div>
+            <small>积分须为 0–100 之间、以 0.5 为步进的分值。</small>
+          </div>
+
+          <div v-if="locationLoading" class="admin-queue-loading" aria-label="正在加载地点列表">
+            <div v-for="index in 3" :key="index" class="admin-review-skeleton"></div>
+          </div>
+          <div v-else-if="locations.length" class="admin-location-list">
+            <article v-for="loc in locations" :key="loc.backendId">
+              <div class="admin-location-main">
+                <strong>{{ loc.name }}</strong>
+                <span>#{{ loc.backendId }} · {{ loc.position || '位置未填写' }}</span>
+              </div>
+              <div class="admin-location-row">
+                <span :class="['admin-status', loc.isHidden ? 'status-featured' : 'role-visitor']">{{ loc.isHidden ? '隐藏点' : '普通点' }}</span>
+                <label class="admin-location-points" :for="'loc-points-' + loc.backendId">
+                  积分
+                  <input
+                    :id="'loc-points-' + loc.backendId"
+                    v-model.number="locationPoints[loc.backendId]"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    inputmode="decimal"
+                  />
+                </label>
+                <button
+                  class="admin-button admin-button-quiet"
+                  type="button"
+                  :disabled="!locationPointsChanged(loc) || isBusy('loc-' + loc.backendId)"
+                  @click="saveLocationPoints(loc)"
+                >
+                  <Check :size="16" aria-hidden="true" />
+                  {{ isBusy('loc-' + loc.backendId) ? '保存中' : '保存分值' }}
+                </button>
+                <button class="admin-text-action" type="button" @click="openLocationEdit(loc)">
+                  编辑资料
+                </button>
+              </div>
+            </article>
+          </div>
+          <div v-else class="admin-empty admin-empty-inline">
+            <MapPinned :size="25" aria-hidden="true" />
+            <div><strong>没有匹配的地点</strong><p>换个关键词试试。</p></div>
           </div>
         </section>
 
-        <section id="permissions" class="admin-section admin-permission-section admin-observed" aria-labelledby="permissions-title">
+        <section v-show="activeSection === 'users'" id="users" class="admin-section admin-permission-section" aria-labelledby="users-title">
           <div class="admin-section-head">
             <div>
-              <h2 id="permissions-title">管理员权限</h2>
-              <p>超级管理员可以把特定账号设为审核员；审核员不能提权，也不能修改受保护账号。</p>
+              <h2 id="users-title">用户权限</h2>
+              <p>超级管理员可以查看全部注册账号的资料、把特定账号设为审核员，或删除违规账号；审核员不能提权、删除，也不能修改受保护账号。</p>
             </div>
             <span>{{ adminUserCount }} 位管理员</span>
           </div>
@@ -545,6 +728,7 @@
                 <div class="admin-user-copy">
                   <strong>{{ user.username }}</strong>
                   <span>{{ user.realName || '未填写姓名' }} · {{ user.studentId || ('账号 ' + user.id) }}</span>
+                  <span>积分 {{ user.points ?? 0 }} · 已解锁 {{ user.unlocked ?? 0 }} 处 · 注册 {{ user.createdAt ? formatTime(user.createdAt) : '未记录' }}</span>
                 </div>
                 <span :class="['admin-role', 'role-' + user.role]">{{ userRoleLabel(user.role) }}</span>
                 <button
@@ -568,6 +752,16 @@
                   撤销权限
                 </button>
                 <span v-else class="admin-protected">受保护</span>
+                <button
+                  v-if="canDeleteUser(user)"
+                  class="admin-button admin-button-danger"
+                  type="button"
+                  :disabled="isBusy('delete-' + user.id)"
+                  @click="openUserDelete(user)"
+                >
+                  <Trash2 :size="17" aria-hidden="true" />
+                  删除账号
+                </button>
               </article>
             </div>
           </template>
@@ -614,6 +808,62 @@
       </form>
     </dialog>
 
+    <dialog ref="locationDialog" class="admin-dialog" @click="closeDialogBackdrop">
+      <form @submit.prevent="saveLocationEdit">
+        <div class="admin-dialog-head">
+          <div>
+            <span>地点配置</span>
+            <h2>编辑{{ locationForm.name || '打卡点' }}</h2>
+          </div>
+          <button type="button" aria-label="关闭地点编辑窗口" @click="locationDialog?.close()"><X :size="20" aria-hidden="true" /></button>
+        </div>
+        <label for="loc-edit-name">地点名称</label>
+        <input id="loc-edit-name" v-model.trim="locationForm.name" class="admin-dialog-input" type="text" maxlength="80" required />
+        <label for="loc-edit-position">位置描述</label>
+        <input id="loc-edit-position" v-model.trim="locationForm.position" class="admin-dialog-input" type="text" maxlength="120" placeholder="例如：南校园 311 号" />
+        <label for="loc-edit-image">封面图片地址</label>
+        <input id="loc-edit-image" v-model.trim="locationForm.image" class="admin-dialog-input" type="url" maxlength="2000" placeholder="https://…" />
+        <label for="loc-edit-points">单点积分</label>
+        <input id="loc-edit-points" v-model.number="locationForm.points" class="admin-dialog-input" type="number" min="0" max="100" step="0.5" required />
+        <label for="loc-edit-description">地点介绍（支持简单 HTML）</label>
+        <textarea id="loc-edit-description" v-model="locationForm.description" rows="6" maxlength="20000"></textarea>
+        <small :class="{ error: locationForm.error }">{{ locationForm.error || '保存后立即生效；已发放的历史积分不受影响。' }}</small>
+        <div class="admin-dialog-actions">
+          <button class="admin-button admin-button-quiet" type="button" @click="locationDialog?.close()">取消</button>
+          <button class="admin-button admin-button-primary" type="submit" :disabled="locationForm.saving">
+            <Check :size="17" aria-hidden="true" />
+            {{ locationForm.saving ? '正在保存' : '保存地点' }}
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog ref="userDeleteDialog" class="admin-dialog" @close="resetUserDelete" @click="closeDialogBackdrop">
+      <form @submit.prevent="confirmUserDelete">
+        <div class="admin-dialog-head">
+          <div>
+            <span>账号管理</span>
+            <h2>删除账号「{{ deleteState.user?.username || '' }}」</h2>
+          </div>
+          <button type="button" aria-label="关闭删除账号窗口" @click="userDeleteDialog?.close()"><X :size="20" aria-hidden="true" /></button>
+        </div>
+        <p class="admin-dialog-target">
+          {{ deleteState.user?.realName || '未填写姓名' }} · {{ deleteState.user?.studentId || ('账号 ' + (deleteState.user?.id || '')) }}
+        </p>
+        <p class="admin-dialog-warning">
+          此操作不可撤销。删除后该账号将立即无法登录，其打卡进度、投稿作品、投出的票与问题反馈会一并清除。
+        </p>
+        <small :class="{ error: deleteState.error }">{{ deleteState.error || '请确认该账号确实需要删除。' }}</small>
+        <div class="admin-dialog-actions">
+          <button class="admin-button admin-button-quiet" type="button" @click="userDeleteDialog?.close()">取消</button>
+          <button class="admin-button admin-button-danger" type="submit" :disabled="deleteState.deleting">
+            <Trash2 :size="17" aria-hidden="true" />
+            {{ deleteState.deleting ? '正在删除' : '确认删除' }}
+          </button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog ref="previewDialog" class="admin-preview-dialog" aria-label="图片预览" @close="previewState.url = ''" @click="closeDialogBackdrop">
       <div>
         <img v-if="previewState.url" :src="previewState.url" :alt="previewState.label" />
@@ -623,8 +873,9 @@
     </dialog>
 
     <Transition name="admin-toast">
-      <div v-if="toast.message" class="admin-toast" role="status" @mouseenter="pauseToast" @mouseleave="resumeToast">
-        <TriangleAlert v-if="toast.tone === 'error'" :size="18" aria-hidden="true" />
+      <div v-if="toast.message" :class="['admin-toast', 'tone-' + toast.tone]" role="status" @mouseenter="pauseToast" @mouseleave="resumeToast">
+        <CheckCircle2 v-if="toast.tone === 'ok'" :size="18" aria-hidden="true" />
+        <TriangleAlert v-else :size="18" aria-hidden="true" />
         <span>{{ toast.message }}</span>
         <button v-if="toast.retry" type="button" @click="runToastRetry">重试</button>
         <button type="button" aria-label="关闭提示" @click="clearToast"><X :size="17" aria-hidden="true" /></button>
@@ -642,13 +893,13 @@ import '@fontsource/jetbrains-mono/latin-500.css'
 import {
   Activity,
   Ban,
-  BarChart3,
   Camera,
   Check,
   CheckCircle2,
   ChevronRight,
   CircleUserRound,
   ClipboardCheck,
+  Download,
   Images,
   LockKeyhole,
   LogOut,
@@ -659,7 +910,9 @@ import {
   Search,
   ShieldCheck,
   Star,
+  Trash2,
   TriangleAlert,
+  Trophy,
   UserCog,
   UserMinus,
   Users,
@@ -670,13 +923,15 @@ import { request } from '@/utils/request'
 const router = useRouter()
 const route = useRoute()
 
+/* ===== 视图导航：单页控制台，切换视图而非长滚动 ===== */
 const navigation = [
-  { id: 'overview', label: '管理总览', icon: Activity },
-  { id: 'review', label: '审核队列', icon: ClipboardCheck },
+  { id: 'overview', label: '运营总览', icon: Activity },
+  { id: 'review', label: '审核中心', icon: ClipboardCheck },
   { id: 'feedback', label: '问题反馈', icon: MessageSquareText },
   { id: 'anomalies', label: '打卡异常', icon: TriangleAlert },
-  { id: 'analytics', label: '数据分析', icon: BarChart3 },
-  { id: 'permissions', label: '权限管理', icon: Users }
+  { id: 'awards', label: '投稿管理', icon: Images },
+  { id: 'locations', label: '地点配置', icon: MapPinned },
+  { id: 'users', label: '用户权限', icon: Users }
 ]
 
 const blankMetrics = () => ({
@@ -703,6 +958,37 @@ const anomalyStat = reactive({ all: 0, high: 0, medium: 0, low: 0 })
 const feedbackStat = reactive({ all: 0, submitted: 0, in_progress: 0, resolved: 0, closed: 0 })
 const feedbackDrafts = reactive({})
 
+/* ===== 投稿管理（奖项运营） ===== */
+const awardItems = ref([])
+const awardStat = reactive({ all: 0, pending: 0, approved: 0, rejected: 0, down: 0, featured: 0 })
+const awardStatus = ref('approved')
+const awardCategory = ref('all')
+const awardLoading = ref(false)
+const computing = ref(false)
+const exporting = ref(false)
+const awardStatusTabs = [
+  { value: 'all', label: '全部' },
+  { value: 'pending', label: '待审核' },
+  { value: 'approved', label: '已通过' },
+  { value: 'rejected', label: '已驳回' },
+  { value: 'down', label: '已下架' },
+  { value: 'featured', label: '优秀' }
+]
+const awardCategories = [
+  { id: 'creative', name: '最佳创意奖' },
+  { id: 'photography', name: '最佳摄影奖' }
+]
+
+/* ===== 地点配置 ===== */
+const locations = ref([])
+const locationTotal = ref(0)
+const locationQuery = ref('')
+const locationLoading = ref(false)
+const locationPoints = reactive({})
+const locationDialog = ref(null)
+const locationForm = reactive({ id: null, name: '', position: '', image: '', description: '', points: 0, error: '', saving: false })
+let locationSearchTimer = 0
+
 const initialLoading = ref(true)
 const refreshing = ref(false)
 const reviewLoading = ref(false)
@@ -715,7 +1001,7 @@ const submissionStatus = ref('pending')
 const anomalyFilter = ref('all')
 const feedbackStatus = ref('submitted')
 const busy = ref({})
-const animatedPending = ref(0)
+const viewLoaded = reactive({ awards: false, locations: false })
 
 const menuDialog = ref(null)
 const rejectDialog = ref(null)
@@ -727,12 +1013,12 @@ const userSearch = ref('')
 
 const rejectState = reactive({ kind: '', item: null, note: '', touched: false, error: '', submitting: false })
 const previewState = reactive({ url: '', label: '' })
+const userDeleteDialog = ref(null)
+const deleteState = reactive({ user: null, error: '', deleting: false })
 const toast = reactive({ message: '', tone: 'error', retry: null })
 let toastTimer = 0
 let toastRemaining = 0
 let toastStartedAt = 0
-let sectionObserver = null
-let counterFrame = 0
 
 const roleLabel = computed(() => dashboard.currentAdmin?.role === 'owner' ? '超级管理员' : '审核员')
 const canManageRoles = computed(() => Boolean(dashboard.currentAdmin?.canManageRoles))
@@ -804,7 +1090,6 @@ async function fetchDashboard() {
   dashboard.activity = Array.isArray(data.activity) ? data.activity : []
   dashboard.hotspots = Array.isArray(data.hotspots) ? data.hotspots : []
   dashboard.anomalyPreview = Array.isArray(data.anomalyPreview) ? data.anomalyPreview : []
-  animatePending(dashboard.metrics.pendingTotal)
 }
 
 async function fetchCheckins() {
@@ -858,6 +1143,113 @@ async function fetchUsers() {
   users.value = payload.list || []
 }
 
+async function fetchAwards() {
+  awardLoading.value = true
+  try {
+    const payload = await api('/admin/submissions', 'GET', { status: awardStatus.value, category: awardCategory.value })
+    awardItems.value = payload.list || []
+    Object.assign(awardStat, { all: 0, pending: 0, approved: 0, rejected: 0, down: 0, featured: 0, ...(payload.stat || {}) })
+  } catch (error) {
+    showError(error.message, fetchAwards)
+  } finally {
+    awardLoading.value = false
+  }
+}
+
+function setAwardStatus(value) {
+  awardStatus.value = value
+  fetchAwards()
+}
+
+async function fetchLocations() {
+  locationLoading.value = true
+  try {
+    const payload = await api('/admin/locations', 'GET', { query: locationQuery.value })
+    locations.value = payload.list || []
+    locationTotal.value = Number(payload.total || locations.value.length)
+    locations.value.forEach(loc => { locationPoints[loc.backendId] = loc.points })
+  } catch (error) {
+    showError(error.message, fetchLocations)
+  } finally {
+    locationLoading.value = false
+  }
+}
+
+function queueLocationSearch() {
+  window.clearTimeout(locationSearchTimer)
+  locationSearchTimer = window.setTimeout(fetchLocations, 300)
+}
+
+function locationPointsChanged(loc) {
+  return Number(locationPoints[loc.backendId]) !== Number(loc.points)
+}
+
+async function saveLocationPoints(loc) {
+  const busyId = 'loc-' + loc.backendId
+  if (isBusy(busyId)) return
+  setBusy(busyId, true)
+  try {
+    const payload = await api(`/admin/locations/${encodeURIComponent(loc.backendId)}`, 'PATCH', {
+      points: Number(locationPoints[loc.backendId])
+    })
+    if (payload.data?.location) Object.assign(loc, payload.data.location)
+    locationPoints[loc.backendId] = loc.points
+    showMsg(`「${loc.name}」分值已保存`)
+  } catch (error) {
+    showError(error.message, () => saveLocationPoints(loc))
+  } finally {
+    setBusy(busyId, false)
+  }
+}
+
+function openLocationEdit(loc) {
+  locationForm.id = loc.backendId
+  locationForm.name = loc.name || ''
+  locationForm.position = loc.position || ''
+  locationForm.image = loc.image || ''
+  locationForm.description = loc.description || ''
+  locationForm.points = Number(loc.points)
+  locationForm.error = ''
+  locationForm.saving = false
+  locationDialog.value?.showModal()
+}
+
+async function saveLocationEdit() {
+  if (locationForm.saving || locationForm.id == null) return
+  const points = Number(locationForm.points)
+  if (!Number.isFinite(points) || points < 0 || points > 100 || Math.round(points * 2) !== points * 2) {
+    locationForm.error = '单点积分必须是 0–100 之间、以 0.5 为步进的分值'
+    return
+  }
+  if (!locationForm.name.trim()) {
+    locationForm.error = '地点名称不能为空'
+    return
+  }
+  locationForm.saving = true
+  locationForm.error = ''
+  try {
+    const payload = await api(`/admin/locations/${encodeURIComponent(locationForm.id)}`, 'PATCH', {
+      name: locationForm.name,
+      position: locationForm.position,
+      image: locationForm.image,
+      description: locationForm.description,
+      points
+    })
+    const updated = payload.data?.location
+    const target = locations.value.find(item => Number(item.backendId) === Number(locationForm.id))
+    if (updated && target) {
+      Object.assign(target, updated)
+      locationPoints[target.backendId] = target.points
+    }
+    locationDialog.value?.close()
+    showMsg(`「${updated?.name || locationForm.name}」已保存`)
+  } catch (error) {
+    locationForm.error = error.message
+  } finally {
+    locationForm.saving = false
+  }
+}
+
 async function loadAdminSpace() {
   document.title = '管理员空间｜笃行校园探索'
   initialLoading.value = true
@@ -869,7 +1261,6 @@ async function loadAdminSpace() {
   } finally {
     initialLoading.value = false
     await nextTick()
-    setupSectionObserver()
     applyInitialSection()
   }
 }
@@ -878,7 +1269,10 @@ async function refreshAll() {
   if (refreshing.value) return
   refreshing.value = true
   try {
-    await Promise.all([fetchDashboard(), fetchReviewQueue(), fetchFeedback(), fetchAnomalies(), fetchUsers()])
+    const tasks = [fetchDashboard(), fetchReviewQueue(), fetchFeedback(), fetchAnomalies(), fetchUsers()]
+    if (viewLoaded.awards) tasks.push(fetchAwards())
+    if (viewLoaded.locations) tasks.push(fetchLocations())
+    await Promise.all(tasks)
   } catch (error) {
     showError(error.message, refreshAll)
   } finally {
@@ -902,7 +1296,9 @@ async function runModeration(id, operation, retry) {
   setBusy(id, true)
   try {
     await operation()
-    await Promise.all([fetchReviewQueue(), fetchDashboard(), fetchAnomalies()])
+    const tasks = [fetchReviewQueue(), fetchDashboard(), fetchAnomalies()]
+    if (viewLoaded.awards) tasks.push(fetchAwards())
+    await Promise.all(tasks)
   } catch (error) {
     showError(error.message, retry)
   } finally {
@@ -951,6 +1347,63 @@ function toggleFeature(item) {
   )
 }
 
+function downSubmission(item) {
+  return runModeration(
+    item.id,
+    () => api(`/admin/submissions/${encodeURIComponent(item.id)}/down`, 'POST', {}),
+    () => downSubmission(item)
+  )
+}
+
+function restoreSubmission(item) {
+  return runModeration(
+    item.id,
+    () => api(`/admin/submissions/${encodeURIComponent(item.id)}/restore`, 'POST', {}),
+    () => restoreSubmission(item)
+  )
+}
+
+async function computeWinners() {
+  if (computing.value) return
+  computing.value = true
+  try {
+    const payload = await api('/admin/submissions/compute-winners', 'POST', {})
+    const summary = payload.summary || payload.data?.summary || {}
+    const photo = (summary.photography || []).length
+    const creative = (summary.creative || []).length
+    showMsg(`已按当前票数刷新：最佳摄影奖 ${photo} 名、最佳创意奖 ${creative} 名获奖`)
+    if (viewLoaded.awards) await fetchAwards()
+  } catch (error) {
+    showError(error.message, computeWinners)
+  } finally {
+    computing.value = false
+  }
+}
+
+async function exportCsv() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const response = await request('/admin/submissions/export', 'GET', { category: awardCategory.value }, {
+      responseType: 'blob'
+    })
+    if (!response || !response.data) throw new Error('导出失败')
+    const url = URL.createObjectURL(response.data)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `奖项投稿名单_${Date.now()}.csv`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+    showMsg('投稿名单已导出')
+  } catch (error) {
+    showError(error?.message || '导出失败，请重试', exportCsv)
+  } finally {
+    exporting.value = false
+  }
+}
+
 function canReviewSubmission(item) {
   return item.status === 'pending' || (item.status === 'rejected' && item.appealStatus === 'pending')
 }
@@ -968,6 +1421,51 @@ async function changeUserRole(user, role) {
   } finally {
     setBusy(busyId, false)
   }
+}
+
+/* ===== 删除账号（仅超级管理员；本人与受保护账号不可删） ===== */
+function canDeleteUser(user) {
+  if (!canManageRoles.value || !user) return false
+  if (user.protectedOwner || user.role === 'owner') return false
+  return String(user.id) !== String(dashboard.currentAdmin?.id)
+}
+
+function openUserDelete(user) {
+  deleteState.user = user
+  deleteState.error = ''
+  deleteState.deleting = false
+  userDeleteDialog.value?.showModal()
+}
+
+async function confirmUserDelete() {
+  const user = deleteState.user
+  if (!user || deleteState.deleting) return
+  deleteState.deleting = true
+  deleteState.error = ''
+  setBusy('delete-' + user.id, true)
+  try {
+    const payload = await api(`/admin/users/${encodeURIComponent(user.id)}`, 'DELETE')
+    userDeleteDialog.value?.close()
+    users.value = users.value.filter(item => String(item.id) !== String(user.id))
+    await fetchDashboard()
+    const removed = payload.data || {}
+    const extras = [
+      removed.removedSubmissions ? `${removed.removedSubmissions} 件投稿` : '',
+      removed.removedFeedback ? `${removed.removedFeedback} 条反馈` : ''
+    ].filter(Boolean).join('、')
+    showMsg(payload.message + (extras ? `，并清理 ${extras}` : ''))
+  } catch (error) {
+    deleteState.error = error.message
+  } finally {
+    deleteState.deleting = false
+    setBusy('delete-' + user.id, false)
+  }
+}
+
+function resetUserDelete() {
+  deleteState.user = null
+  deleteState.error = ''
+  deleteState.deleting = false
 }
 
 function openReject(kind, item) {
@@ -997,7 +1495,9 @@ async function confirmReject() {
       : `/admin/checkins/${encodeURIComponent(item.id)}/reject`
     await api(path, 'POST', { note })
     rejectDialog.value?.close()
-    await Promise.all([fetchReviewQueue(), fetchDashboard(), fetchAnomalies()])
+    const tasks = [fetchReviewQueue(), fetchDashboard(), fetchAnomalies()]
+    if (viewLoaded.awards && kind === 'submission') tasks.push(fetchAwards())
+    await Promise.all(tasks)
   } catch (error) {
     rejectState.error = error.message
   } finally {
@@ -1051,47 +1551,34 @@ function closeMenu() {
   if (menuDialog.value?.open) menuDialog.value.close()
 }
 
-function goSection(id) {
+/* ===== 视图切换：按需加载奖项/地点数据，回到顶部 ===== */
+function goSection(id, queue) {
+  if (queue === 'submissions' || queue === 'checkins') reviewQueue.value = queue
   activeSection.value = id
   closeMenu()
-  nextTick(() => document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }))
-}
-
-function setupSectionObserver() {
-  sectionObserver?.disconnect()
-  sectionObserver = new IntersectionObserver(entries => {
-    const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-    if (visible?.target?.id) activeSection.value = visible.target.id
-  }, { rootMargin: '-18% 0px -62% 0px', threshold: [0.05, 0.2, 0.5] })
-  document.querySelectorAll('.admin-observed').forEach(section => sectionObserver.observe(section))
+  if (id === 'awards' && !viewLoaded.awards) {
+    viewLoaded.awards = true
+    fetchAwards()
+  }
+  if (id === 'locations' && !viewLoaded.locations) {
+    viewLoaded.locations = true
+    fetchLocations()
+  }
+  nextTick(() => window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' }))
 }
 
 function applyInitialSection() {
   const requested = String(route.query.section || '')
-  if (navigation.some(item => item.id === requested)) goSection(requested)
+  const mapped = ({ analytics: 'overview', permissions: 'users' })[requested] || requested
+  if (navigation.some(item => item.id === mapped)) {
+    goSection(mapped)
+  } else if (route.query.queue === 'submissions') {
+    goSection('review')
+  }
 }
 
 function reducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function animatePending(targetValue) {
-  cancelAnimationFrame(counterFrame)
-  const target = Math.max(0, Number(targetValue || 0))
-  if (reducedMotion()) {
-    animatedPending.value = target
-    return
-  }
-  const startValue = animatedPending.value
-  const startedAt = performance.now()
-  const duration = 400
-  const tick = now => {
-    const progress = Math.min(1, (now - startedAt) / duration)
-    const eased = 1 - Math.pow(1 - progress, 3)
-    animatedPending.value = Math.round(startValue + (target - startValue) * eased)
-    if (progress < 1) counterFrame = requestAnimationFrame(tick)
-  }
-  counterFrame = requestAnimationFrame(tick)
 }
 
 function showError(message, retry = null) {
@@ -1100,6 +1587,15 @@ function showError(message, retry = null) {
   toast.tone = 'error'
   toast.retry = typeof retry === 'function' ? retry : null
   toastRemaining = 6000
+  resumeToast()
+}
+
+function showMsg(message) {
+  window.clearTimeout(toastTimer)
+  toast.message = message
+  toast.tone = 'ok'
+  toast.retry = null
+  toastRemaining = 3200
   resumeToast()
 }
 
@@ -1189,9 +1685,8 @@ function formatTime(value) {
 onMounted(loadAdminSpace)
 
 onBeforeUnmount(() => {
-  sectionObserver?.disconnect()
-  cancelAnimationFrame(counterFrame)
   window.clearTimeout(toastTimer)
+  window.clearTimeout(locationSearchTimer)
 })
 </script>
 

@@ -38,25 +38,30 @@ function baseLocations() {
   return Array.isArray(baseLocationData.locations) ? baseLocationData.locations : [];
 }
 
-function getLocations() {
+function getLocations(options = {}) {
+  const { includeRetired = false } = options || {};
   const settings = readSettings();
-  return baseLocations().map(location => {
-    const override = settings[String(location.backendId)] || {};
-    const overridePoints = Number(override.points);
-    return {
-      ...location,
-      ...override,
-      backendId: Number(location.backendId),
-      points: Number.isFinite(overridePoints) && override.points !== undefined && override.points !== ''
-        ? overridePoints
-        : (location.isHidden ? HIDDEN_DEFAULT_POINTS : DEFAULT_POINTS)
-    };
-  });
+  return baseLocations()
+    .filter(location => includeRetired || !location.retired)
+    .map(location => {
+      const override = settings[String(location.backendId)] || {};
+      const overridePoints = Number(override.points);
+      return {
+        ...location,
+        ...override,
+        backendId: Number(location.backendId),
+        points: Number.isFinite(overridePoints) && override.points !== undefined && override.points !== ''
+          ? overridePoints
+          : (location.isHidden ? HIDDEN_DEFAULT_POINTS : DEFAULT_POINTS)
+      };
+    });
 }
 
 function getLocation(backendId) {
   const locationId = Number(backendId);
-  return getLocations().find(item => Number(item.backendId) === locationId) || null;
+  // 单点查询包含已下线（retired）地点：历史打卡/积分记录仍能解析名称与属性，
+  // 但列表接口（getLocations 默认）不再下发，等于从打卡点中剔除。
+  return getLocations({ includeRetired: true }).find(item => Number(item.backendId) === locationId) || null;
 }
 
 function stripUnsafeHtml(value) {

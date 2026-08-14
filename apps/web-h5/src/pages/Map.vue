@@ -60,16 +60,34 @@
       @open-hidden="goHiddenCheckpoints"
     />
 
+    <!-- 移动端：手势驱动的底部卡片（上推全屏、下拉退出，导航反向联动） -->
+    <div
+      v-if="selectedPlace && isMobileSheet"
+      ref="sheetEl"
+      class="place-sheet place-sheet--mobile"
+      :class="{ 'is-animating': sheetAnimating && !sheetDragging }"
+      :style="sheetStyle"
+      @touchstart="onSheetTouchStart"
+      @touchmove="onSheetTouchMove"
+      @touchend="onSheetTouchEnd"
+      @touchcancel="onSheetTouchEnd"
+    >
+      <div class="sheet-grabber" aria-hidden="true"><i></i></div>
+      <CheckinCard
+        v-bind="checkinCardProps"
+        scroll-all
+        @geo-checkin="onGeoCheckin"
+        @close="closeSheet"
+      />
+    </div>
+
+    <!-- 桌面端：保留原有右下角滑出面板 -->
     <Transition name="sheet">
-      <div v-if="selectedPlace" class="place-sheet">
+      <div v-if="selectedPlace && !isMobileSheet" class="place-sheet">
         <CheckinCard
-          :place="selectedPlace"
-          :primary-label="isExploring && selectedPlace?.id === currentPlace?.id ? '完成打卡' : ''"
-          :geo-status="geoStatus"
-          :geo-distance="geoDistance"
-          :geo-error="geoError"
+          v-bind="checkinCardProps"
           @geo-checkin="onGeoCheckin"
-          @close="selectedPlace = null"
+          @close="closeSheet"
         />
       </div>
     </Transition>
@@ -119,6 +137,7 @@ import PointDisplay from '@/components/PointDisplay.vue'
 import CheckinCard from '@/components/CheckinCard.vue'
 import { campusLocations, CATEGORY_MAP, MAP_CONFIG, searchPlaces, getPlaceById, placeIdToBackend } from '@/data/campusPlaces'
 import routes from '@/data/routes'
+import { uiChrome, resetUiChrome } from '@/stores/uiChrome'
 
 import {
   currentRoute as exploringRoute,
@@ -150,6 +169,137 @@ const toastMessage = ref('')
 let toastTimer = null
 let lastConsumedDeepLink = ''
 
+/* ===== 移动端手势底卡状态 =====
+ * sheetOffset：卡片顶端相对“全屏覆盖”位置向下平移的像素值。
+ * 0 = 完全遮挡地图（打开即停在此最高位）；sheetHeight = 滑出屏幕。
+ * 拖动顶部抓手下拉超过阈值即退出屏幕；内容区滑动只滚动简介，不会误关卡片。
+ * 底部导航通过 uiChrome.sheetReveal 以相同时长/缓动反向联动。
+ */
+const SHEET_CLOSE_RATIO = 0.34
+const SHEET_ANIM_MS = 300
+
+const isMobileSheet = ref(false)
+const sheetEl = ref(null)
+const sheetOffset = ref(0)
+const sheetHeight = ref(0)
+const sheetAnimating = ref(false)
+const sheetDragging = ref(false)
+const sheetOpen = ref(false)
+let mobileSheetMedia = null
+let closeTimer = null
+let dragStartY = null
+let dragStartOffset = 0
+let dragEngaged = false
+let dragFromHandle = false
+
+const sheetStyle = computed(() => {
+  if (!isMobileSheet.value) return {}
+  return { transform: `translateY(${sheetOffset.value}px)` }
+})
+
+const checkinCardProps = computed(() => ({
+  place: selectedPlace.value,
+  primaryLabel: isExploring.value && selectedPlace.value?.id === currentPlace.value?.id ? '完成打卡' : '',
+  geoStatus: geoStatus.value,
+  geoDistance: geoDistance.value,
+  geoError: geoError.value,
+}))
+
+function syncChrome() {
+  const h = sheetHeight.value || 1
+  const reveal = (h - sheetOffset.value) / h
+  uiChrome.sheetReveal = Math.min(1, Math.max(0, reveal))
+  uiChrome.sheetAnimating = sheetAnimating.value && !sheetDragging.value
+}
+watch([sheetOffset, sheetAnimating, sheetDragging, sheetHeight], syncChrome)
+
+function measureSheet() {
+  sheetHeight.value = sheetEl.value?.offsetHeight || Math.round(window.innerHeight * 0.85)
+}
+
+function openSheet() {
+  clearTimeout(closeTimer)
+  if (sheetOpen.value) return // 已打开时切换地点：保持当前位置，不重复入场
+  sheetOpen.value = true
+  nextTick(() => {
+    measureSheet()
+    sheetAnimating.value = false
+    sheetOffset.value = sheetHeight.value // 从屏幕外起步
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        sheetAnimating.value = true
+        sheetOffset.value = 0 // 直接弹到最高位（完全遮挡地图）
+      })
+    })
+  })
+}
+
+function closeSheet() {
+  if (!isMobileSheet.value) {
+    selectedPlace.value = null
+    return
+  }
+  if (!sheetOpen.value) return
+  sheetAnimating.value = true
+  sheetOffset.value = sheetHeight.value || window.innerHeight
+  clearTimeout(closeTimer)
+  closeTimer = setTimeout(() => {
+    sheetOpen.value = false
+    selectedPlace.value = null
+  }, SHEET_ANIM_MS)
+}
+
+function onSheetTouchStart(event) {
+  if (!sheetOpen.value) return
+  const touch = event.touches[0]
+  dragStartY = touch.clientY
+  dragStartOffset = sheetOffset.value
+  dragEngaged = false
+  dragFromHandle = Boolean(event.target.closest?.('.sheet-grabber'))
+}
+
+function onSheetTouchMove(event) {
+  if (dragStartY === null) return
+  const touch = event.touches[0]
+  const dy = touch.clientY - dragStartY
+  if (!dragEngaged) {
+    // 只有顶部抓手可拖动卡片；内容区滑动全部交给简介内容原生滚动，不再触发关卡片
+    if (dragFromHandle) {
+      dragEngaged = true
+      sheetDragging.value = true
+      sheetAnimating.value = false
+    } else {
+      return
+    }
+  }
+  if (event.cancelable) event.preventDefault()
+  const next = dragStartOffset + dy
+  sheetOffset.value = Math.min(sheetHeight.value, Math.max(0, next))
+}
+
+function onSheetTouchEnd(event) {
+  if (!dragEngaged) {
+    dragStartY = null
+    return
+  }
+  const dy = event.changedTouches[0].clientY - dragStartY
+  sheetDragging.value = false
+  sheetAnimating.value = true
+  const h = sheetHeight.value || window.innerHeight
+  const current = sheetOffset.value
+  if (current > h * SHEET_CLOSE_RATIO || dy > 120) {
+    closeSheet() // 下拉足够多：退出屏幕
+  } else {
+    sheetOffset.value = 0 // 其余情况：回到最高位（完全遮挡地图）
+  }
+  dragStartY = null
+  dragEngaged = false
+}
+
+function onMobileSheetMediaChange() {
+  isMobileSheet.value = Boolean(mobileSheetMedia?.matches)
+}
+
 
 
 // 定位打卡状态
@@ -178,7 +328,7 @@ function onMarkerClick(place) {
 }
 
 function onMapClick() {
-  selectedPlace.value = null
+  closeSheet()
 }
 
 function goHiddenCheckpoints() {
@@ -347,7 +497,7 @@ async function submitPhotoCheckin() {
         })
       } else {
         showToast(`🎉 ${exploringRoute.value?.name} 探索完成！`)
-        selectedPlace.value = null
+        closeSheet()
         resetRouteCheckin()
       }
     }
@@ -367,7 +517,7 @@ function queryValue(value) {
 }
 
 function resetDeepLinkedMap() {
-  selectedPlace.value = null
+  closeSheet()
   activeCategory.value = 'all'
   onRouteSelect(null)
 }
@@ -410,10 +560,16 @@ watch(
   () => consumeMapDeepLink(),
 )
 
-
+// 选中地点（标记点击 / 列表选择 / 路线推进 / 深链）时，移动端滑出简介卡
+watch(selectedPlace, (place) => {
+  if (place && isMobileSheet.value) openSheet()
+})
 
 onMounted(() => {
   document.title = '校园地图｜中山大学智能工程学院'
+  mobileSheetMedia = window.matchMedia('(max-width: 699.98px)')
+  onMobileSheetMediaChange()
+  mobileSheetMedia.addEventListener?.('change', onMobileSheetMediaChange)
   // 页面加载时从后端同步一次用户进度
   fetchUserProgress().catch(err => {
     console.warn('[Map] fetchUserProgress failed:', err)
@@ -426,6 +582,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearTimeout(toastTimer)
+  clearTimeout(closeTimer)
+  mobileSheetMedia?.removeEventListener?.('change', onMobileSheetMediaChange)
+  resetUiChrome()
 })
 </script>
 
@@ -833,6 +992,58 @@ onBeforeUnmount(() => {
 .drawer-enter-from,
 .drawer-leave-to {
   transform: translateX(100%);
+}
+
+/* ===== 移动端手势底卡（<700px 才渲染 .place-sheet--mobile） =====
+ * 卡片高度撑满 header 以下全部空间，用 translateY 控制位置：
+ * 打开即上滑到最高位完全遮挡地图；拖动顶部抓手下拉退出屏幕。 */
+.place-sheet--mobile {
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  bottom: 0;
+  height: auto;
+  padding: 0 0 env(safe-area-inset-bottom, 0px);
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -10px 32px rgba(10, 46, 59, .22);
+  transform: translateY(100%);
+  will-change: transform;
+  overscroll-behavior: contain;
+}
+
+.place-sheet--mobile.is-animating {
+  transition: transform .28s cubic-bezier(.2, .75, .25, 1);
+}
+
+.sheet-grabber {
+  display: none;
+}
+
+.place-sheet--mobile .sheet-grabber {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 8px 0 6px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.place-sheet--mobile .sheet-grabber i {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.place-sheet--mobile .checkin-card {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .place-sheet--mobile.is-animating {
+    transition: none;
+  }
 }
 
 @media (min-width: 700px) {
