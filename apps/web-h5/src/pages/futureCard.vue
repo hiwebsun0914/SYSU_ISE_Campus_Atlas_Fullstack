@@ -77,7 +77,7 @@
                 type="button"
                 class="template-card"
                 :class="[{ selected: activeDraft.style.templateId === template.id }, `template-${template.id}`]"
-                @click="activeDraft.style.templateId = template.id"
+                @click="selectTemplate(template)"
               >
                 <span class="template-swatch" />
                 <strong>{{ template.label }}</strong>
@@ -87,14 +87,25 @@
           </div>
 
           <div class="control-row">
-            <label class="control-group">
+            <div class="control-group">
               <span class="field-label">中文字体</span>
-              <select v-model="activeDraft.style.fontId">
-                <option value="song">宋体风</option>
-                <option value="sans">黑体风</option>
-                <option value="hand">手写风</option>
-              </select>
-            </label>
+              <div class="font-grid" role="radiogroup" aria-label="中文字体">
+                <button
+                  v-for="font in FONTS"
+                  :key="font.id"
+                  type="button"
+                  class="font-card"
+                  :class="{ selected: activeDraft.style.fontId === font.id }"
+                  role="radio"
+                  :aria-checked="activeDraft.style.fontId === font.id"
+                  @click="activeDraft.style.fontId = font.id"
+                >
+                  <span class="font-sample" :style="{ fontFamily: FONT_FAMILIES[font.id] }">未来 Future</span>
+                  <strong>{{ font.label }}</strong>
+                  <small>{{ font.caption }}</small>
+                </button>
+              </div>
+            </div>
             <div class="control-group">
               <span class="field-label">字号</span>
               <div class="pill-group">
@@ -196,6 +207,7 @@ import { ArrowLeft } from '@lucide/vue'
 import { request } from '@/utils/request'
 import auth from '@/utils/auth'
 import '@/styles/futureFonts.css'
+import { OFFICIAL_SCHOOL_NAME, OFFICIAL_UNIVERSITY_NAME, TEMPLATE_DEFAULT_FONTS, layoutTextBlock } from '@/utils/futureCardLayout.mjs'
 
 const PAGE_BACKGROUND = 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/bg.jpg'
 const SITE_LOGO = 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png'
@@ -206,11 +218,16 @@ const MODES = Object.freeze([
   { id: 'letter', label: '给四年后的我', hint: '写给未来的自己，慢一点也没有关系。', placeholder: '例如：嘿，四年后的我。还记得刚进入智工学院时，对未来既紧张又期待的你吗？' }
 ])
 const TEMPLATES = Object.freeze([
-  { id: 'sysu-editorial', label: '中大红·校刊', caption: '克制、庄重' },
-  { id: 'lake-morning', label: '逸仙湖·晨光', caption: '清新、温暖' },
-  { id: 'engineering-blueprint', label: '智工蓝图', caption: '理性、未来' }
+  { id: 'sysu-editorial', label: '中大红·校刊', caption: '克制、庄重', fontId: TEMPLATE_DEFAULT_FONTS['sysu-editorial'] },
+  { id: 'lake-morning', label: '逸仙湖·晨光', caption: '清新、温暖', fontId: TEMPLATE_DEFAULT_FONTS['lake-morning'] },
+  { id: 'engineering-blueprint', label: '智工蓝图', caption: '理性、未来', fontId: TEMPLATE_DEFAULT_FONTS['engineering-blueprint'] }
 ])
 const SIZES = Object.freeze([{ id: 'small', label: '小' }, { id: 'medium', label: '中' }, { id: 'large', label: '大' }])
+const FONTS = Object.freeze([
+  { id: 'song', label: '书刊宋体', caption: '端庄、典雅' },
+  { id: 'sans', label: '现代黑体', caption: '清晰、利落' },
+  { id: 'hand', label: '手写行楷', caption: '轻盈、有温度' }
+])
 const THEMES = Object.freeze({
   'sysu-editorial': { bg: '#fff8f3', ink: '#1c1715', muted: '#725c56', accent: '#8c1515', secondary: '#eadbd5' },
   'lake-morning': { bg: '#eef7ed', ink: '#24372d', muted: '#627568', accent: '#b77b21', secondary: '#b7dcc8' },
@@ -229,13 +246,21 @@ function createDraft(mode) {
     content: '',
     style: {
       templateId: mode === 'expectation' ? 'sysu-editorial' : 'lake-morning',
-      fontId: 'sans',
+      fontId: TEMPLATE_DEFAULT_FONTS[mode === 'expectation' ? 'sysu-editorial' : 'lake-morning'],
       size: 'medium',
       align: 'left',
       signatureMode: 'custom',
       signatureText: '一名智工新生'
     }
   }
+}
+
+function selectTemplate(template) {
+  const draft = activeDraft.value
+  const previousDefault = TEMPLATE_DEFAULT_FONTS[draft.style.templateId]
+  const shouldAdoptTemplateFont = !draft.style.fontId || draft.style.fontId === previousDefault
+  draft.style.templateId = template.id
+  if (shouldAdoptTemplateFont) draft.style.fontId = template.fontId || TEMPLATE_DEFAULT_FONTS[template.id]
 }
 
 const router = useRouter()
@@ -603,28 +628,6 @@ function renderThumbnails() {
   }
 }
 
-function graphemes(value) {
-  const text = String(value || '')
-  if (!globalThis.Intl?.Segmenter) return Array.from(text)
-  return [...new Intl.Segmenter('zh-CN', { granularity: 'grapheme' }).segment(text)].map(item => item.segment)
-}
-
-function wrapText(ctx, text, maxWidth) {
-  const lines = []
-  String(text || '').split('\n').forEach(paragraph => {
-    let line = ''
-    for (const char of graphemes(paragraph)) {
-      const candidate = line + char
-      if (line && ctx.measureText(candidate).width > maxWidth) {
-        lines.push(line)
-        line = char
-      } else line = candidate
-    }
-    lines.push(line)
-  })
-  return lines.length ? lines : ['']
-}
-
 function line(ctx, x1, y1, x2, y2, color, width = 1, alpha = 1) {
   ctx.save()
   ctx.strokeStyle = color
@@ -721,13 +724,14 @@ function drawCard(canvas, snapshot) {
   const lineHeight = Math.round(contentSize * (mode === 'letter' ? 1.32 : 1.55))
   const contentTop = mode === 'letter' ? 425 : 500
   const contentBottom = 1215
-  const maxLines = Math.floor((contentBottom - contentTop) / lineHeight) + 1
 
   ctx.clearRect(0, 0, 1080, 1440)
   drawBackground(ctx, theme, templateId)
   ctx.fillStyle = theme.accent
+  ctx.font = '400 12px Georgia, serif'
+  ctx.fillText(OFFICIAL_UNIVERSITY_NAME, 150, 112)
   ctx.font = '600 19px Georgia, serif'
-  ctx.fillText('SCHOOL OF INTELLIGENT ENGINEERING', 150, 135)
+  ctx.fillText(OFFICIAL_SCHOOL_NAME, 150, 135)
   ctx.font = `400 17px ${fontFamily}`
   ctx.fillStyle = theme.muted
   ctx.fillText(dateText, 150, 174)
@@ -744,12 +748,18 @@ function drawCard(canvas, snapshot) {
 
   ctx.fillStyle = theme.ink
   ctx.font = `400 ${contentSize}px ${fontFamily}`
-  const textLines = wrapText(ctx, snapshot.content || '在这里写下你想对未来说的话。', 780)
-  const overflow = textLines.length > maxLines
-  const drawable = textLines.slice(0, maxLines)
+  ctx.textBaseline = 'top'
+  const layout = layoutTextBlock(ctx, snapshot.content || '在这里写下你想对未来说的话。', {
+    maxWidth: 780,
+    contentTop,
+    contentBottom,
+    lineHeight,
+    paragraphGap: Math.round(lineHeight * 0.58)
+  })
   ctx.textAlign = style.align === 'center' ? 'center' : 'left'
   const textX = style.align === 'center' ? 540 : 150
-  drawable.forEach((text, index) => ctx.fillText(text, textX, contentTop + index * lineHeight))
+  layout.lines.forEach(({ text, y }) => ctx.fillText(text, textX, y))
+  ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
 
   const footerY = 1260
@@ -773,7 +783,7 @@ function drawCard(canvas, snapshot) {
   ctx.fillStyle = theme.muted
   ctx.font = '400 13px Georgia, serif'
   ctx.fillText('THE FIRST PAGE OF A LONG STORY', 188, 1380)
-  return { overflow }
+  return { overflow: layout.overflow }
 }
 
 function schedulePreview() {
@@ -1111,5 +1121,7 @@ onBeforeUnmount(() => {
   .back-button { width: 42px; justify-content: center; padding: 0; }
   .site-logo { max-width: 136px; }
 }
+.font-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.font-card{min-height:78px;border:1px solid var(--future-border,#d5d7cf);border-radius:8px;background:#fff;padding:8px;text-align:left;color:var(--future-ink,#24332d);cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}.font-card:hover{transform:translateY(-1px);border-color:#8caaa0}.font-card.selected{border-color:#176b52;box-shadow:inset 0 0 0 1px #176b52,0 4px 12px rgba(23,107,82,.1)}.font-sample{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:21px;line-height:1.2;margin-bottom:7px}.font-card strong,.font-card small{display:block}.font-card strong{font-size:11px}.font-card small{font-size:9px;color:#748078;margin-top:2px}@media (max-width:560px){.font-grid{gap:5px}.font-card{padding:6px;min-height:72px}.font-sample{font-size:17px}}
+
 </style>
 
