@@ -69,7 +69,9 @@ function publicReviewRecords(user) {
 
 function checkSubmissionAvailability(req, res) {
   const locationId = Number(req.body?.locationId);
-  if (!Number.isInteger(locationId) || locationId <= 0 || !getLocation(locationId)) {
+  const location = Number.isInteger(locationId) && locationId > 0 ? getLocation(locationId) : null;
+  // 已下线（retired）的打卡点同样拒绝新提交，但历史记录不受影响
+  if (!location || location.retired) {
     res.status(400).json({ code: 1, message: '打卡地点无效' });
     return null;
   }
