@@ -16,6 +16,7 @@ const router = createRouter({
     { path: '/place', component: () => import('../pages/PlaceTest.vue') },
     { path: '/profile', redirect: '/myCheckins' },
     { path: '/myCheckins', component: () => import('../pages/myCheckins.vue') },
+    { path: '/points-rank', component: () => import('../pages/PointsRank.vue') },
     { path: '/rank', component: () => import('../pages/rank.vue') },
     { path: '/future-card', component: () => import('../pages/futureCard.vue') },
     { path: '/signin', component: () => import('../pages/signin.vue') },

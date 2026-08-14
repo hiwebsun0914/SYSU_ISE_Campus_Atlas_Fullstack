@@ -99,11 +99,11 @@
             </dl>
           </div>
           <div class="stat-strip" aria-label="个人概览">
-            <div>
+            <RouterLink class="stat-entry" to="/points-rank" aria-label="当前积分，查看积分排名">
               <span>POINTS</span>
               <strong>{{ userInfo.points || 0 }}</strong>
-              <small>当前积分</small>
-            </div>
+              <small>当前积分 · 查看排名</small>
+            </RouterLink>
             <div>
               <span>ROUTES</span>
               <strong>{{ completedRouteCount }}</strong>

@@ -1769,7 +1769,8 @@ body {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .stat-strip > div {
+  .stat-strip > div,
+  .stat-strip > a.stat-entry {
     padding: var(--space-xl) var(--space-lg);
     border-bottom: 0;
   }
@@ -2192,6 +2193,39 @@ body {
   content: "";
 }
 
+/* 入口形态（积分排名）：与相邻统计格保持同一网格语言，仅增加可点击提示 */
+.stat-strip > a.stat-entry {
+  position: relative;
+  min-height: 5rem;
+  padding: var(--space-md) var(--space-sm) var(--space-sm);
+  border-right: 1px solid var(--ise-border);
+  border-bottom: 1px solid var(--ise-border);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.stat-strip > a.stat-entry::before {
+  position: absolute;
+  top: 1rem;
+  right: 0.75rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  background: var(--ise-accent);
+  border: 1px solid var(--ise-ink);
+  border-radius: 50%;
+  content: "";
+}
+
+.stat-strip > a.stat-entry:hover {
+  background: var(--ise-soft);
+}
+
+.stat-strip > a.stat-entry small {
+  color: var(--ise-primary-dark);
+  font-weight: 600;
+}
+
 .stat-strip span,
 .stat-strip small,
 .stat-strip strong i {
@@ -2435,7 +2469,8 @@ body {
 
   .stat-strip > div,
   .stat-strip > div:nth-child(even),
-  .stat-strip > div:nth-last-child(-n + 2) {
+  .stat-strip > div:nth-last-child(-n + 2),
+  .stat-strip > a.stat-entry {
     padding: var(--space-md);
     border-right: 1px solid var(--ise-border);
     border-bottom: 0;

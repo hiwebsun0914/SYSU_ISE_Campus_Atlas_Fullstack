@@ -8,7 +8,7 @@ import { useRoute } from 'vue-router'
 import MobilePrimaryNav from '@/components/MobilePrimaryNav.vue'
 
 const route = useRoute()
-const primaryRoutes = new Set(['/', '/map', '/myCheckins'])
+const primaryRoutes = new Set(['/', '/map', '/myCheckins', '/points-rank'])
 const showPrimaryNav = computed(() => primaryRoutes.has(route.path))
 </script>
 <style>

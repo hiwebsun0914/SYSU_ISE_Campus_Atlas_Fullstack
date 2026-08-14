@@ -383,6 +383,38 @@ app.get('/rank/list', (_req, res) => {
   }
 });
 
+/* ========= 积分排行榜（仅昵称、头像、积分；不含真实姓名与学号） ========= */
+app.get('/rank/points', (_req, res) => {
+  try {
+    const users = readUsers();
+    const list = users
+      .map(u => ({
+        userId: u.id,
+        username: u.username || '匿名用户',
+        avatar: u.avatarKey ? toAvatarUrl(u.avatarKey) : (u.avatar || DEFAULT_AVATAR),
+        points: Number.isFinite(Number(u.points)) ? Number(u.points) : 0,
+        createdAt: u.createdAt
+      }))
+      .sort((a, b) =>
+        (b.points - a.points) ||
+        (Number(a.createdAt || 0) - Number(b.createdAt || 0)) ||
+        String(a.username).localeCompare(String(b.username), 'zh')
+      )
+      .map((it, idx) => ({
+        rank: idx + 1,
+        userId: it.userId,
+        username: it.username,
+        avatar: it.avatar,
+        points: it.points
+      }));
+
+    res.json({ code: 0, list });
+  } catch (e) {
+    console.error('[rank/points] error:', e);
+    res.status(500).json({ code: 1, message: '积分排名计算失败' });
+  }
+});
+
 /* ========= 严格登录 / 注册 / 账号存在性 ========= */
 
 // 是否存在该用户名（前端 safeCheckUserExists 用）
