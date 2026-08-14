@@ -1,0 +1,18 @@
+[Unit]
+Description=SYSU ISE Campus Atlas backend (weapp-auth-server)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/weapp-auth-server
+ExecStart=/usr/local/node/bin/node app.js
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+
+# 日志追加到现有 logs/server.out，与当前习惯保持一致
+StandardOutput=append:/root/weapp-auth-server/logs/server.out
+StandardError=append:/root/weapp-auth-server/logs/server.out
+
+[Install]
+WantedBy=multi-user.target
