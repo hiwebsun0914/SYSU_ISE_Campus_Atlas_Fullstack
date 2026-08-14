@@ -120,9 +120,28 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@import "../../../../tokens.css";
-
 .rank-page {
+  /* 设计令牌自包含：scoped 样式里的 @import 会被加上作用域属性而失效，不能直接引入 tokens.css */
+  --font-display: "Space Grotesk", "Noto Sans SC", sans-serif;
+  --font-body: "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "Noto Sans SC", monospace;
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4.5rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --radius-sm: 0.375rem;
+  --radius-pill: 999px;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
   --ise-ink: #0a2e3b;
   --ise-primary: #0d9488;
   --ise-primary-dark: #08766d;
