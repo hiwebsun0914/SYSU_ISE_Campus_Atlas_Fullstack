@@ -1,9 +1,10 @@
 <template>
-  <article v-if="place" class="checkin-card">
+  <article v-if="place" class="checkin-card" :class="{ 'checkin-card--scroll-all': scrollAll }">
     <button class="checkin-close" type="button" @click="emit('close')">
       <X :size="20" />
     </button>
 
+    <div class="checkin-scroll">
     <div
       class="checkin-cover"
       :style="coverStyle"
@@ -121,6 +122,7 @@
         </button>
       </div>
     </div>
+    </div>
   </article>
 </template>
 
@@ -138,6 +140,8 @@ const props = defineProps({
   geoDistance: { type: Number, default: null },
   /** 定位失败信息 */
   geoError: { type: String, default: '' },
+  /** 整体滚动模式：封面、名称、标签随内容一起滚动，打卡按钮跟随内容末尾（移动端手势底卡用） */
+  scrollAll: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['geo-checkin', 'close'])
@@ -182,6 +186,13 @@ const coverStyle = computed(() => {
   background: #ffffff;
   border-radius: 20px 20px 0 0;
   overflow: hidden;
+}
+
+.checkin-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .checkin-close {
@@ -424,5 +435,25 @@ const coverStyle = computed(() => {
   min-width: 90px;
   background: #eef2f3;
   color: #5a6b72;
+}
+
+/* ---- 整体滚动模式（移动端手势底卡）：封面/名称/标签随内容滚动，按钮跟在内容末尾 ---- */
+.checkin-card--scroll-all .checkin-scroll {
+  display: block;
+  overflow-y: auto;
+}
+
+.checkin-card--scroll-all .checkin-body {
+  overflow-y: visible;
+}
+
+.checkin-card--scroll-all .checkin-description {
+  flex: none;
+  overflow-y: visible;
+}
+
+.checkin-card--scroll-all .checkin-actions {
+  margin-top: 14px;
+  padding-bottom: 4px;
 }
 </style>

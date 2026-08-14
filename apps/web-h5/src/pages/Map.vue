@@ -75,6 +75,7 @@
       <div class="sheet-grabber" aria-hidden="true"><i></i></div>
       <CheckinCard
         v-bind="checkinCardProps"
+        scroll-all
         @geo-checkin="onGeoCheckin"
         @close="closeSheet"
       />
@@ -170,10 +171,9 @@ let lastConsumedDeepLink = ''
 
 /* ===== 移动端手势底卡状态 =====
  * sheetOffset：卡片顶端相对“全屏覆盖”位置向下平移的像素值。
- * 0 = 完全遮挡地图；openOffset（约 15% 高度）= 默认停留位；sheetHeight = 滑出屏幕。
- * 底部导航通过 uiChrome.sheetReveal 以相同时长/缓动反向联动。
+ * 0 = 完全遮挡地图（打开即停在此最高位）；sheetHeight = 滑出屏幕。
+ * 下拉超过阈值即退出屏幕；底部导航通过 uiChrome.sheetReveal 以相同时长/缓动反向联动。
  */
-const SHEET_OPEN_RATIO = 0.15
 const SHEET_CLOSE_RATIO = 0.34
 const SHEET_ANIM_MS = 300
 
@@ -191,8 +191,6 @@ let dragStartOffset = 0
 let dragEngaged = false
 let dragFromHandle = false
 
-const openOffsetPx = () => Math.round(sheetHeight.value * SHEET_OPEN_RATIO)
-
 const sheetStyle = computed(() => {
   if (!isMobileSheet.value) return {}
   return { transform: `translateY(${sheetOffset.value}px)` }
@@ -208,7 +206,7 @@ const checkinCardProps = computed(() => ({
 
 function syncChrome() {
   const h = sheetHeight.value || 1
-  const reveal = (h - sheetOffset.value) / Math.max(1, h - openOffsetPx())
+  const reveal = (h - sheetOffset.value) / h
   uiChrome.sheetReveal = Math.min(1, Math.max(0, reveal))
   uiChrome.sheetAnimating = sheetAnimating.value && !sheetDragging.value
 }
@@ -229,7 +227,7 @@ function openSheet() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         sheetAnimating.value = true
-        sheetOffset.value = openOffsetPx()
+        sheetOffset.value = 0 // 直接弹到最高位（完全遮挡地图）
       })
     })
   })
@@ -256,7 +254,7 @@ function onSheetTouchStart(event) {
   dragStartY = touch.clientY
   dragStartOffset = sheetOffset.value
   dragEngaged = false
-  dragFromHandle = Boolean(event.target.closest?.('.sheet-grabber, .checkin-cover'))
+  dragFromHandle = Boolean(event.target.closest?.('.sheet-grabber'))
 }
 
 function onSheetTouchMove(event) {
@@ -264,8 +262,8 @@ function onSheetTouchMove(event) {
   const touch = event.touches[0]
   const dy = touch.clientY - dragStartY
   if (!dragEngaged) {
-    // 抓手/封面区域始终可拖；内容区仅在滚动到顶部且向下拉时接管手势
-    const scrollable = event.target.closest?.('.checkin-body, .checkin-description')
+    // 抓手区域始终可拖；内容区（含封面，整体滚动）仅在滚动到顶部且向下拉时接管手势
+    const scrollable = event.target.closest?.('.checkin-scroll, .checkin-body, .checkin-description')
     const atTop = !scrollable || scrollable.scrollTop <= 0
     if (dragFromHandle || (dy > 6 && atTop)) {
       dragEngaged = true
@@ -292,10 +290,8 @@ function onSheetTouchEnd(event) {
   const current = sheetOffset.value
   if (current > h * SHEET_CLOSE_RATIO || dy > 120) {
     closeSheet() // 下拉足够多：退出屏幕
-  } else if (current < openOffsetPx() * 0.55 || dy < -72) {
-    sheetOffset.value = 0 // 上推超过阈值：全屏覆盖地图
   } else {
-    sheetOffset.value = openOffsetPx() // 回弹到默认停留位
+    sheetOffset.value = 0 // 其余情况：回到最高位（完全遮挡地图）
   }
   dragStartY = null
   dragEngaged = false
@@ -1001,7 +997,7 @@ onBeforeUnmount(() => {
 
 /* ===== 移动端手势底卡（<700px 才渲染 .place-sheet--mobile） =====
  * 卡片高度撑满 header 以下全部空间，用 translateY 控制位置：
- * 默认停留约 85% 可见，可继续上推至完全遮挡地图，下拉退出屏幕。 */
+ * 打开即上滑到最高位完全遮挡地图，下拉退出屏幕。 */
 .place-sheet--mobile {
   top: calc(56px + env(safe-area-inset-top, 0px));
   bottom: 0;
