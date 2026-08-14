@@ -696,7 +696,7 @@
           <div class="admin-section-head">
             <div>
               <h2 id="users-title">用户权限</h2>
-              <p>超级管理员可以把特定账号设为审核员；审核员不能提权，也不能修改受保护账号。</p>
+              <p>超级管理员可以查看全部注册账号的资料、把特定账号设为审核员，或删除违规账号；审核员不能提权、删除，也不能修改受保护账号。</p>
             </div>
             <span>{{ adminUserCount }} 位管理员</span>
           </div>
@@ -728,6 +728,7 @@
                 <div class="admin-user-copy">
                   <strong>{{ user.username }}</strong>
                   <span>{{ user.realName || '未填写姓名' }} · {{ user.studentId || ('账号 ' + user.id) }}</span>
+                  <span>积分 {{ user.points ?? 0 }} · 已解锁 {{ user.unlocked ?? 0 }} 处 · 注册 {{ user.createdAt ? formatTime(user.createdAt) : '未记录' }}</span>
                 </div>
                 <span :class="['admin-role', 'role-' + user.role]">{{ userRoleLabel(user.role) }}</span>
                 <button
@@ -751,6 +752,16 @@
                   撤销权限
                 </button>
                 <span v-else class="admin-protected">受保护</span>
+                <button
+                  v-if="canDeleteUser(user)"
+                  class="admin-button admin-button-danger"
+                  type="button"
+                  :disabled="isBusy('delete-' + user.id)"
+                  @click="openUserDelete(user)"
+                >
+                  <Trash2 :size="17" aria-hidden="true" />
+                  删除账号
+                </button>
               </article>
             </div>
           </template>
@@ -827,6 +838,32 @@
       </form>
     </dialog>
 
+    <dialog ref="userDeleteDialog" class="admin-dialog" @close="resetUserDelete" @click="closeDialogBackdrop">
+      <form @submit.prevent="confirmUserDelete">
+        <div class="admin-dialog-head">
+          <div>
+            <span>账号管理</span>
+            <h2>删除账号「{{ deleteState.user?.username || '' }}」</h2>
+          </div>
+          <button type="button" aria-label="关闭删除账号窗口" @click="userDeleteDialog?.close()"><X :size="20" aria-hidden="true" /></button>
+        </div>
+        <p class="admin-dialog-target">
+          {{ deleteState.user?.realName || '未填写姓名' }} · {{ deleteState.user?.studentId || ('账号 ' + (deleteState.user?.id || '')) }}
+        </p>
+        <p class="admin-dialog-warning">
+          此操作不可撤销。删除后该账号将立即无法登录，其打卡进度、投稿作品、投出的票与问题反馈会一并清除。
+        </p>
+        <small :class="{ error: deleteState.error }">{{ deleteState.error || '请确认该账号确实需要删除。' }}</small>
+        <div class="admin-dialog-actions">
+          <button class="admin-button admin-button-quiet" type="button" @click="userDeleteDialog?.close()">取消</button>
+          <button class="admin-button admin-button-danger" type="submit" :disabled="deleteState.deleting">
+            <Trash2 :size="17" aria-hidden="true" />
+            {{ deleteState.deleting ? '正在删除' : '确认删除' }}
+          </button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog ref="previewDialog" class="admin-preview-dialog" aria-label="图片预览" @close="previewState.url = ''" @click="closeDialogBackdrop">
       <div>
         <img v-if="previewState.url" :src="previewState.url" :alt="previewState.label" />
@@ -873,6 +910,7 @@ import {
   Search,
   ShieldCheck,
   Star,
+  Trash2,
   TriangleAlert,
   Trophy,
   UserCog,
@@ -975,6 +1013,8 @@ const userSearch = ref('')
 
 const rejectState = reactive({ kind: '', item: null, note: '', touched: false, error: '', submitting: false })
 const previewState = reactive({ url: '', label: '' })
+const userDeleteDialog = ref(null)
+const deleteState = reactive({ user: null, error: '', deleting: false })
 const toast = reactive({ message: '', tone: 'error', retry: null })
 let toastTimer = 0
 let toastRemaining = 0
@@ -1381,6 +1421,51 @@ async function changeUserRole(user, role) {
   } finally {
     setBusy(busyId, false)
   }
+}
+
+/* ===== 删除账号（仅超级管理员；本人与受保护账号不可删） ===== */
+function canDeleteUser(user) {
+  if (!canManageRoles.value || !user) return false
+  if (user.protectedOwner || user.role === 'owner') return false
+  return String(user.id) !== String(dashboard.currentAdmin?.id)
+}
+
+function openUserDelete(user) {
+  deleteState.user = user
+  deleteState.error = ''
+  deleteState.deleting = false
+  userDeleteDialog.value?.showModal()
+}
+
+async function confirmUserDelete() {
+  const user = deleteState.user
+  if (!user || deleteState.deleting) return
+  deleteState.deleting = true
+  deleteState.error = ''
+  setBusy('delete-' + user.id, true)
+  try {
+    const payload = await api(`/admin/users/${encodeURIComponent(user.id)}`, 'DELETE')
+    userDeleteDialog.value?.close()
+    users.value = users.value.filter(item => String(item.id) !== String(user.id))
+    await fetchDashboard()
+    const removed = payload.data || {}
+    const extras = [
+      removed.removedSubmissions ? `${removed.removedSubmissions} 件投稿` : '',
+      removed.removedFeedback ? `${removed.removedFeedback} 条反馈` : ''
+    ].filter(Boolean).join('、')
+    showMsg(payload.message + (extras ? `，并清理 ${extras}` : ''))
+  } catch (error) {
+    deleteState.error = error.message
+  } finally {
+    deleteState.deleting = false
+    setBusy('delete-' + user.id, false)
+  }
+}
+
+function resetUserDelete() {
+  deleteState.user = null
+  deleteState.error = ''
+  deleteState.deleting = false
 }
 
 function openReject(kind, item) {

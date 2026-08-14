@@ -2018,3 +2018,11 @@ body {
     justify-content: flex-end;
   }
 }
+
+/* 删除账号等破坏性操作的醒目说明 */
+.admin-dialog-warning {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-inline-start: var(--rule) solid var(--color-danger);
+}
