@@ -20,51 +20,13 @@
           <small>Personal Lifestyle Atlas for Campus Exploration</small>
         </span>
       </div>
-      <div v-if="stage !== 'intro' && stage !== 'result'" class="nav-progress" aria-live="polite">
+      <div v-if="stage === 'questions'" class="nav-progress" aria-live="polite">
         <div><span>FIELD LOG</span><b>{{ String(questionIndex + 1).padStart(2, '0') }}/{{ questions.length }}</b></div>
         <div class="progress-track"><i :style="{ width: `${progressPercent}%` }"></i></div>
       </div>
     </header>
 
-    <section v-if="stage === 'intro'" class="intro-shell">
-      <article class="intro-copy">
-        <div class="intro-coordinates" aria-hidden="true">
-          <span>N23°05'56.4"</span><span>E113°17'58.8"</span>
-        </div>
-        <h1><span>P · L · A · C · E</span></h1>
-        <p class="intro-full-name">Personal Lifestyle Atlas for Campus Exploration</p>
-        <p class="intro-lead">找到你在校园里的行动方式：怎么推进事情、怎么和人连接，又会被什么吸引。</p>
-
-        <div class="intro-actions">
-          <button class="primary-action" type="button" @click="startTest">
-            <span>开始测试</span>
-            <ArrowUpRight :size="19" aria-hidden="true" />
-          </button>
-          <p class="intro-duration">约 3 分钟</p>
-        </div>
-        <div class="route-line" aria-hidden="true"><i></i><i></i><i></i></div>
-      </article>
-
-      <aside class="specimen-card" aria-label="结果卡示意">
-        <div class="specimen-topline"><span>TYPE PREVIEW</span><span>PLACE / 01</span></div>
-        <div class="specimen-map" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div class="specimen-visual" aria-hidden="true">
-          <img :src="growVisual" alt="">
-          <img :src="wikiVisual" alt="">
-        </div>
-        <div class="specimen-code">GROW</div>
-        <div class="specimen-cn">长期积累型</div>
-        <p>这条技能树不急着满级，<br>但会一直点下去。</p>
-        <div class="specimen-subtype">
-          <small>EXPLORATION STYLE</small>
-          <b>WIKI · 维基百科型</b>
-          <span>一栋楼叫什么、以前做什么，会直接决定它在你眼里的清晰度。</span>
-        </div>
-        <div class="specimen-seal"><span></span>LIVE SAMPLE</div>
-      </aside>
-    </section>
-
-    <section v-else-if="stage === 'questions'" class="question-shell">
+    <section v-if="stage === 'questions'" class="question-shell">
       <div class="question-panel">
         <aside class="question-meta">
           <p class="panel-label">FIELD LOG / 2026</p>
@@ -247,7 +209,7 @@ import {
 } from '@/data/placeTest'
 
 const router = useRouter()
-const stage = ref('intro')
+const stage = ref('questions')
 const questionIndex = ref(0)
 const answers = ref(Array(questions.length).fill(null))
 const result = ref(null)
@@ -319,6 +281,7 @@ onMounted(() => {
   document.title = 'PLACE｜你的校园类型'
   window.scrollTo({ top: 0, left: 0 })
   window.addEventListener('keydown', handleDialogKeydown)
+  nextTick(() => questionHeading.value?.focus({ preventScroll: true }))
 })
 
 onBeforeUnmount(() => {
@@ -329,15 +292,6 @@ onBeforeUnmount(() => {
 function scrollTop() {
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' })
-}
-
-function startTest() {
-  stage.value = 'questions'
-  questionIndex.value = 0
-  nextTick(() => {
-    scrollTop()
-    questionHeading.value?.focus({ preventScroll: true })
-  })
 }
 
 function selectAnswer(index) {
@@ -357,12 +311,9 @@ function selectAnswer(index) {
 }
 
 function previousStep() {
-  if (stage.value === 'questions') {
-    if (questionIndex.value === 0) stage.value = 'intro'
-    else {
-      questionIndex.value -= 1
-      nextTick(() => questionHeading.value?.focus({ preventScroll: true }))
-    }
+  if (stage.value === 'questions' && questionIndex.value > 0) {
+    questionIndex.value -= 1
+    nextTick(() => questionHeading.value?.focus({ preventScroll: true }))
   }
   scrollTop()
 }
@@ -498,7 +449,7 @@ function restart() {
   result.value = null
   resultSaveState.value = 'idle'
   questionIndex.value = 0
-  stage.value = 'intro'
+  stage.value = 'questions'
   scrollTop()
 }
 
@@ -859,18 +810,6 @@ async function nativeShare() {
 .nav-progress b { color: var(--ink); }
 .progress-track { height: 5px; overflow: hidden; border-radius: 999px; background: var(--border); }
 .progress-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transform-origin: left center; transition: width .32s cubic-bezier(.16,1,.3,1); }
-.intro-shell {
-  position: relative;
-  z-index: 1;
-  width: min(1240px, calc(100% - 48px));
-  min-height: calc(100vh - 116px);
-  margin: 0 auto;
-  padding: 40px 0 72px;
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
-  align-items: stretch;
-}
 
 .eyebrow,
 .panel-label {
@@ -880,37 +819,6 @@ async function nativeShare() {
   letter-spacing: .04em;
   text-transform: uppercase;
 }
-
-.intro-copy {
-  position: relative;
-  grid-column: span 7;
-  min-height: 610px;
-  padding: clamp(32px, 4.5vw, 64px);
-  overflow: hidden;
-  border-radius: 34px 10px 34px 10px;
-  color: #fff;
-  background-color: var(--ink);
-  background-image:
-    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
-  background-size: 44px 44px;
-  animation: cardIn .46s cubic-bezier(.16,1,.3,1) both;
-}
-.intro-copy::after { content: ''; position: absolute; right: -120px; bottom: -160px; width: 430px; height: 430px; border: 1px solid rgba(199,242,74,.26); border-radius: 50%; box-shadow: 0 0 0 54px rgba(199,242,74,.035), 0 0 0 108px rgba(199,242,74,.025); pointer-events: none; }
-.intro-coordinates { position: absolute; top: 28px; right: 30px; display: grid; gap: 5px; color: rgba(255,255,255,.5); font: 700 9px/1 var(--technical); text-align: right; }
-.intro-copy h1 {
-  margin: 44px 0 14px;
-  font: 800 clamp(64px, 8vw, 112px)/.82 var(--display);
-  letter-spacing: -.075em;
-}
-.intro-copy h1 span { display: block; }
-.intro-full-name { margin: 0; color: var(--accent); font: 800 11px/1.35 var(--technical); letter-spacing: .035em; }
-.intro-lead { max-width: 620px; margin: 28px 0 0; color: rgba(255,255,255,.86); font-size: clamp(18px, 2vw, 25px); font-weight: 650; line-height: 1.55; letter-spacing: -.02em; }
-.intro-actions { position: relative; z-index: 2; margin-top: 46px; display: flex; align-items: center; gap: 24px; }
-.intro-duration { margin: 0; color: rgba(255,255,255,.68); font: 700 12px/1 var(--technical); letter-spacing: .04em; }
-.route-line { position: absolute; left: 64px; right: 64px; bottom: 30px; height: 1px; background: rgba(255,255,255,.17); }
-.route-line i { position: absolute; top: 50%; width: 10px; height: 10px; border: 2px solid var(--ink); border-radius: 50%; background: var(--accent); transform: translate(-50%,-50%); box-shadow: 0 0 0 1px rgba(199,242,74,.5); }
-.route-line i:nth-child(1) { left: 0; }.route-line i:nth-child(2) { left: 48%; }.route-line i:nth-child(3) { left: 100%; }
 
 .primary-action {
   min-width: 182px;
@@ -928,38 +836,6 @@ async function nativeShare() {
 .primary-action:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .primary-action:active { transform: scale(.99); }
 .primary-action span { font-size: 16px; font-weight: 600; }
-
-.specimen-card {
-  position: relative;
-  grid-column: span 5;
-  min-height: 610px;
-  padding: 32px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 10px 34px 10px 34px;
-  color: var(--text);
-  background: rgba(255,255,255,.86);
-  animation: cardIn .46s .08s cubic-bezier(.16,1,.3,1) both;
-}
-.specimen-topline { position: relative; z-index: 3; display: flex; justify-content: space-between; color: var(--primary-dark); font: 800 10px/1 var(--technical); }
-.specimen-map { position: absolute; inset: 0; opacity: .42; background-image: linear-gradient(rgba(13,148,136,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(13,148,136,.08) 1px, transparent 1px); background-size: 32px 32px; }
-.specimen-map::after { content:''; position:absolute; right:-70px; top:54px; width:230px; height:230px; border:1px solid rgba(13,148,136,.28); border-radius:50%; box-shadow:0 0 0 38px rgba(13,148,136,.045),0 0 0 76px rgba(13,148,136,.03); }
-.specimen-map i { position:absolute; width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px var(--ink); }
-.specimen-map i:nth-child(1){right:77px;top:110px}.specimen-map i:nth-child(2){right:152px;top:182px}.specimen-map i:nth-child(3){right:92px;top:265px}
-.specimen-visual { position: absolute; z-index: 1; right: -18px; top: 92px; width: 58%; height: 330px; pointer-events: none; }
-.specimen-visual img { position: absolute; right: 0; width: 100%; height: 100%; object-fit: contain; }
-.specimen-visual img:first-child { opacity: .32; transform: translate(6%,-4%) scale(.92); }
-.specimen-visual img:last-child { filter: drop-shadow(0 14px 18px rgba(10,46,59,.16)); }
-.specimen-code { position: relative; z-index: 2; margin-top: 88px; font: 800 clamp(64px, 7vw, 96px)/.88 var(--display); letter-spacing: -.07em; color: var(--ink); }
-.specimen-cn { position: relative; z-index: 2; margin-top: 10px; font-size: 25px; font-weight: 800; }
-.specimen-card > p { position: relative; z-index: 2; max-width: 250px; margin: 24px 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
-.specimen-subtype { position: absolute; z-index: 3; left: 30px; right: 30px; bottom: 30px; padding: 21px; border: 1px solid var(--border); border-radius: 20px 6px 20px 6px; color: var(--text); background: rgba(243,247,245,.94); }
-.specimen-subtype small, .specimen-subtype b, .specimen-subtype span { display: block; }
-.specimen-subtype small { color: var(--primary-dark); font: 800 9px/1 var(--technical); }
-.specimen-subtype b { margin-top: 10px; font-size: 18px; }
-.specimen-subtype span { margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.55; }
-.specimen-seal { position: absolute; z-index:3; right: 24px; top: 64px; padding:7px 10px; display:flex; align-items:center; gap:7px; border:1px solid var(--border); border-radius:999px; color:var(--muted); background:#fff; font:800 9px/1 var(--technical); }
-.specimen-seal span { width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--ink); }
 
 .question-shell {
   position: relative;
@@ -1109,10 +985,7 @@ async function nativeShare() {
 button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 5px var(--ink); }
 
 @media (max-width: 1023px) {
-  .place-nav,.intro-shell,.question-shell,.result-shell,.place-footer { width:min(100% - 32px,1240px); }
-  .intro-copy { grid-column:span 7;padding:38px; }
-  .specimen-card { grid-column:span 5;padding:26px; }
-  .intro-actions { align-items:flex-start;flex-direction:column; }
+  .place-nav,.question-shell,.result-shell,.place-footer { width:min(100% - 32px,1240px); }
   .question-meta { grid-column:span 4;padding:24px; }
   .question-card { grid-column:span 8;padding:30px; }
   .answer-list { grid-template-columns:1fr; }
@@ -1121,8 +994,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; bo
 }
 
 @media (max-width: 899px) {
-  .intro-shell,.question-shell,.result-shell { display:block; }
-  .specimen-card,.result-sidebar { margin-top:16px; }
+  .question-shell,.result-shell { display:block; }
+  .result-sidebar { margin-top:16px; }
   .question-panel { display:block; }
   .question-meta { min-height:auto; }
   .question-card { min-height:auto;border-top:1px solid var(--border);border-left:0; }
@@ -1137,48 +1010,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; bo
   .brand-lockup small { display:block;font-size:7px;white-space:nowrap; }
   .brand-mark { width:38px;height:38px; }
   .nav-progress { display:none; }
-  .intro-shell,.question-shell,.result-shell { width:calc(100% - 24px);padding:28px 0 56px;display:block; }
-  .intro-shell { min-height:auto;padding-bottom:24px; }
-  .intro-copy { min-height:540px;padding:28px;border-radius:26px 8px 26px 8px; }
-  .intro-coordinates { top:22px;right:22px; }
-  .intro-coordinates { display:none; }
-  .intro-copy h1 { margin-top:46px;font-size:clamp(32px,10vw,50px);letter-spacing:-.04em; }
-  .intro-lead { font-size:18px; }
-  .intro-actions { margin-top:34px; }
-  .intro-duration { font-size:11px; }
-  .route-line { left:28px;right:28px;bottom:22px; }
-  .specimen-card {
-    position:absolute;
-    right:14px;
-    top:348px;
-    bottom:auto;
-    z-index:4;
-    width:48%;
-    min-height:202px;
-    margin:0;
-    padding:14px;
-    border-color:rgba(199,242,74,.28);
-    border-radius:5px 20px 5px 20px;
-    color:#fff;
-    background:rgba(8,48,60,.82);
-    box-shadow:inset 0 1px rgba(255,255,255,.05),0 14px 28px rgba(2,22,29,.18);
-    backdrop-filter:blur(8px);
-  }
-  .specimen-topline { color:var(--accent);font-size:7px; }
-  .specimen-map { opacity:.34;background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:20px 20px; }
-  .specimen-map::after { right:-54px;top:36px;width:150px;height:150px;border-color:rgba(199,242,74,.22);box-shadow:0 0 0 24px rgba(199,242,74,.025),0 0 0 48px rgba(199,242,74,.018); }
-  .specimen-map i { display:none; }
-  .specimen-code { margin-top:36px;color:#fff;font-size:32px;letter-spacing:.01em; }
-  .specimen-cn { margin-top:4px;color:rgba(255,255,255,.82);font-size:13px; }
-  .specimen-card > p { display:none; }
-  .specimen-visual { right:-4px;top:34px;width:62%;height:118px; }
-  .specimen-visual img:first-child { opacity:.12; }
-  .specimen-visual img:last-child { filter:drop-shadow(0 10px 14px rgba(0,0,0,.28)); }
-  .specimen-subtype { left:10px;right:10px;bottom:10px;padding:9px 10px;border-color:rgba(255,255,255,.12);border-radius:10px 3px 10px 3px;color:#fff;background:rgba(255,255,255,.06); }
-  .specimen-subtype small { color:var(--accent);font-size:6px; }
-  .specimen-subtype b { margin-top:5px;color:#fff;font-size:10px; }
-  .specimen-subtype span { display:none; }
-  .specimen-seal { display:none; }
+  .question-shell,.result-shell { width:calc(100% - 24px);padding:28px 0 56px;display:block; }
   .question-panel { border-radius:24px 7px 24px 7px; }
   .question-meta { min-height:auto;padding:20px 22px 18px;display:grid;grid-template-columns:1fr auto;gap:7px 18px; }
   .question-meta .panel-label { grid-column:1; }
@@ -1220,9 +1052,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; bo
 }
 
 @media (max-width: 479px) {
-  .intro-copy { min-height:560px;padding:24px; }
-  .intro-copy h1 { font-size:clamp(29px,9.2vw,42px); }
-  .specimen-card { right:10px;top:348px;bottom:auto;width:49%;min-height:202px; }
   .question-card { padding:20px; }
   .question-card h2 { font-size:25px; }
   .answer-option svg { display:none; }
