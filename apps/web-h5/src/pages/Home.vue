@@ -276,7 +276,7 @@ const SLOT_OFFSET_X = 14
 const SLOT_OFFSET_Y = 7
 const SLOT_ROTATE = 2.2
 const SLOT_SCALE = 0.035
-const EXIT_ANIMATION_MS = 360
+const EXIT_ANIMATION_MS = 300
 
 const deckOrder = ref([...allCards])
 const deckCards = computed(() => deckOrder.value)
@@ -284,6 +284,9 @@ const frontKey = computed(() => deckOrder.value[0].key)
 const dragging = ref(false)
 const dragX = ref(0)
 const exitingKey = ref(null)
+// 飞出动画起始时的拖拽偏移：牌序在飞出瞬间就轮换，dragX 必须立即归零，
+// 所以飞出牌的位置用这份快照维持
+const exitDragX = ref(0)
 const reducedMotion = typeof window !== 'undefined'
   && typeof window.matchMedia === 'function'
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -337,7 +340,7 @@ function isFront(card) {
 function cardStyle(card) {
   if (exitingKey.value === card.key) {
     return {
-      transform: `translate(${dragX.value - 360}px, ${Math.abs(dragX.value) * 0.05 - 40}px) rotate(-16deg) scale(.96)`,
+      transform: `translate(${exitDragX.value - 360}px, ${Math.abs(exitDragX.value) * 0.05 - 40}px) rotate(-16deg) scale(.96)`,
       opacity: 0,
       zIndex: 60,
     }
@@ -372,12 +375,15 @@ function sendToBack(card) {
     rotateDeck()
     return
   }
-  // dragX 保持释放时的值，让飞出动画从手指位置继续，无回弹顿挫
+  // 重叠动画：点击瞬间立即轮换牌序，下一张牌在旧顶牌飞出的同时提升到顶位，
+  // 不再等飞出动画播完，消除连续切换时“顿一下”的空档
   exitingKey.value = card.key
+  exitDragX.value = dragX.value
+  dragX.value = 0
+  rotateDeck()
   window.setTimeout(() => {
     exitingKey.value = null
-    dragX.value = 0
-    rotateDeck()
+    exitDragX.value = 0
   }, EXIT_ANIMATION_MS)
 }
 
