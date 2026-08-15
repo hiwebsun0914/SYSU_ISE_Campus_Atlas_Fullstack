@@ -19,6 +19,12 @@
     </button>
 
     <!-- 展开面板 -->
+    <div
+      v-if="expanded"
+      class="route-panel-overlay"
+      aria-hidden="true"
+      @click="expanded = false"
+    ></div>
     <aside v-if="expanded" class="route-panel">
       <div class="route-panel-header">
         <span class="route-panel-title">推荐路线</span>
@@ -133,8 +139,26 @@ function onHiddenClick() {
   max-height: 60vh;
 }
 
+/* ---- 移动端点击外部收起的透明遮罩 ---- */
+.route-panel-overlay {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .route-panel-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: transparent;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 /* ---- 隐藏打卡点入口浮动按钮（位于推荐路线上方） ---- */
 .extra-fab {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -185,6 +209,8 @@ function onHiddenClick() {
 
 /* ---- 展开面板 ---- */
 .route-panel {
+  position: relative;
+  z-index: 1;
   width: 220px;
   max-height: 60vh;
   background: #ffffff;
