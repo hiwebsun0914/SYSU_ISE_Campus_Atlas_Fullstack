@@ -387,7 +387,7 @@ app.get('/rank/list', (_req, res) => {
 app.get('/rank/points', (_req, res) => {
   try {
     const users = readUsers();
-    const list = users
+    const sorted = users
       .filter(u => effectiveRole(u) !== 'owner') // 超管不参与积分排名
       .map(u => ({
         userId: u.id,
@@ -400,14 +400,23 @@ app.get('/rank/points', (_req, res) => {
         (b.points - a.points) ||
         (Number(a.createdAt || 0) - Number(b.createdAt || 0)) ||
         String(a.username).localeCompare(String(b.username), 'zh')
-      )
-      .map((it, idx) => ({
-        rank: idx + 1,
+      );
+
+    // 竞赛制排名：同分并列同名次，下一个不同分跳号（如 1、1、3）
+    let lastPoints = null;
+    let lastRank = 0;
+    const list = sorted.map((it, idx) => {
+      const rank = (lastPoints !== null && it.points === lastPoints) ? lastRank : idx + 1;
+      lastPoints = it.points;
+      lastRank = rank;
+      return {
+        rank,
         userId: it.userId,
         username: it.username,
         avatar: it.avatar,
         points: it.points
-      }));
+      };
+    });
 
     res.json({ code: 0, list });
   } catch (e) {
