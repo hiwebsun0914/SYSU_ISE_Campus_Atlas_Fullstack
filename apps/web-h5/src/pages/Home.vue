@@ -199,18 +199,18 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MapPinned, Navigation, Trophy } from '@lucide/vue'
 import { getPlaceById } from '@/data/campusPlaces'
 import routes from '@/data/routes'
 import { checkedSet, fetchUserProgress, getRouteCheckedCount } from '@/stores/userProgress'
-import spriteBase from '@/assets/place/subtypes/base.webp'
-import spriteLens from '@/assets/place/subtypes/lens.webp'
-import spriteMaps from '@/assets/place/subtypes/maps.webp'
-import spriteRun from '@/assets/place/subtypes/run.webp'
-import spriteTree from '@/assets/place/subtypes/tree.webp'
-import spriteWiki from '@/assets/place/subtypes/wiki.webp'
+import spriteBase from '@/assets/home/sprite-base.webp'
+import spriteLens from '@/assets/home/sprite-lens.webp'
+import spriteMaps from '@/assets/home/sprite-maps.webp'
+import spriteRun from '@/assets/home/sprite-run.webp'
+import spriteTree from '@/assets/home/sprite-tree.webp'
+import spriteWiki from '@/assets/home/sprite-wiki.webp'
 import framePortrait from '@/assets/gallery/frame-portrait.webp'
 import frameLandscape from '@/assets/gallery/frame-landscape.webp'
 import frameSquare from '@/assets/gallery/frame-square.webp'
@@ -315,6 +315,13 @@ function stopSpriteLoop() {
     spriteTimer = null
   }
 }
+
+// 轮播只在 ISETI 是顶牌且不在拖拽时运行，避免与卡牌切换动画撞车
+const isetiActive = computed(() => frontKey.value === 'iseti' && !dragging.value)
+watch(isetiActive, (active) => {
+  if (active) startSpriteLoop()
+  else stopSpriteLoop()
+}, { immediate: true })
 
 let dragStartX = 0
 let dragMoved = false
@@ -470,7 +477,6 @@ onMounted(() => {
     const saved = localStorage.getItem(DECK_FRONT_STORAGE_KEY)
     if (saved && allCards.some(card => card.key === saved)) jumpToCard(saved)
   } catch { /* 忽略存储异常 */ }
-  startSpriteLoop()
   loadDashboard()
 })
 
@@ -552,6 +558,7 @@ onBeforeUnmount(() => {
   touch-action: pan-y;
   box-shadow: 0 10px 28px rgba(10,46,59,.08);
   transition: transform .38s cubic-bezier(.2,.75,.25,1), opacity .3s ease, box-shadow .3s ease;
+  will-change: transform;
 }
 .deck-card.is-front { box-shadow: 0 22px 54px rgba(10,46,59,.14); }
 .deck-card.is-dragging { transition: none; cursor: grabbing; }
@@ -566,7 +573,8 @@ onBeforeUnmount(() => {
 .deck-desc { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
 
 /* 校园图鉴：白纸地图 */
-.map-grid { position: absolute; inset: -16px; opacity: .5; background-image: linear-gradient(rgba(13,148,136,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(13,148,136,.07) 1px,transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(to bottom, #000, transparent 78%); animation: map-drift 8s ease-in-out infinite; }
+.map-grid { position: absolute; inset: -16px; opacity: .5; background-image: linear-gradient(rgba(13,148,136,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(13,148,136,.07) 1px,transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(to bottom, #000, transparent 78%); }
+.deck-card-atlas.is-front .map-grid { animation: map-drift 8s ease-in-out infinite; }
 .atlas-route-deco { position: absolute; right: -14px; bottom: 64px; width: 68%; opacity: .8; pointer-events: none; }
 .atlas-progress { margin-top: 26px; }
 .atlas-progress-number { display: flex; align-items: baseline; gap: 7px; }
