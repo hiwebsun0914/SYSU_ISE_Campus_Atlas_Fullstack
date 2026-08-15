@@ -33,9 +33,8 @@
           class="deck"
           tabindex="0"
           role="group"
-          aria-label="功能入口卡牌堆，左右滑动或使用左右方向键切换卡牌"
+          aria-label="功能入口卡牌堆，向左滑动或按左方向键切换下一张"
           @keydown.left.prevent="cycleDeck"
-          @keydown.right.prevent="bringForward"
         >
           <div class="deck-sizer" aria-hidden="true"></div>
 
@@ -200,7 +199,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { MapPinned, Navigation, Trophy } from '@lucide/vue'
 import { getPlaceById } from '@/data/campusPlaces'
@@ -285,7 +284,6 @@ const frontKey = computed(() => deckOrder.value[0].key)
 const dragging = ref(false)
 const dragX = ref(0)
 const exitingKey = ref(null)
-const enteringKey = ref(null)
 const reducedMotion = typeof window !== 'undefined'
   && typeof window.matchMedia === 'function'
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -332,14 +330,7 @@ function isFront(card) {
 function cardStyle(card) {
   if (exitingKey.value === card.key) {
     return {
-      transform: 'translate(-135%, -10%) rotate(-16deg) scale(.96)',
-      opacity: 0,
-      zIndex: 60,
-    }
-  }
-  if (enteringKey.value === card.key) {
-    return {
-      transform: 'translate(135%, -10%) rotate(16deg) scale(.96)',
+      transform: `translate(${dragX.value - 360}px, ${Math.abs(dragX.value) * 0.05 - 40}px) rotate(-16deg) scale(.96)`,
       opacity: 0,
       zIndex: 60,
     }
@@ -368,41 +359,28 @@ function rotateDeck() {
 }
 
 function sendToBack(card) {
-  if (exitingKey.value || enteringKey.value || !isFront(card)) return
-  dragX.value = 0
+  if (exitingKey.value || !isFront(card)) return
   if (reducedMotion) {
+    dragX.value = 0
     rotateDeck()
     return
   }
+  // dragX 保持释放时的值，让飞出动画从手指位置继续，无回弹顿挫
   exitingKey.value = card.key
   window.setTimeout(() => {
     exitingKey.value = null
+    dragX.value = 0
     rotateDeck()
   }, EXIT_ANIMATION_MS)
 }
 
 function cycleDeck() {
-  if (exitingKey.value || enteringKey.value) return
+  if (exitingKey.value) return
   sendToBack(deckOrder.value[0])
 }
 
-async function bringForward() {
-  if (exitingKey.value || enteringKey.value) return
-  const lastCard = deckOrder.value.at(-1)
-  deckOrder.value = [lastCard, ...deckOrder.value.slice(0, -1)]
-  persistFront()
-  if (reducedMotion) return
-  enteringKey.value = lastCard.key
-  await nextTick()
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      enteringKey.value = null
-    })
-  })
-}
-
 function jumpToCard(key) {
-  if (exitingKey.value || enteringKey.value) return
+  if (exitingKey.value) return
   const index = deckOrder.value.findIndex(item => item.key === key)
   if (index <= 0) return
   deckOrder.value = [...deckOrder.value.slice(index), ...deckOrder.value.slice(0, index)]
@@ -421,7 +399,7 @@ function onDeckPointerMove(event, card) {
   if (!dragging.value || !isFront(card)) return
   const dx = event.clientX - dragStartX
   if (Math.abs(dx) > 8) dragMoved = true
-  dragX.value = Math.max(-180, Math.min(180, dx))
+  dragX.value = Math.max(-180, Math.min(24, dx))
 }
 
 function onDeckPointerUp(event, card) {
@@ -433,9 +411,6 @@ function onDeckPointerUp(event, card) {
   const width = event.currentTarget.offsetWidth || 300
   if (dragX.value < -width * 0.35) {
     sendToBack(card)
-  } else if (dragX.value > width * 0.35) {
-    dragX.value = 0
-    bringForward()
   } else {
     dragX.value = 0
   }
