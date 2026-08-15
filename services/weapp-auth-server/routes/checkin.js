@@ -60,11 +60,23 @@ function publicReviewRecords(user) {
       locationId: Number(item.locationId),
       status: item.status,
       note: item.note || '',
+      photo: item.photo || (item.key ? toUrl(item.key) : ''),
       reviewedAt: Number(item.reviewedAt || 0),
       appealStatus: item.appealStatus || '',
       appealReason: item.appealReason || '',
       appealedAt: Number(item.appealedAt || 0)
     }));
+}
+
+/** 待审核打卡记录的公开视图（含照片直链，供“我的投稿记录”页展示） */
+function publicPendingCheckins(user) {
+  return user.pendingCheckins.map(item => ({
+    locationId: Number(item.locationId),
+    photo: item.photo || (item.key ? toUrl(item.key) : ''),
+    submittedAt: Number(item.submittedAt || 0),
+    appealStatus: item.appealStatus || '',
+    appealReason: item.appealReason || ''
+  }));
 }
 
 function checkSubmissionAvailability(req, res) {
@@ -332,11 +344,7 @@ router.get('/status', auth, (req, res) => {
       code: 0,
       unlockedLocations: unlocked,
       lockingLocations : locking,
-      pendingCheckins: user.pendingCheckins.map(item => ({
-        locationId: Number(item.locationId),
-        submittedAt: Number(item.submittedAt || 0),
-        appealStatus: item.appealStatus || ''
-      })),
+      pendingCheckins: publicPendingCheckins(user),
       checkinReviewRecords: publicReviewRecords(user),
       unlockedCount: unlocked.length,
       lockingCount : locking.length,
