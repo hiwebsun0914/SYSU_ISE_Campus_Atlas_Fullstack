@@ -47,10 +47,10 @@
           <span class="rank-points"><strong>{{ myItem.points }}</strong> 积分</span>
         </section>
 
-        <!-- 完整榜单 -->
-        <ol v-if="list.length" class="rank-list" aria-label="积分排名列表">
+        <!-- 完整榜单（仅展示前 10 名） -->
+        <ol v-if="topList.length" class="rank-list" aria-label="积分排名列表">
           <li
-            v-for="item in list"
+            v-for="item in topList"
             :key="item.userId"
             class="rank-row"
             :class="{ 'is-top': item.rank <= 3, 'is-me': item.me }"
@@ -85,6 +85,8 @@ try {
 } catch { /* 忽略本地缓存解析失败 */ }
 
 const myItem = computed(() => list.value.find(item => item.me) || null)
+// 榜单只展示前 10 名；“我的排名”仍从完整列表取，跌出前十也能看到自己的名次
+const topList = computed(() => list.value.slice(0, 10))
 
 function padRank(rank) {
   return String(rank).padStart(2, '0')
