@@ -33,8 +33,9 @@
           class="deck"
           tabindex="0"
           role="group"
-          aria-label="功能入口卡牌堆，向左滑动或按左方向键切换下一张"
+          aria-label="功能入口卡牌堆，左右滑动或使用左右方向键切换卡牌"
           @keydown.left.prevent="cycleDeck"
+          @keydown.right.prevent="bringForward"
         >
           <div class="deck-sizer" aria-hidden="true"></div>
 
@@ -112,10 +113,23 @@
                 <h2 class="deck-title">ISETI</h2>
                 <p class="deck-desc">从 28 个选择里找到你的校园人格与探索偏好</p>
                 <span class="iseti-types" aria-hidden="true">
-                  <span>I</span><span>S</span><span>E</span><span>T</span><span>I</span>
+                  <span
+                    v-for="(sprite, i) in isetiSprites"
+                    :key="sprite.code"
+                    :class="{ on: i === spriteIndex }"
+                    :style="{ '--chip': sprite.color }"
+                  ></span>
                 </span>
               </div>
-              <span class="iseti-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span class="iseti-stage" aria-hidden="true">
+                <span class="iseti-frame"><i></i><i></i><i></i><i></i></span>
+                <Transition name="sprite-fade">
+                  <img :key="spriteIndex" class="iseti-sprite" :src="isetiSprites[spriteIndex].src" alt="" />
+                </Transition>
+                <Transition name="name-fade">
+                  <em :key="spriteIndex" class="iseti-sprite-name">{{ isetiSprites[spriteIndex].name }}</em>
+                </Transition>
+              </span>
               <span class="scan-line" aria-hidden="true"></span>
             </template>
 
@@ -128,14 +142,24 @@
                 </div>
                 <h2 class="deck-title">未来寄语</h2>
                 <p class="deck-desc">写下此刻的期盼，在毕业时重新打开</p>
-                <span class="future-lines" aria-hidden="true"><i></i><i></i><i></i></span>
               </div>
+              <svg class="future-flight" viewBox="0 0 220 92" aria-hidden="true">
+                <path d="M8 82 C 66 76, 118 46, 166 32" fill="none" stroke="rgba(160,121,44,.55)" stroke-width="1.6" stroke-dasharray="4 6" stroke-linecap="round" />
+                <path d="M188 12 L212 22 L196 28 L193 38 Z" fill="#b0413e" />
+              </svg>
+              <span class="future-envelope" aria-hidden="true"></span>
+              <span class="future-postmark" aria-hidden="true"><i>POSTED 2026</i><b>SYSU</b></span>
               <span class="future-stamp" aria-hidden="true"><em>SYSU · ISE</em><strong>2030</strong></span>
             </template>
 
             <!-- 作品投稿 -->
             <template v-else>
-              <span class="award-frames" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="award-spotlight" aria-hidden="true"></span>
+              <span class="award-frames" aria-hidden="true">
+                <i class="frame-a"><b><img :src="framePortrait" alt="" /></b></i>
+                <i class="frame-b"><b><img :src="frameSquare" alt="" /></b></i>
+                <i class="frame-c"><b><img :src="frameLandscape" alt="" /></b></i>
+              </span>
               <div class="deck-card-inner">
                 <div class="deck-card-top">
                   <p class="card-kicker">CHECK-IN GALLERY / 打卡作品投稿</p>
@@ -143,9 +167,9 @@
                 </div>
                 <h2 class="deck-title">作品投稿</h2>
                 <p class="deck-desc">上传你的创意与摄影作品，赢取属于你的校园高光时刻</p>
-                <span class="award-chips" aria-hidden="true">
-                  <span>💡 创意</span>
-                  <span>📷 摄影</span>
+                <span class="award-badge" aria-hidden="true">
+                  <span class="award-badge-icon"><Trophy :size="19" aria-hidden="true" /></span>
+                  <span class="award-badge-copy"><i>BEST IDEA</i><i>BEST SHOT</i></span>
                 </span>
               </div>
             </template>
@@ -176,12 +200,21 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { MapPinned, Navigation } from '@lucide/vue'
+import { MapPinned, Navigation, Trophy } from '@lucide/vue'
 import { getPlaceById } from '@/data/campusPlaces'
 import routes from '@/data/routes'
 import { checkedSet, fetchUserProgress, getRouteCheckedCount } from '@/stores/userProgress'
+import spriteBase from '@/assets/place/subtypes/base.webp'
+import spriteLens from '@/assets/place/subtypes/lens.webp'
+import spriteMaps from '@/assets/place/subtypes/maps.webp'
+import spriteRun from '@/assets/place/subtypes/run.webp'
+import spriteTree from '@/assets/place/subtypes/tree.webp'
+import spriteWiki from '@/assets/place/subtypes/wiki.webp'
+import framePortrait from '@/assets/gallery/frame-portrait.webp'
+import frameLandscape from '@/assets/gallery/frame-landscape.webp'
+import frameSquare from '@/assets/gallery/frame-square.webp'
 
 const router = useRouter()
 const loading = ref(false)
@@ -252,9 +285,38 @@ const frontKey = computed(() => deckOrder.value[0].key)
 const dragging = ref(false)
 const dragX = ref(0)
 const exitingKey = ref(null)
+const enteringKey = ref(null)
 const reducedMotion = typeof window !== 'undefined'
   && typeof window.matchMedia === 'function'
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/* ---------- ISETI 人格小人轮播 ---------- */
+
+const isetiSprites = [
+  { code: 'BASE', name: '熟悉地点型', src: spriteBase, color: '#3e7a68' },
+  { code: 'LENS', name: '视觉观察型', src: spriteLens, color: '#8a5a8e' },
+  { code: 'MAPS', name: '地标收集型', src: spriteMaps, color: '#3d5a7e' },
+  { code: 'RUN', name: '路线探索型', src: spriteRun, color: '#d5772a' },
+  { code: 'STAY', name: '慢节奏停留型', src: spriteTree, color: '#718050' },
+  { code: 'WIKI', name: '维基百科型', src: spriteWiki, color: '#9c4a5e' },
+]
+const SPRITE_DWELL_MS = 2600
+const spriteIndex = ref(0)
+let spriteTimer = null
+
+function startSpriteLoop() {
+  if (reducedMotion || spriteTimer) return
+  spriteTimer = window.setInterval(() => {
+    spriteIndex.value = (spriteIndex.value + 1) % isetiSprites.length
+  }, SPRITE_DWELL_MS)
+}
+
+function stopSpriteLoop() {
+  if (spriteTimer) {
+    window.clearInterval(spriteTimer)
+    spriteTimer = null
+  }
+}
 
 let dragStartX = 0
 let dragMoved = false
@@ -271,6 +333,13 @@ function cardStyle(card) {
   if (exitingKey.value === card.key) {
     return {
       transform: 'translate(-135%, -10%) rotate(-16deg) scale(.96)',
+      opacity: 0,
+      zIndex: 60,
+    }
+  }
+  if (enteringKey.value === card.key) {
+    return {
+      transform: 'translate(135%, -10%) rotate(16deg) scale(.96)',
       opacity: 0,
       zIndex: 60,
     }
@@ -299,7 +368,7 @@ function rotateDeck() {
 }
 
 function sendToBack(card) {
-  if (exitingKey.value || !isFront(card)) return
+  if (exitingKey.value || enteringKey.value || !isFront(card)) return
   dragX.value = 0
   if (reducedMotion) {
     rotateDeck()
@@ -313,12 +382,27 @@ function sendToBack(card) {
 }
 
 function cycleDeck() {
-  if (exitingKey.value) return
+  if (exitingKey.value || enteringKey.value) return
   sendToBack(deckOrder.value[0])
 }
 
+async function bringForward() {
+  if (exitingKey.value || enteringKey.value) return
+  const lastCard = deckOrder.value.at(-1)
+  deckOrder.value = [lastCard, ...deckOrder.value.slice(0, -1)]
+  persistFront()
+  if (reducedMotion) return
+  enteringKey.value = lastCard.key
+  await nextTick()
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      enteringKey.value = null
+    })
+  })
+}
+
 function jumpToCard(key) {
-  if (exitingKey.value) return
+  if (exitingKey.value || enteringKey.value) return
   const index = deckOrder.value.findIndex(item => item.key === key)
   if (index <= 0) return
   deckOrder.value = [...deckOrder.value.slice(index), ...deckOrder.value.slice(0, index)]
@@ -337,7 +421,7 @@ function onDeckPointerMove(event, card) {
   if (!dragging.value || !isFront(card)) return
   const dx = event.clientX - dragStartX
   if (Math.abs(dx) > 8) dragMoved = true
-  dragX.value = Math.min(24, dx)
+  dragX.value = Math.max(-180, Math.min(180, dx))
 }
 
 function onDeckPointerUp(event, card) {
@@ -349,6 +433,9 @@ function onDeckPointerUp(event, card) {
   const width = event.currentTarget.offsetWidth || 300
   if (dragX.value < -width * 0.35) {
     sendToBack(card)
+  } else if (dragX.value > width * 0.35) {
+    dragX.value = 0
+    bringForward()
   } else {
     dragX.value = 0
   }
@@ -408,7 +495,12 @@ onMounted(() => {
     const saved = localStorage.getItem(DECK_FRONT_STORAGE_KEY)
     if (saved && allCards.some(card => card.key === saved)) jumpToCard(saved)
   } catch { /* 忽略存储异常 */ }
+  startSpriteLoop()
   loadDashboard()
+})
+
+onBeforeUnmount(() => {
+  stopSpriteLoop()
 })
 </script>
 
@@ -517,51 +609,69 @@ onMounted(() => {
 .deck-next-stop strong { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ink); }
 .deck-next-complete strong { color: var(--primary-dark); }
 
-/* ISETI：深色人格扫描 */
-.deck-card-iseti { background: var(--ink); border-color: #12404f; }
-.deck-card-iseti .card-kicker { color: rgba(199,242,74,.85); }
-.deck-card-iseti .deck-title { color: var(--accent); font-family: "DIN Alternate", "Avenir Next", sans-serif; letter-spacing: .04em; }
-.deck-card-iseti .deck-desc { color: rgba(255,255,255,.72); }
-.deck-card-iseti .coming-label { background: rgba(199,242,74,.12); border-color: rgba(199,242,74,.45); color: var(--accent); }
-.iseti-types { display: flex; gap: 7px; margin-top: auto; padding-top: 18px; }
-.iseti-types span { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(199,242,74,.4); border-radius: 9px 3px 9px 3px; color: var(--accent); font-family: "SFMono-Regular", Menlo, monospace; font-size: 13px; font-weight: 700; background: rgba(199,242,74,.07); }
-.iseti-frame { position: absolute; left: 50%; top: 52%; width: 150px; height: 150px; transform: translate(-50%, -50%); opacity: .5; pointer-events: none; }
-.iseti-frame i { position: absolute; width: 24px; height: 24px; border: 2px solid rgba(199,242,74,.65); }
+/* ISETI：折纸标本卡（暖奶油纸底 + 砖红点缀） */
+.deck-card-iseti { background: linear-gradient(165deg, #faf4e6 0%, #f2e8d2 100%); border-color: #e3d3b0; }
+.deck-card-iseti .card-kicker { color: #b0413e; }
+.deck-card-iseti .deck-title { color: #4b382a; font-family: "DIN Alternate", "Avenir Next", sans-serif; letter-spacing: .04em; }
+.deck-card-iseti .deck-desc { color: #8a765c; }
+.deck-card-iseti .coming-label { background: #fdf9ee; border-color: #e0c9a8; color: #b0413e; }
+.iseti-types { display: flex; gap: 8px; margin-top: auto; padding-top: 18px; }
+.iseti-types span { width: 18px; height: 18px; border-radius: 6px 2px 6px 2px; background: var(--chip); opacity: .3; transform: scale(.86); transition: opacity .3s ease, transform .3s cubic-bezier(.2,.75,.25,1); box-shadow: inset 0 0 0 1px rgba(75,56,42,.18); }
+.iseti-types span.on { opacity: 1; transform: scale(1); box-shadow: inset 0 0 0 1px rgba(75,56,42,.28), 0 3px 8px rgba(75,56,42,.22); }
+.iseti-stage { position: absolute; left: 50%; top: 52%; width: 150px; height: 150px; transform: translate(-50%, -50%); pointer-events: none; }
+.iseti-stage::before { content: ""; position: absolute; inset: -18px; border-radius: 50%; background: radial-gradient(circle, rgba(255,252,244,.95) 0%, rgba(255,252,244,0) 68%); }
+.iseti-frame { position: absolute; inset: 0; opacity: .7; }
+.iseti-frame i { position: absolute; width: 24px; height: 24px; border: 2px solid rgba(176,65,62,.7); }
 .iseti-frame i:nth-child(1) { top: 0; left: 0; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
 .iseti-frame i:nth-child(2) { top: 0; right: 0; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; }
 .iseti-frame i:nth-child(3) { bottom: 0; left: 0; border-right: none; border-top: none; border-radius: 0 0 0 8px; }
 .iseti-frame i:nth-child(4) { bottom: 0; right: 0; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
-.scan-line { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 1px; background: repeating-linear-gradient(90deg,rgba(199,242,74,.55) 0 18px,transparent 18px 26px); opacity: .6; }
+.iseti-sprite { position: absolute; left: 50%; top: 50%; width: 128px; height: 128px; object-fit: contain; transform: translate(-50%, -50%); filter: drop-shadow(0 8px 14px rgba(75,56,42,.28)); }
+.sprite-fade-enter-active, .sprite-fade-leave-active { transition: opacity .45s ease, transform .45s cubic-bezier(.2,.75,.25,1); }
+.sprite-fade-enter-from { opacity: 0; transform: translate(-50%, -46%) scale(.9); }
+.sprite-fade-leave-to { opacity: 0; transform: translate(-50%, -54%) scale(.94); }
+.iseti-sprite-name { position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%); white-space: nowrap; font-family: "SFMono-Regular", Menlo, monospace; font-style: normal; font-size: 10px; letter-spacing: .08em; color: #b0413e; }
+.name-fade-enter-active, .name-fade-leave-active { transition: opacity .45s ease, transform .45s cubic-bezier(.2,.75,.25,1); }
+.name-fade-enter-from { opacity: 0; transform: translateX(-50%) translateY(5px); }
+.name-fade-leave-to { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+.scan-line { position: absolute; left: 20px; right: 20px; bottom: 18px; height: 1px; background: repeating-linear-gradient(90deg,rgba(176,65,62,.45) 0 18px,transparent 18px 26px); opacity: .6; }
 .deck-card-iseti.is-front:hover .scan-line { animation: scan-sweep 1.1s ease-in-out infinite; }
 
-/* 未来寄语：暖纸信封 */
-.deck-card-future { background: linear-gradient(165deg, #fdf8ec 0%, #f7edd8 100%); border-color: #e6d7b4; }
+/* 未来寄语：寄往 2030 的信封 */
+.deck-card-future { background: linear-gradient(165deg, #fdf8ec 0%, #f5e9cd 100%); border-color: #e6d7b4; }
 .deck-card-future .card-kicker { color: #a0792c; }
 .deck-card-future .deck-desc { color: #8a7a58; }
 .deck-card-future .coming-label { background: #fdf9ee; border-color: #e3d3ac; color: #8a6d1f; }
-.future-lines { display: grid; gap: 13px; margin-top: 26px; }
-.future-lines i { display: block; height: 1px; background: repeating-linear-gradient(90deg, rgba(160,121,44,.4) 0 10px, transparent 10px 16px); }
-.future-lines i:nth-child(2) { width: 82%; }
-.future-lines i:nth-child(3) { width: 58%; }
-.future-stamp { position: absolute; right: 18px; bottom: 56px; display: grid; gap: 3px; justify-items: center; padding: 12px 14px; border: 1.5px dashed rgba(160,121,44,.65); border-radius: 10px; transform: rotate(7deg); background: rgba(253,249,238,.8); }
+.future-flight { position: absolute; left: 6%; bottom: 118px; width: 88%; pointer-events: none; }
+.future-envelope { position: absolute; left: 0; right: 0; bottom: 0; height: 98px; background: linear-gradient(#f2e4c2, #ecd9b0); clip-path: polygon(0 100%, 0 44%, 50% 0, 100% 44%, 100% 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.65); }
+.future-envelope::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(160,121,44,0), rgba(160,121,44,.1)); }
+.future-postmark { position: absolute; left: 20px; bottom: 20px; width: 62px; height: 62px; display: grid; place-content: center; gap: 2px; justify-items: center; border: 2px solid rgba(140,90,50,.45); border-radius: 50%; box-shadow: inset 0 0 0 3px rgba(253,248,236,.75), inset 0 0 0 5px rgba(140,90,50,.3); transform: rotate(-10deg); color: rgba(140,90,50,.78); }
+.future-postmark i { font-family: "SFMono-Regular", Menlo, monospace; font-style: normal; font-size: 6.5px; letter-spacing: .1em; }
+.future-postmark b { font-family: "DIN Alternate", sans-serif; font-size: 15px; font-weight: 900; line-height: 1; }
+.future-stamp { position: absolute; right: 16px; bottom: 34px; display: grid; gap: 3px; justify-items: center; padding: 12px 14px; border: 1.5px dashed rgba(160,121,44,.65); border-radius: 10px; transform: rotate(7deg); background: rgba(253,249,238,.85); transition: transform .24s ease; }
 .future-stamp em { font-family: "SFMono-Regular", Menlo, monospace; font-style: normal; font-size: 8px; letter-spacing: .08em; color: #a0792c; }
 .future-stamp strong { font-family: "DIN Alternate", sans-serif; font-size: 26px; font-weight: 900; color: var(--ink); line-height: 1; }
 .deck-card-future.is-front:hover .future-stamp { transform: rotate(4deg) translateY(-3px); }
-.future-stamp { transition: transform .24s ease; }
 
-/* 作品投稿：青绿画廊 */
-.deck-card-award { background: linear-gradient(150deg, #0d9488 0%, #08766d 100%); border-color: #0b7c72; }
-.deck-card-award .card-kicker { color: rgba(255,255,255,.75); }
-.deck-card-award .deck-title { color: #fff; }
-.deck-card-award .deck-desc { color: rgba(255,255,255,.82); }
-.deck-card-award .coming-label { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.38); color: #fff; }
-.award-frames { position: absolute; right: 16px; bottom: 74px; width: 120px; height: 96px; pointer-events: none; opacity: .85; }
-.award-frames i { position: absolute; border: 2px solid rgba(255,255,255,.55); border-radius: 6px; background: rgba(255,255,255,.08); box-shadow: 0 4px 0 rgba(7,94,86,.6); }
-.award-frames i:nth-child(1) { left: 0; top: 18px; width: 52px; height: 66px; transform: rotate(-4deg); }
-.award-frames i:nth-child(2) { right: 8px; top: 0; width: 44px; height: 44px; transform: rotate(3deg); }
-.award-frames i:nth-child(3) { right: 0; bottom: 0; width: 40px; height: 30px; transform: rotate(-2deg); }
-.award-chips { display: flex; gap: 8px; margin-top: auto; padding-top: 18px; }
-.award-chips span { padding: 7px 14px; border-radius: 999px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.35); color: #fff; font-size: 13px; font-weight: 700; }
+/* 作品投稿：水彩画展墙 */
+.deck-card-award { background: linear-gradient(160deg, #e9f4f8 0%, #f3f8ef 58%, #edf6e7 100%); border-color: #d4e4dc; }
+.deck-card-award .card-kicker { color: #4a86a8; }
+.deck-card-award .deck-title { color: #2c4a52; }
+.deck-card-award .deck-desc { color: #5f7472; }
+.deck-card-award .coming-label { background: rgba(255,255,255,.72); border-color: #cfdfe0; color: #3a6a78; }
+.award-spotlight { position: absolute; right: -50px; bottom: 20px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 62%); pointer-events: none; }
+.award-frames { position: absolute; right: 14px; bottom: 72px; width: 152px; height: 132px; pointer-events: none; }
+.award-frames i { position: absolute; padding: 5px; border-radius: 6px; background: #fdfcf7; box-shadow: 0 6px 14px rgba(74,98,110,.28); }
+.award-frames b { display: block; width: 100%; height: 100%; border-radius: 3px; overflow: hidden; background: #e9e2d0; }
+.award-frames img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.award-frames .frame-a { left: 0; top: 26px; width: 66px; height: 86px; transform: rotate(-4deg); }
+.award-frames .frame-b { right: 6px; top: 0; width: 56px; height: 56px; transform: rotate(3deg); }
+.award-frames .frame-c { right: 0; bottom: 0; width: 54px; height: 42px; transform: rotate(-2deg); }
+.award-frames .frame-a::after, .award-frames .frame-b::after { content: ""; position: absolute; top: -7px; left: 50%; width: 30px; height: 11px; transform: translateX(-50%) rotate(-3deg); background: rgba(250,232,140,.78); box-shadow: 0 1px 2px rgba(74,98,110,.18); }
+.award-frames .frame-b::after { width: 24px; transform: translateX(-50%) rotate(4deg); }
+.award-badge { display: flex; align-items: center; gap: 11px; margin-top: auto; padding-top: 18px; }
+.award-badge-icon { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.8); border: 1px solid #e3ddba; color: #d9a832; box-shadow: 0 4px 10px rgba(74,98,110,.18), inset 0 1px 0 rgba(255,255,255,.9); }
+.award-badge-copy i { display: block; font-family: "SFMono-Regular", Menlo, monospace; font-style: normal; font-size: 9px; letter-spacing: .12em; line-height: 1.7; color: #4a6a72; }
 
 /* 圆点指示器 */
 .deck-dots { display: flex; justify-content: center; gap: 4px; margin-top: 18px; }
@@ -600,7 +710,6 @@ onMounted(() => {
   .deck-card-inner { padding: 16px; }
   .deck-title { margin-top: 16px; }
   .atlas-progress { margin-top: 18px; }
-  .award-chips span { font-size: 11px; padding: 6px 11px; }
   .scan-line { bottom: 14px; }
   .site-footer { padding: 0 4px; }
 }
