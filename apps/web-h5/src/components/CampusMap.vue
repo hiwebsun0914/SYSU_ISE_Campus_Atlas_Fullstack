@@ -23,6 +23,7 @@ import {
   buildNumberBadgeHTML,
   createRoutePolyline,
   planWalkingRoute,
+  getStaticRouteSegments,
   ROUTE_SEGMENT_STYLES,
 } from '@/utils/routeManager'
 import { checkedPlaces, isPlaceChecked } from '@/stores/userProgress'
@@ -355,13 +356,19 @@ function startRoute(route) {
     routeMarkers.push(marker)
   })
 
-  // 先用地点坐标立即画出分段预览线（已走段实线绿、未走段虚线灰），避免等待多段步行规划
+  // 静态贴路数据完整时首屏直接画贴路线；否则先用地点坐标画分段直线预览，
+  // 避免等待多段步行规划（已走段实线绿、未走段虚线灰）
+  const staticSegments = places.length > 1 ? getStaticRouteSegments(places) : null
   if (places.length > 1) {
-    const previewSegments = []
-    for (let i = 0; i < places.length - 1; i++) {
-      previewSegments.push([places[i].lnglat, places[i + 1].lnglat])
+    if (staticSegments) {
+      renderRouteSegments(staticSegments)
+    } else {
+      const previewSegments = []
+      for (let i = 0; i < places.length - 1; i++) {
+        previewSegments.push([places[i].lnglat, places[i + 1].lnglat])
+      }
+      renderRouteSegments(previewSegments)
     }
-    renderRouteSegments(previewSegments)
   }
 
   // 视野与首屏路线同时确定，不等待高德步行规划完成
@@ -369,7 +376,8 @@ function startRoute(route) {
     mapInstance.setFitView(routeMarkers, false, getRouteFitPadding(), ROUTE_MAX_ZOOM)
   }
 
-  if (places.length > 1) {
+  // 静态数据已覆盖全部路段时无需再请求后端规划
+  if (places.length > 1 && !staticSegments) {
     void refineWalkingRoute(places, renderVersion)
   }
 }
