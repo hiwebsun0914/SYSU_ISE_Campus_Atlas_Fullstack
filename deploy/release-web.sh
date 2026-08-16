@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# 前端发布脚本（web-h5 → hiwebsun.top）
+# 前端发布脚本（web-h5 → 生产服务器）
+# 生产域名：sysuzgxytj.top（2026-08-16 起），旧域名 hiwebsun.top 并列保留。
+# 两个域名解析到同一台服务器，SSH 目标沿用 hiwebsun.top 即可。
 # 关键实践：切换 dist 前把上一代 assets 合并进新目录，
 # 避免浏览器缓存旧 index.html 的用户因旧哈希资源 404 而白屏。
 #
@@ -35,5 +37,6 @@ ssh "${SERVER}" "
 "
 
 echo "==> 4/4 验收"
-curl -sf -o /dev/null -w "首页状态码: %{http_code}\n" https://hiwebsun.top/
+curl -sf -o /dev/null -w "sysuzgxytj.top 首页状态码: %{http_code}\n" https://sysuzgxytj.top/
+curl -sf -o /dev/null -w "hiwebsun.top  首页状态码: %{http_code}\n" https://hiwebsun.top/
 echo "完成。旧目录保留在 ${WEB_DIR}/dist.replaced-${TS}，确认稳定后可手动清理。"
