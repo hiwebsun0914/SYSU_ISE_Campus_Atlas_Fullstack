@@ -1,4 +1,5 @@
 import { getPlaceById } from '@/data/campusPlaces'
+import { request } from '@/utils/request'
 
 /**
  * 根据路线 points 解析出完整地点对象（保持顺序，跳过不存在的 id）
@@ -113,127 +114,60 @@ export function buildRoutePath(route) {
 }
 
 /**
- * 使用 AMap.Walking 规划真实步行路线
- * @param {object} AMapNS - AMap 命名空间
- * @param {object} mapInstance - 高德地图实例
+ * 规划真实步行路线（经由后端 /route/walking 代理 + 缓存）
+ * 后端对高德上游串行限速并缓存路段结果，避免前端并发直调触发
+ * 高德 CUQPS 限流（2026-08-16 实测：并发 4 直调 54 段有 21 段被限流）。
+ * @param {object} AMapNS - 保留参数，兼容旧调用（不再使用）
+ * @param {object} mapInstance - 保留参数，兼容旧调用（不再使用）
  * @param {Array} places - 路线地点对象数组
- * @returns {Promise<Array<Array>>} 相邻站点间的分段路径数组（每段至少 2 个点），
- *   便于按打卡状态为不同路段设置不同样式
+ * @returns {Promise<Array<Array>>} 相邻站点间的分段路径数组；规划失败的段回退为直线
  */
 export async function planWalkingRoute(AMapNS, mapInstance, places) {
-  if (!AMapNS || !mapInstance || places.length < 2) {
+  if (!places || places.length < 2) {
     return buildRouteSegmentsFromPlaces(places)
   }
-
-  // 确保 Walking 插件已加载
-  await loadWalkingPlugin(AMapNS)
 
   const segmentCount = places.length - 1
   const segmentPaths = new Array(segmentCount)
   let nextSegmentIndex = 0
 
-  // 同时规划少量相邻路段，兼顾加载速度与地图服务请求压力
   async function planNextSegment() {
     while (nextSegmentIndex < segmentCount) {
       const index = nextSegmentIndex++
       const start = normalizeLngLat(places[index].lnglat)
       const end = normalizeLngLat(places[index + 1].lnglat)
-      segmentPaths[index] = await planWalkingSegmentWithFallback(AMapNS, start, end)
+      segmentPaths[index] = await planWalkingSegmentViaServer(start, end)
     }
   }
 
-  const concurrency = Math.min(4, segmentCount)
+  // 缓存命中时后端即时返回，冷缓存时由后端串行限速；前端保持低并发即可
+  const concurrency = Math.min(2, segmentCount)
   await Promise.all(Array.from({ length: concurrency }, () => planNextSegment()))
 
-  const valid = segmentPaths.every(seg => Array.isArray(seg) && seg.length >= 2)
-  return valid ? segmentPaths : buildRouteSegmentsFromPlaces(places)
-}
-
-/**
- * 加载 AMap.Walking 插件
- */
-function loadWalkingPlugin(AMapNS) {
-  return new Promise((resolve, reject) => {
-    if (AMapNS.Walking) {
-      resolve()
-      return
-    }
-    AMapNS.plugin('AMap.Walking', () => {
-      if (AMapNS.Walking) {
-        resolve()
-      } else {
-        reject(new Error('AMap.Walking plugin failed to load'))
-      }
-    })
+  return segmentPaths.map((seg, index) => {
+    if (Array.isArray(seg) && seg.length >= 2) return seg
+    return [normalizeLngLat(places[index].lnglat), normalizeLngLat(places[index + 1].lnglat)]
   })
 }
 
 /**
- * 规划相邻两点之间的步行路径
+ * 通过后端代理规划相邻两点之间的步行路径，失败返回 null（由调用方回退直线）
  */
-function planWalkingSegment(AMapNS, start, end) {
-  return new Promise((resolve) => {
-    try {
-      const walking = new AMapNS.Walking({
-        map: null,
-        hideMarkers: true,
-      })
-
-      walking.search(start, end, (status, result) => {
-        if (status === 'complete' && result?.routes?.length > 0) {
-          const route = result.routes[0]
-          const path = []
-
-          if (Array.isArray(route.steps)) {
-            route.steps.forEach(step => {
-              if (Array.isArray(step.path)) {
-                step.path.forEach(pt => {
-                  path.push(normalizeLngLat(pt))
-                })
-              }
-            })
-          }
-
-          if (path.length >= 2) {
-            resolve(path)
-            return
-          }
-        }
-
-        resolve(null)
-      })
-    } catch (err) {
-      console.warn('[Walking] segment planning error:', err)
-      resolve(null)
+async function planWalkingSegmentViaServer(start, end) {
+  try {
+    const resp = await request('/route/walking', 'GET', {
+      from: start.join(','),
+      to: end.join(',')
+    }, { timeout: 15000 })
+    const data = resp?.data?.data
+    if (resp?.ok && resp?.data?.code === 0 && Array.isArray(data?.path) && data.path.length >= 2) {
+      return data.path.map(normalizeLngLat)
     }
-  })
-}
-
-/**
- * 规划相邻两点之间的步行路径（含中点重试与直线兜底）
- * 优先级：A→B 真实路线 → A→M→B 真实路线 → A→B 直线
- */
-async function planWalkingSegmentWithFallback(AMapNS, start, end) {
-  // 1. 直接规划 A → B
-  const directPath = await planWalkingSegment(AMapNS, start, end)
-  if (directPath && directPath.length >= 2) {
-    return directPath
+    console.warn('[Walking] server segment unavailable:', resp?.data?.message || resp?.status)
+  } catch (err) {
+    console.warn('[Walking] server segment error:', err)
   }
-
-  // 2. 计算中点 M，分别规划 A → M、M → B
-  const mid = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
-  const [pathAM, pathMB] = await Promise.all([
-    planWalkingSegment(AMapNS, start, mid),
-    planWalkingSegment(AMapNS, mid, end),
-  ])
-
-  if (pathAM && pathAM.length >= 2 && pathMB && pathMB.length >= 2) {
-    // 拼接两段，去除重复的中点
-    return [...pathAM, ...pathMB.slice(1)]
-  }
-
-  // 3. 中点规划仍失败，使用直线连接
-  return [start, end]
+  return null
 }
 
 /**
