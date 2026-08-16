@@ -125,6 +125,31 @@ test('工具函数：parseLngLat / inCampus / parsePolyline', () => {
   assert.equal(parsePolyline(null), null);
 });
 
+test('过期抖动：ttlMs 落在 ±25% 区间内，hitCache 按单条 ttl 判定', () => {
+  const router = createRouteWalkingRouter({ fetchImpl: fakeFetchFactory([]) });
+  const { jitterTtl, hitCache } = router._test;
+
+  const base = 60000; // 测试环境 ROUTE_WALKING_CACHE_TTL_MS
+  for (let i = 0; i < 50; i += 1) {
+    const ttl = jitterTtl();
+    assert.ok(ttl >= base * 0.75 && ttl <= base * 1.25, `ttl ${ttl} 超出抖动区间`);
+  }
+
+  const cache = {
+    entries: {
+      fresh: { path: [[1, 1], [2, 2]], cachedAt: 1000, ttlMs: 100000 },
+      expired: { path: [[1, 1], [2, 2]], cachedAt: 1000, ttlMs: 500 }
+    }
+  };
+  assert.ok(hitCache(cache, 'fresh', 60000), '未超过单条 ttl 应命中');
+  assert.equal(hitCache(cache, 'expired', 60000), null, '超过单条 ttl 应失效');
+
+  // 缓存写入时应带上 ttlMs（第一个测试已写入一段缓存）
+  const stored = JSON.parse(fs.readFileSync(process.env.ROUTE_WALKING_CACHE_FILE, 'utf8'));
+  const entry = Object.values(stored.entries)[0];
+  assert.ok(entry.ttlMs >= base * 0.75 && entry.ttlMs <= base * 1.25, '写入的缓存条目应带抖动 ttl');
+});
+
 test('缓存命中不限流，只有未命中（请求上游）才计数', async () => {
   const calls = [];
   const { server, base } = await listen(createRouteWalkingRouter({ fetchImpl: fakeFetchFactory(calls) }));

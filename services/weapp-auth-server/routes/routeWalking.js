@@ -91,10 +91,16 @@ function writeCache(cache) {
   }
 }
 
+// ±25% 过期抖动：各路段错开过期，避免同一天预热的缓存集体到期引发击穿
+function jitterTtl() {
+  return Math.round(CACHE_TTL_MS * (0.75 + Math.random() * 0.5));
+}
+
 function hitCache(cache, key, now) {
   const entry = cache.entries[key];
   if (!entry || !Array.isArray(entry.path) || entry.path.length < 2) return null;
-  if (now - Number(entry.cachedAt || 0) > CACHE_TTL_MS) return null;
+  const ttl = Number(entry.ttlMs) > 0 ? Number(entry.ttlMs) : CACHE_TTL_MS;
+  if (now - Number(entry.cachedAt || 0) > ttl) return null;
   return entry;
 }
 
@@ -201,7 +207,7 @@ function createRouteWalkingRouter(options = {}) {
       // 只有需要请求高德上游时才计入限流
       checkRateLimit(req);
       const fresh = await enqueueUpstream(() => fetchUpstream(from, to, fetchImpl));
-      cache.entries[key] = { ...fresh, cachedAt: now };
+      cache.entries[key] = { ...fresh, cachedAt: now, ttlMs: jitterTtl() };
       writeCache(cache);
       return res.json({ code: 0, data: { ...fresh, cached: false } });
     } catch (error) {
@@ -209,7 +215,7 @@ function createRouteWalkingRouter(options = {}) {
     }
   });
 
-  router._test = { parseLngLat, inCampus, cacheKeyOf, parsePolyline, hitCache, CAMPUS_BBOX };
+  router._test = { parseLngLat, inCampus, cacheKeyOf, parsePolyline, hitCache, jitterTtl, CAMPUS_BBOX };
   return router;
 }
 
