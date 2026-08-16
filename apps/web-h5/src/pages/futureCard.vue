@@ -574,22 +574,45 @@ async function removeCard(card) {
   }
 }
 
-function waitForFonts() {
+/** 各字体的预载规格——只加载实际用到的那一款，不再三款全量预载 */
+const FONT_LOAD_SPECS = Object.freeze({
+  song: '400 56px "Noto Serif SC"',
+  sans: '400 32px "Noto Sans SC"',
+  hand: '400 32px "Ma Shan Zheng"'
+})
+const loadedFonts = new Set()
+
+/** 按网络状况放宽等待：弱网（2G/3G）给足时间，好网快速回退 */
+function fontLoadTimeoutMs() {
+  const type = String(navigator.connection?.effectiveType || '')
+  if (type.includes('2g')) return 12000
+  if (type === '3g') return 8000
+  return 5000
+}
+
+/**
+ * 按需加载单款字体；成功结果缓存，失败允许下次重试
+ * @returns {Promise<boolean>} 字体是否就绪（false 时调用方用系统字体回退）
+ */
+function ensureFontLoaded(fontId) {
   if (!document.fonts?.load) return Promise.resolve(true)
-  const timeout = new Promise(resolve => setTimeout(() => resolve(false), 2400))
-  const ready = Promise.all([
-    document.fonts.load('400 56px "Noto Serif SC"'),
-    document.fonts.load('400 32px "Noto Sans SC"'),
-    document.fonts.load('400 32px "Ma Shan Zheng"')
-  ]).then(() => true).catch(() => false)
-  return Promise.race([ready, timeout])
+  const key = Object.prototype.hasOwnProperty.call(FONT_LOAD_SPECS, fontId) ? fontId : 'sans'
+  if (loadedFonts.has(key)) return Promise.resolve(true)
+  const timeout = new Promise(resolve => setTimeout(() => resolve(false), fontLoadTimeoutMs()))
+  const ready = document.fonts.load(FONT_LOAD_SPECS[key])
+    .then(faces => (Array.isArray(faces) ? faces.length > 0 : true))
+    .catch(() => false)
+  return Promise.race([ready, timeout]).then(ok => {
+    if (ok) loadedFonts.add(key)
+    return ok
+  })
 }
 
 async function openResult(card) {
   previewBusy.value = true
-  const fontsReady = await waitForFonts()
+  const fontsReady = await ensureFontLoaded(card?.style?.fontId)
   previewBusy.value = false
-  if (!fontsReady) showToast('部分字体加载失败，将使用系统字体生成')
+  if (!fontsReady) showToast('所选字体加载失败，将使用系统字体生成')
   resultCard.value = card
   resultVisible.value = true
   await nextTick()
@@ -702,6 +725,13 @@ function renderThumbnails() {
     const canvas = thumbnailRefs.get(card.id)
     if (canvas) drawCard(canvas, card)
   }
+  // 已存信笺用到的字体按需加载，先用回退字体绘制，字体就绪后重绘一次
+  const fontIds = [...new Set(savedCards.value.map(card => card.style?.fontId).filter(Boolean))]
+  fontIds.forEach(fontId => {
+    if (!loadedFonts.has(fontId)) {
+      ensureFontLoaded(fontId).then(ok => { if (ok) renderThumbnails() })
+    }
+  })
 }
 
 function line(ctx, x1, y1, x2, y2, color, width = 1, alpha = 1) {
@@ -878,6 +908,11 @@ function schedulePreview() {
     const result = drawCard(previewCanvas.value, snapshotFromDraft())
     layoutOverflow.value = result.overflow
   })
+  // 选中字体未就绪时先用回退字体绘制，字体到达后自动重绘一次
+  const fontId = activeDraft.value.style.fontId
+  if (!loadedFonts.has(fontId)) {
+    ensureFontLoaded(fontId).then(ok => { if (ok) schedulePreview() })
+  }
 }
 
 function modeLabel(mode) {
@@ -923,9 +958,9 @@ onMounted(async () => {
     await nextTick()
     schedulePreview()
     previewBusy.value = true
-    const fontsReady = await waitForFonts()
+    const fontsReady = await ensureFontLoaded(activeDraft.value.style.fontId)
     previewBusy.value = false
-    if (!fontsReady) showToast('部分字体加载失败，已启用系统字体回退')
+    if (!fontsReady) showToast('所选字体加载失败，已启用系统字体回退')
     schedulePreview()
     await loadCards()
   } catch (error) {
