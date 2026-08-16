@@ -1,4 +1,4 @@
-<!-- src/pages/PointsRank.vue · 积分排名：按当前积分由高到低，仅展示昵称、头像与积分 -->
+<!-- src/pages/PointsRank.vue · 积分排名：按当前积分由高到低（同分先到者靠前），仅展示昵称、头像与积分 -->
 <template>
   <div class="rank-page">
     <main class="rank-shell" aria-busy="loading">
@@ -11,7 +11,7 @@
             返回个人主页
           </RouterLink>
         </div>
-        <p class="rank-desc">按当前积分由高到低排列。去打卡、走路线，点亮下一个坐标。</p>
+        <p class="rank-desc">前 20 名上榜，同分时先达到该分数的用户排名靠前。去打卡、走路线，点亮下一个坐标。</p>
       </header>
 
       <!-- 加载中：保留版面高度的骨架 -->
@@ -47,7 +47,7 @@
           <span class="rank-points"><strong>{{ myItem.points }}</strong> 积分</span>
         </section>
 
-        <!-- 完整榜单（仅展示前 10 名） -->
+        <!-- 完整榜单（仅展示前 20 名） -->
         <ol v-if="topList.length" class="rank-list" aria-label="积分排名列表">
           <li
             v-for="item in topList"
@@ -85,8 +85,8 @@ try {
 } catch { /* 忽略本地缓存解析失败 */ }
 
 const myItem = computed(() => list.value.find(item => item.me) || null)
-// 榜单只展示前 10 名；“我的排名”仍从完整列表取，跌出前十也能看到自己的名次
-const topList = computed(() => list.value.slice(0, 10))
+// 榜单只展示前 20 名（后端同样只返回前 20）；跌出前 20 时“我的排名”卡片不再展示
+const topList = computed(() => list.value.slice(0, 20))
 
 function padRank(rank) {
   return String(rank).padStart(2, '0')
