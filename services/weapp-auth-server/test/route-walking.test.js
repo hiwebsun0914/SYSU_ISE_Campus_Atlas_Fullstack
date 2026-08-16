@@ -11,6 +11,7 @@ process.env.AMAP_WEB_SERVICE_KEY = 'test-key';
 process.env.ROUTE_WALKING_CACHE_FILE = path.join(testDir, 'cache.json');
 process.env.ROUTE_WALKING_UPSTREAM_GAP_MS = '1';
 process.env.ROUTE_WALKING_CACHE_TTL_MS = '60000';
+process.env.ROUTE_WALKING_RATE_LIMIT = '10';
 
 const { createRouteWalkingRouter } = require('../routes/routeWalking');
 
@@ -122,4 +123,33 @@ test('工具函数：parseLngLat / inCampus / parsePolyline', () => {
   assert.equal(parsePolyline(okBody.route).length, 3);
   assert.equal(parsePolyline({ paths: [{ steps: [] }] }), null);
   assert.equal(parsePolyline(null), null);
+});
+
+test('缓存命中不限流，只有未命中（请求上游）才计数', async () => {
+  const calls = [];
+  const { server, base } = await listen(createRouteWalkingRouter({ fetchImpl: fakeFetchFactory(calls) }));
+  try {
+    // 已缓存的段（第一个测试写入）连续请求 12 次，超过上限 10 仍全部成功
+    const cachedQuery = 'from=113.3000,23.1000&to=113.3002,23.1002';
+    for (let i = 0; i < 12; i += 1) {
+      const res = await fetch(`${base}/route/walking?${cachedQuery}`);
+      assert.equal(res.status, 200);
+    }
+    assert.equal(calls.length, 0); // 全部是缓存命中，没有触达上游
+
+    // 此前测试已累计 2 次上游请求（上限 10）；继续制造未命中直到触发 429
+    let saw429 = false;
+    for (let i = 0; i < 12; i += 1) {
+      const q = `from=113.31${100 + i},23.11${100 + i}&to=113.31${200 + i},23.11${200 + i}`;
+      const res = await fetch(`${base}/route/walking?${q}`);
+      if (res.status === 429) {
+        saw429 = true;
+        assert.equal((await res.json()).errorCode, 'RATE_LIMITED');
+        break;
+      }
+    }
+    assert.equal(saw429, true);
+  } finally {
+    server.close();
+  }
 });

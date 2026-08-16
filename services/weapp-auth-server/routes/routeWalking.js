@@ -32,7 +32,11 @@ const CAMPUS_BBOX = Object.freeze({
   minLat: 23.07, maxLat: 23.12
 });
 
-const RATE_LIMIT = 60;          // 每 IP 每分钟
+// 只对“缓存未命中、需要请求上游”的调用计数限流。
+// 缓存命中只是读本地文件，不限流——否则浏览三条路线（54 段/分钟）就会误伤正常用户。
+const RATE_LIMIT = Number(process.env.ROUTE_WALKING_RATE_LIMIT) > 0
+  ? Number(process.env.ROUTE_WALKING_RATE_LIMIT)
+  : 30;
 const RATE_WINDOW_MS = 60 * 1000;
 const rateWindows = new Map();
 
@@ -150,19 +154,18 @@ async function fetchUpstream(from, to, fetchImpl) {
   };
 }
 
-function rateLimit(req, res, next) {
+function checkRateLimit(req) {
   const now = Date.now();
   const key = req.ip || req.socket?.remoteAddress || 'unknown';
   const current = rateWindows.get(key);
   if (!current || now - current.startedAt >= RATE_WINDOW_MS) {
     rateWindows.set(key, { startedAt: now, count: 1 });
-    return next();
+    return;
   }
   current.count += 1;
   if (current.count > RATE_LIMIT) {
-    return res.status(429).json({ code: 1, errorCode: 'RATE_LIMITED', message: '请求过于频繁，请稍后重试' });
+    throw new ApiError(429, 'RATE_LIMITED', '路径规划请求过于频繁，请稍后重试');
   }
-  return next();
 }
 
 function sendError(res, error) {
@@ -177,7 +180,7 @@ function createRouteWalkingRouter(options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const router = express.Router();
 
-  router.get('/walking', rateLimit, async (req, res) => {
+  router.get('/walking', async (req, res) => {
     try {
       if (!AMAP_KEY) throw new ApiError(503, 'ROUTE_UNAVAILABLE', '路径规划服务未配置');
       if (typeof fetchImpl !== 'function') throw new ApiError(503, 'ROUTE_UNAVAILABLE', '路径规划服务不可用');
@@ -195,6 +198,8 @@ function createRouteWalkingRouter(options = {}) {
         return res.json({ code: 0, data: { path: hit.path, distance: hit.distance, duration: hit.duration, cached: true } });
       }
 
+      // 只有需要请求高德上游时才计入限流
+      checkRateLimit(req);
       const fresh = await enqueueUpstream(() => fetchUpstream(from, to, fetchImpl));
       cache.entries[key] = { ...fresh, cachedAt: now };
       writeCache(cache);
