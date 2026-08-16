@@ -13,6 +13,7 @@ const auth = require('./middleware/auth');        // 解析 JWT -> req.userId
 const avatarRouter = require('./routes/avatar');  // 头像上传
 const checkinRouter = require('./routes/checkin');// 打卡/通用上传
 const futureCardsRouter = require('./routes/futureCards');
+const routeWalkingRouter = require('./routes/routeWalking');
 const adminRouter   = require('./routes/admin');
 const submissionsRouter = require('./routes/submissions');
 const profileRouter = require('./routes/profile');
@@ -129,6 +130,7 @@ app.use((req, res, next) => {
 app.use('/avatar',  avatarRouter);
 app.use('/checkin', checkinRouter);
 app.use('/future-cards', futureCardsRouter);
+app.use('/route', routeWalkingRouter);
 app.use('/submissions',  submissionsRouter);
 app.use('/user', profileRouter);
 app.use('/feedback', feedbackRouter);
