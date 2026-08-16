@@ -140,6 +140,7 @@
             <button type="button" class="secondary-button" :disabled="busy" @click="saveBoth">保存两类内容</button>
             <button type="button" class="primary-button" :disabled="busy" @click="saveCurrent(true)">{{ busy ? '处理中…' : '保存并生成图片' }}</button>
           </div>
+          <p class="save-status" role="status">{{ saveStatus }}</p>
         </div>
 
         <aside class="preview-panel">
@@ -458,7 +459,13 @@ async function saveCurrent(generateAfterSave) {
     showToast(generateAfterSave ? '已保存，正在生成图片' : '当前信笺已保存')
     if (generateAfterSave) await openResult(card)
   } catch (error) {
-    handleSaveError(error)
+    // 排版溢出发生在保存成功之后，不能按“保存失败”提示误导用户重复提交
+    if (error?.code === 'LAYOUT_OVERFLOW') {
+      pageError.value = error.message
+      showToast('信笺已保存，但图片未能生成')
+    } else {
+      handleSaveError(error)
+    }
   } finally {
     busy.value = false
   }
@@ -1276,3 +1283,11 @@ onBeforeUnmount(() => {
 
 </style>
 
+
+<style scoped>
+.save-status {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  color: var(--future-muted, #5e7271);
+}
+</style>
