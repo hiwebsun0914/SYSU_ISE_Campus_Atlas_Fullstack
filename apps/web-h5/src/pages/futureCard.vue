@@ -123,12 +123,13 @@
               </div>
             </div>
             <label class="control-group signature-control">
-              <span class="field-label">署名</span>
+              <span class="field-label">署名<em class="required-mark">必填</em></span>
               <input
                 v-model.trim="activeDraft.style.signatureText"
                 type="text"
                 maxlength="24"
-                placeholder="输入你的署名"
+                placeholder="输入你的署名，例如：Yerdan"
+                aria-required="true"
                 @blur="normalizeSignature(activeDraft)"
               >
             </label>
@@ -196,6 +197,16 @@
       </div>
     </div>
 
+    <div v-if="fallbackVisible" class="fallback-mask" role="dialog" aria-modal="true" aria-labelledby="fallback-title" @click.self="closeFallback">
+      <div class="fallback-dialog">
+        <button class="dialog-close" type="button" aria-label="关闭" @click="closeFallback">×</button>
+        <h2 id="fallback-title">当前浏览器不支持直接下载</h2>
+        <p class="fallback-hint">请长按下方图片，选择「保存图片」存到相册。</p>
+        <img v-if="fallbackImage" class="fallback-image" :src="fallbackImage" alt="时光信笺卡片" />
+        <button type="button" class="primary-button" @click="closeFallback">知道了</button>
+      </div>
+    </div>
+
     <div class="toast" :class="{ visible: toastMessage }" role="status">{{ toastMessage }}</div>
   </div>
 </template>
@@ -212,6 +223,9 @@ import { OFFICIAL_SCHOOL_NAME, OFFICIAL_UNIVERSITY_NAME, TEMPLATE_DEFAULT_FONTS,
 const PAGE_BACKGROUND = 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/bg.jpg'
 const SITE_LOGO = 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/logo1.png'
 const DRAFT_VERSION = 'v2'
+const IMAGE_MIME = 'image/jpeg'
+const IMAGE_EXT = 'jpg'
+const IMAGE_QUALITY = 0.92
 const LIMITS = Object.freeze({ expectation: 500, letter: 500 })
 const MODES = Object.freeze([
   { id: 'expectation', label: '我的大学生活期盼', hint: '一句目标也可以，先从最想实现的事写起。', placeholder: '例如：希望四年后，我已经做出了第一个真正改变世界的小项目。' },
@@ -250,7 +264,7 @@ function createDraft(mode) {
       size: 'medium',
       align: 'left',
       signatureMode: 'custom',
-      signatureText: '一名智工新生'
+      signatureText: ''
     }
   }
 }
@@ -272,6 +286,8 @@ const resultCanvas = ref(null)
 const resultVisible = ref(false)
 const resultCard = ref(null)
 const lastBlob = ref(null)
+const fallbackVisible = ref(false)
+const fallbackImage = ref('')
 const busy = ref(false)
 const previewBusy = ref(true)
 const layoutOverflow = ref(false)
@@ -316,7 +332,7 @@ function normalizeSignatureText(value) {
 
 function normalizeSignature(draft) {
   draft.style.signatureMode = 'custom'
-  draft.style.signatureText = normalizeSignatureText(draft.style.signatureText) || '一名智工新生'
+  draft.style.signatureText = normalizeSignatureText(draft.style.signatureText)
 }
 
 function persistDrafts() {
@@ -357,12 +373,12 @@ function restoreDrafts() {
 
 function signatureFor(snapshot) {
   const stored = normalizeSignatureText(snapshot?.style?.signatureText)
-  if (snapshot.style.signatureMode === 'nickname') {
+  if (snapshot.style?.signatureMode === 'nickname') {
     if (snapshot.updatedAt && stored) return stored
     const nickname = normalizeSignatureText(currentUser.value?.username)
     if (nickname) return nickname
   }
-  return stored || '一名智工新生'
+  return stored
 }
 
 function snapshotFromDraft(mode = activeMode.value) {
@@ -383,6 +399,7 @@ function validateDraft(mode) {
   const count = visibleLength(content)
   if (!content || !count) throw clientError('CONTENT_EMPTY', '请先写下一点内容')
   if (count > LIMITS[mode]) throw clientError('CONTENT_TOO_LONG', `当前内容最多 ${LIMITS[mode]} 个可见字符`)
+  if (!normalizeSignatureText(draft.style.signatureText)) throw clientError('SIGNATURE_EMPTY', '请先填写署名')
   return content
 }
 
@@ -579,22 +596,74 @@ async function openResult(card) {
 }
 
 function canvasBlob(canvas) {
-  return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(clientError('EXPORT_FAILED', '图片生成失败')), 'image/png'))
+  return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(clientError('EXPORT_FAILED', '图片生成失败')), IMAGE_MIME, IMAGE_QUALITY))
 }
 
-function downloadResult() {
-  if (!lastBlob.value) return
-  const url = URL.createObjectURL(lastBlob.value)
+async function ensureResultBlob() {
+  if (lastBlob.value) return lastBlob.value
+  if (!resultCanvas.value) return null
+  try {
+    lastBlob.value = await canvasBlob(resultCanvas.value)
+  } catch {
+    lastBlob.value = null
+  }
+  return lastBlob.value
+}
+
+function browserSupportsDownload() {
+  // 微信内置浏览器会静默屏蔽 blob 下载，需走长按保存兜底
+  if (/MicroMessenger/i.test(navigator.userAgent || '')) return false
+  return 'download' in document.createElement('a')
+}
+
+function openImageFallback() {
+  if (!resultCanvas.value) {
+    showToast('图片尚未生成，请重新保存一次')
+    return
+  }
+  try {
+    fallbackImage.value = resultCanvas.value.toDataURL(IMAGE_MIME, IMAGE_QUALITY)
+  } catch {
+    showToast('图片导出失败，请重新保存一次')
+    return
+  }
+  fallbackVisible.value = true
+}
+
+function closeFallback() {
+  fallbackVisible.value = false
+  fallbackImage.value = ''
+}
+
+async function downloadResult() {
+  const blob = await ensureResultBlob()
+  if (!blob) {
+    showToast('图片生成失败，请重新保存一次')
+    return
+  }
+  if (!browserSupportsDownload()) {
+    openImageFallback()
+    return
+  }
+  const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `时光信笺-${resultCard.value?.mode === 'letter' ? '四年后的我' : '大学期盼'}.png`
+  link.download = `时光信笺-${resultCard.value?.mode === 'letter' ? '四年后的我' : '大学期盼'}.${IMAGE_EXT}`
+  document.body.appendChild(link)
   link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  link.remove()
+  // 延迟释放，避免慢启动的下载被中途取消
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
+  showToast('图片已开始下载')
 }
 
 async function shareResult() {
-  if (!lastBlob.value) return
-  const file = new File([lastBlob.value], '时光信笺.png', { type: 'image/png' })
+  const blob = await ensureResultBlob()
+  if (!blob) {
+    showToast('图片生成失败，请重新保存一次')
+    return
+  }
+  const file = new File([blob], `时光信笺.${IMAGE_EXT}`, { type: IMAGE_MIME })
   if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
     try {
       await navigator.share({ title: '我的时光信笺', text: '写给四年后的自己', files: [file] })
@@ -603,8 +672,8 @@ async function shareResult() {
       if (error?.name === 'AbortError') return
     }
   }
-  downloadResult()
-  showToast('当前浏览器不支持图片分享，已改为下载')
+  await downloadResult()
+  if (!fallbackVisible.value) showToast('当前浏览器不支持图片分享，已改为下载')
 }
 
 function closeResult() {
@@ -746,19 +815,28 @@ function drawCard(canvas, snapshot) {
   ctx.font = '400 16px Georgia, serif'
   ctx.fillText(mode === 'letter' ? 'A LETTER TO THE PERSON I WILL BECOME' : 'A SMALL PROMISE TO MY FUTURE SELF', 150, 372)
 
-  ctx.fillStyle = theme.ink
-  ctx.font = `400 ${contentSize}px ${fontFamily}`
   ctx.textBaseline = 'top'
-  const layout = layoutTextBlock(ctx, snapshot.content || '在这里写下你想对未来说的话。', {
-    maxWidth: 780,
-    contentTop,
-    contentBottom,
-    lineHeight,
-    paragraphGap: Math.round(lineHeight * 0.58)
-  })
-  ctx.textAlign = style.align === 'center' ? 'center' : 'left'
-  const textX = style.align === 'center' ? 540 : 150
-  layout.lines.forEach(({ text, y }) => ctx.fillText(text, textX, y))
+  const bodyText = String(snapshot.content || '').trim()
+  let layout = { lines: [], overflow: false }
+  if (bodyText) {
+    ctx.fillStyle = theme.ink
+    ctx.font = `400 ${contentSize}px ${fontFamily}`
+    layout = layoutTextBlock(ctx, snapshot.content, {
+      maxWidth: 780,
+      contentTop,
+      contentBottom,
+      lineHeight,
+      paragraphGap: Math.round(lineHeight * 0.58)
+    })
+    ctx.textAlign = style.align === 'center' ? 'center' : 'left'
+    const textX = style.align === 'center' ? 540 : 150
+    layout.lines.forEach(({ text, y }) => ctx.fillText(text, textX, y))
+  } else {
+    // 未输入正文时，用灰色小字提示而不是假装有一段内容
+    ctx.fillStyle = theme.muted
+    ctx.font = `400 24px ${fontFamily}`
+    ctx.fillText('输入正文内容后，这里会实时预览排版效果', 150, contentTop)
+  }
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
 
@@ -770,9 +848,10 @@ function drawCard(canvas, snapshot) {
   ctx.font = '400 15px Georgia, serif'
   ctx.fillText('2026 入学  →  2030 预计毕业', 150, footerY + 80)
   ctx.textAlign = 'right'
-  ctx.fillStyle = theme.ink
+  const signature = signatureFor(snapshot)
+  ctx.fillStyle = signature ? theme.ink : theme.muted
   ctx.font = `400 22px ${fontFamily}`
-  ctx.fillText(signatureFor(snapshot), 930, footerY + 56)
+  ctx.fillText(signature || '写下你的署名', 930, footerY + 56)
   ctx.fillStyle = theme.muted
   ctx.font = '400 13px Georgia, serif'
   ctx.fillText('KEEP GOING', 930, footerY + 84)
@@ -1045,6 +1124,15 @@ onBeforeUnmount(() => {
   outline: none;
   font: inherit;
 }
+.control-group input::placeholder { color: #9fb3ad; }
+.required-mark {
+  margin-left: 6px;
+  color: #b03a2e;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+}
 .template-card.selected { border-color: var(--future-primary); box-shadow: inset 0 0 0 1px var(--future-primary); }
 .pill-group button.selected { border-color: var(--future-ink); background: var(--future-ink); color: #fff; }
 .primary-button {
@@ -1058,6 +1146,69 @@ onBeforeUnmount(() => {
 .editor-actions { margin-top: 22px; }
 .canvas-frame { border: 1px solid var(--future-border); border-radius: 16px; box-shadow: 0 16px 40px rgba(10,46,59,.09); }
 .saved-section { margin-top: 64px; padding-top: 28px; border-color: var(--future-border); }
+
+.fallback-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 46, 59, .55);
+  backdrop-filter: blur(6px);
+}
+.fallback-dialog {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 30px 22px 24px;
+  border: 1px solid var(--future-border);
+  border-radius: 18px;
+  background: var(--future-surface);
+  box-shadow: 0 24px 60px rgba(10, 46, 59, .25);
+  text-align: center;
+}
+.fallback-dialog h2 {
+  margin: 0 0 8px;
+  color: var(--future-ink);
+  font-size: 17px;
+  font-weight: 800;
+}
+.fallback-hint {
+  margin: 0 0 16px;
+  color: var(--future-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.fallback-image {
+  display: block;
+  width: min(280px, 100%);
+  margin: 0 auto 18px;
+  border: 1px solid var(--future-border);
+  border-radius: 12px;
+  -webkit-touch-callout: default;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+.fallback-dialog .primary-button {
+  min-width: 140px;
+  min-height: 42px;
+  border: 0;
+  cursor: pointer;
+}
+.fallback-dialog .dialog-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: none;
+  color: var(--future-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
 
 .back-button:focus-visible,
 .mode-switch button:focus-visible,

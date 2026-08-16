@@ -12,9 +12,13 @@ export function resolveRoutePlaces(route) {
 
 /**
  * 生成带序号的圆形 Marker HTML
+ * @param {number} number - 序号
+ * @param {'todo'|'current'|'done'} state - 打卡状态：
+ *   todo 未到达（灰底数字）、current 下一站（酸橙脉冲）、done 已打卡（绿底✓）
  */
-export function buildNumberBadgeHTML(number) {
-  return `
+export function buildNumberBadgeHTML(number, state = 'todo') {
+  if (state === 'done') {
+    return `
     <div style="
       width:30px;
       height:30px;
@@ -25,9 +29,47 @@ export function buildNumberBadgeHTML(number) {
       align-items:center;
       justify-content:center;
       font-weight:700;
-      font-size:14px;
+      font-size:15px;
       box-shadow:0 2px 10px rgba(0,0,0,.2);
       border:2px solid #fff;
+      pointer-events:auto;
+      cursor:pointer;
+    ">✓</div>
+  `
+  }
+  if (state === 'current') {
+    return `
+    <div class="route-badge-current" style="
+      width:32px;
+      height:32px;
+      border-radius:50%;
+      background:#c7f24a;
+      color:#0a2e3b;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      font-size:15px;
+      border:2px solid #0a2e3b;
+      pointer-events:auto;
+      cursor:pointer;
+    ">${number}</div>
+  `
+  }
+  return `
+    <div style="
+      width:30px;
+      height:30px;
+      border-radius:50%;
+      background:#a3b1b8;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      font-size:14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.16);
+      border:2px dashed #fff;
       pointer-events:auto;
       cursor:pointer;
     ">${number}</div>
@@ -36,8 +78,11 @@ export function buildNumberBadgeHTML(number) {
 
 /**
  * 创建路线 Polyline
+ * @param {object} AMapNS - 高德地图命名空间
+ * @param {Array} path - 路径坐标
+ * @param {object} options - 样式覆盖，如 { strokeColor, strokeStyle, showDir }
  */
-export function createRoutePolyline(AMapNS, path) {
+export function createRoutePolyline(AMapNS, path, options = {}) {
   if (!AMapNS || !path || path.length < 2) return null
   return new AMapNS.Polyline({
     path,
@@ -48,7 +93,14 @@ export function createRoutePolyline(AMapNS, path) {
     lineJoin: 'round',
     lineCap: 'round',
     showDir: true,
+    ...options,
   })
+}
+
+/** 路段样式：已走段实线绿，未走段虚线灰 */
+export const ROUTE_SEGMENT_STYLES = {
+  done: { strokeColor: '#388e6e', strokeStyle: 'solid', strokeOpacity: 0.9 },
+  todo: { strokeColor: '#a3b1b8', strokeStyle: 'dashed', strokeOpacity: 0.8 },
 }
 
 /**
@@ -65,11 +117,12 @@ export function buildRoutePath(route) {
  * @param {object} AMapNS - AMap 命名空间
  * @param {object} mapInstance - 高德地图实例
  * @param {Array} places - 路线地点对象数组
- * @returns {Promise<Array>} 完整路径坐标数组
+ * @returns {Promise<Array<Array>>} 相邻站点间的分段路径数组（每段至少 2 个点），
+ *   便于按打卡状态为不同路段设置不同样式
  */
 export async function planWalkingRoute(AMapNS, mapInstance, places) {
   if (!AMapNS || !mapInstance || places.length < 2) {
-    return buildRoutePathFromPlaces(places)
+    return buildRouteSegmentsFromPlaces(places)
   }
 
   // 确保 Walking 插件已加载
@@ -92,13 +145,8 @@ export async function planWalkingRoute(AMapNS, mapInstance, places) {
   const concurrency = Math.min(4, segmentCount)
   await Promise.all(Array.from({ length: concurrency }, () => planNextSegment()))
 
-  const fullPath = []
-  segmentPaths.forEach((segmentPath, index) => {
-    if (index === 0) fullPath.push(...segmentPath)
-    else fullPath.push(...segmentPath.slice(1))
-  })
-
-  return fullPath.length >= 2 ? fullPath : buildRoutePathFromPlaces(places)
+  const valid = segmentPaths.every(seg => Array.isArray(seg) && seg.length >= 2)
+  return valid ? segmentPaths : buildRouteSegmentsFromPlaces(places)
 }
 
 /**
@@ -203,10 +251,16 @@ function normalizeLngLat(pt) {
 }
 
 /**
- * 从地点数组构建简单直线路径
+ * 从地点数组构建相邻站点之间的直线路径分段（步行规划的兜底）
+ * @returns {Array<Array>} 每段为 [start, end] 两个坐标点
  */
-function buildRoutePathFromPlaces(places) {
-  return places
+function buildRouteSegmentsFromPlaces(places) {
+  const points = (places || [])
     .filter(p => Array.isArray(p.lnglat) && p.lnglat.length >= 2)
     .map(p => normalizeLngLat(p.lnglat))
+  const segments = []
+  for (let i = 0; i < points.length - 1; i++) {
+    segments.push([points[i], points[i + 1]])
+  }
+  return segments
 }

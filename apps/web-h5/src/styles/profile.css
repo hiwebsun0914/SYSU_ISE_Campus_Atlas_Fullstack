@@ -2221,6 +2221,15 @@ body {
   background: var(--ise-soft);
 }
 
+/* 链接形态与 div 统计格共用网格边框：偶数列去右边框，末行去下边框 */
+.stat-strip > a.stat-entry:nth-child(even) {
+  border-right: 0;
+}
+
+.stat-strip > a.stat-entry:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
 .stat-strip > a.stat-entry small {
   color: var(--ise-primary-dark);
   font-weight: 600;
@@ -2470,13 +2479,16 @@ body {
   .stat-strip > div,
   .stat-strip > div:nth-child(even),
   .stat-strip > div:nth-last-child(-n + 2),
-  .stat-strip > a.stat-entry {
+  .stat-strip > a.stat-entry,
+  .stat-strip > a.stat-entry:nth-child(even),
+  .stat-strip > a.stat-entry:nth-last-child(-n + 2) {
     padding: var(--space-md);
     border-right: 1px solid var(--ise-border);
     border-bottom: 0;
   }
 
-  .stat-strip > div:last-child {
+  .stat-strip > div:last-child,
+  .stat-strip > a.stat-entry:last-child {
     border-right: 0;
   }
 }

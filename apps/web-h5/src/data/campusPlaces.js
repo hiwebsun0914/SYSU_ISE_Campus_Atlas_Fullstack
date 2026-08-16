@@ -1,5 +1,5 @@
 // src/data/campusPlaces.js
-// 校园地图地点数据中心 — 109 个校园地点
+// 校园地图地点数据中心 — 108 个校园地点
 
 export const CATEGORY_MAP = {
   landmark:  { label: "地标",     icon: "⭐", color: "#e8a838" },

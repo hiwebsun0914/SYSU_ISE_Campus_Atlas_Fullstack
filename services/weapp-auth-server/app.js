@@ -20,6 +20,7 @@ const feedbackRouter = require('./routes/feedback');
 const gallery       = require('./data/gallery');
 const { getLocations } = require('./lib/locationSettings');
 const { effectiveRole, isAdminRole } = require('./lib/roles');
+const { buildPointsRank } = require('./lib/pointsRank');
 const { deferLegacyPendingPoints } = require('./lib/checkinPoints');
 
 // === 新增：COS SDK 与配置（用于列目录 + 生成签名 URL） ===
@@ -384,40 +385,12 @@ app.get('/rank/list', (_req, res) => {
 });
 
 /* ========= 积分排行榜（仅昵称、头像、积分；不含真实姓名与学号） ========= */
+/* 无并列：同分时先达到该积分者排名靠前；只返回前 20 名 */
 app.get('/rank/points', (_req, res) => {
   try {
-    const users = readUsers();
-    const sorted = users
-      .filter(u => effectiveRole(u) !== 'owner') // 超管不参与积分排名
-      .map(u => ({
-        userId: u.id,
-        username: u.username || '匿名用户',
-        avatar: u.avatarKey ? toAvatarUrl(u.avatarKey) : (u.avatar || DEFAULT_AVATAR),
-        points: Number.isFinite(Number(u.points)) ? Number(u.points) : 0,
-        createdAt: u.createdAt
-      }))
-      .sort((a, b) =>
-        (b.points - a.points) ||
-        (Number(a.createdAt || 0) - Number(b.createdAt || 0)) ||
-        String(a.username).localeCompare(String(b.username), 'zh')
-      );
-
-    // 竞赛制排名：同分并列同名次，下一个不同分跳号（如 1、1、3）
-    let lastPoints = null;
-    let lastRank = 0;
-    const list = sorted.map((it, idx) => {
-      const rank = (lastPoints !== null && it.points === lastPoints) ? lastRank : idx + 1;
-      lastPoints = it.points;
-      lastRank = rank;
-      return {
-        rank,
-        userId: it.userId,
-        username: it.username,
-        avatar: it.avatar,
-        points: it.points
-      };
+    const list = buildPointsRank(readUsers(), {
+      resolveAvatar: u => (u.avatarKey ? toAvatarUrl(u.avatarKey) : (u.avatar || DEFAULT_AVATAR))
     });
-
     res.json({ code: 0, list });
   } catch (e) {
     console.error('[rank/points] error:', e);
@@ -569,6 +542,7 @@ app.get('/auth/me', auth, (req, res) => {
       checkinRecords: u.checkinRecords || [],
       pendingCheckins: (u.pendingCheckins || []).map(item => ({
         locationId: Number(item.locationId),
+        photo: item.photo || '',
         submittedAt: Number(item.submittedAt || 0),
         appealStatus: item.appealStatus || ''
       })),
@@ -576,6 +550,7 @@ app.get('/auth/me', auth, (req, res) => {
         locationId: Number(item.locationId),
         status: item.status,
         note: item.note || '',
+        photo: item.photo || '',
         reviewedAt: Number(item.reviewedAt || 0),
         appealStatus: item.appealStatus || '',
         appealReason: item.appealReason || '',
@@ -597,6 +572,7 @@ app.get('/checkin/status', auth, (req, res) => {
     lockingLocations: u.lockingLocations || [],
     pendingCheckins: (u.pendingCheckins || []).map(item => ({
       locationId: Number(item.locationId),
+      photo: item.photo || '',
       submittedAt: Number(item.submittedAt || 0),
       appealStatus: item.appealStatus || ''
     })),
@@ -604,6 +580,7 @@ app.get('/checkin/status', auth, (req, res) => {
       locationId: Number(item.locationId),
       status: item.status,
       note: item.note || '',
+      photo: item.photo || '',
       reviewedAt: Number(item.reviewedAt || 0),
       appealStatus: item.appealStatus || '',
       appealReason: item.appealReason || '',

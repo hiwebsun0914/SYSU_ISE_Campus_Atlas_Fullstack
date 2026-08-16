@@ -23,8 +23,10 @@ import {
   buildNumberBadgeHTML,
   createRoutePolyline,
   planWalkingRoute,
+  ROUTE_SEGMENT_STYLES,
 } from '@/utils/routeManager'
 import { checkedPlaces, isPlaceChecked } from '@/stores/userProgress'
+import { getNextTarget } from '@/stores/routeCheckin'
 import { getUserPosition as geoGetUserPosition, calcDistance } from '@/utils/geoCheckin'
 
 window._AMapSecurityConfig = {
@@ -51,7 +53,9 @@ let layerIndex = 0
 // 路线探索模式状态
 let routeMode = false
 const routeMarkers = []
-let routePolyline = null
+const routeSegmentPolylines = []
+let activeRoute = null
+let routePlaces = []
 let routeRenderVersion = 0
 
 const LEVEL_ZOOM = { 1: 1, 2: 14, 3: 17 }
@@ -116,21 +120,19 @@ function buildMarkerHTML(place) {
   const size = selected ? 44 : 36
   const fontSize = selected ? 18 : 14
 
-  let bg, border
+  // 「点亮」语义：未打卡=虚线空心坐标，已打卡=实心酸橙+微光晕
+  let circleStyle
   if (checked) {
-    bg = '#16a34a'; border = '#15803d'
+    circleStyle = `background:#c7f24a;border:2.5px solid #0a2e3b;box-shadow:0 0 0 5px rgba(199,242,74,.28),0 2px 8px rgba(10,46,59,.2);`
   } else if (selected) {
-    bg = '#0d9488'; border = '#0b7a72'
+    circleStyle = `background:#0d9488;border:2.5px solid #0b7a72;box-shadow:0 4px 20px rgba(13,148,136,.5);`
   } else {
-    bg = '#fff'; border = '#9ca3af'
+    circleStyle = `background:rgba(255,255,255,.92);border:2px dashed #9aa5ad;box-shadow:0 2px 8px rgba(10,46,59,.14);`
   }
 
-  const shadow = selected
-    ? '0 4px 20px rgba(13,148,136,.5)'
-    : '0 2px 8px rgba(10,46,59,.18)'
   let labelBg, labelText
   if (checked) {
-    labelBg = 'rgba(22,163,74,.92)'; labelText = '#fff'
+    labelBg = 'rgba(199,242,74,.95)'; labelText = '#0a2e3b'
   } else if (selected) {
     labelBg = 'rgba(13,148,136,.92)'; labelText = '#fff'
   } else {
@@ -140,12 +142,12 @@ function buildMarkerHTML(place) {
   return `
 <div style="display:flex;flex-direction:column;align-items:center;">
   <div style="width:${size}px;height:${size}px;border-radius:50%;
-    background:${bg};border:2.5px solid ${border};box-shadow:${shadow};
+    ${circleStyle}
     display:flex;align-items:center;justify-content:center;
     font-size:${fontSize}px;transition:all .18s ease;position:relative;
     cursor:pointer;">
     ${icon}
-    ${checked ? '<div style="position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;background:#16a34a;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">✓</div>' : ''}
+    ${checked ? '<div style="position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;background:#0a2e3b;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#c7f24a;">✓</div>' : ''}
   </div>
   <div style="margin-top:4px;padding:2px 9px;border-radius:5px;font-size:11px;
     font-weight:600;color:${labelText};background:${labelBg};
@@ -323,23 +325,28 @@ function startRoute(route) {
 
   const renderVersion = ++routeRenderVersion
   routeMode = true
+  activeRoute = route
   removeRouteOverlays()
 
   const places = resolveRoutePlaces(route)
   if (places.length === 0) {
     routeMode = false
+    activeRoute = null
+    routePlaces = []
     rebuildMarkers()
     return
   }
+  routePlaces = places
 
   // 隐藏普通地点 Marker
   clearAllMarkers()
 
-  // 创建编号 Marker
+  // 创建带打卡状态的编号 Marker：已打卡✓ / 下一站酸橙脉冲 / 未到达灰色
+  const nextTarget = getNextTarget(route.id, route.points)
   places.forEach((place, index) => {
     const marker = new AMapNS.Marker({
       position: place.lnglat,
-      content: buildNumberBadgeHTML(index + 1),
+      content: buildNumberBadgeHTML(index + 1, routeBadgeState(place, nextTarget)),
       offset: new AMapNS.Pixel(-15, -15),
       zIndex: 200,
     })
@@ -348,11 +355,13 @@ function startRoute(route) {
     routeMarkers.push(marker)
   })
 
-  // 先用地点坐标立即画出绿色预览线，避免等待多段步行规划
-  const directPath = places.map(place => place.lnglat)
-  if (directPath.length > 1) {
-    routePolyline = createRoutePolyline(AMapNS, directPath)
-    if (routePolyline) routePolyline.setMap(mapInstance)
+  // 先用地点坐标立即画出分段预览线（已走段实线绿、未走段虚线灰），避免等待多段步行规划
+  if (places.length > 1) {
+    const previewSegments = []
+    for (let i = 0; i < places.length - 1; i++) {
+      previewSegments.push([places[i].lnglat, places[i + 1].lnglat])
+    }
+    renderRouteSegments(previewSegments)
   }
 
   // 视野与首屏路线同时确定，不等待高德步行规划完成
@@ -365,19 +374,61 @@ function startRoute(route) {
   }
 }
 
+/** 地点是否已打卡（同时比对前端 slug 与后端数字 ID） */
+function isRoutePlaceChecked(place) {
+  if (!place) return false
+  return isPlaceChecked(place.id) || (place.backendId != null && isPlaceChecked(place.backendId))
+}
+
+/** 编号牌状态：done 已打卡 / current 下一站 / todo 未到达 */
+function routeBadgeState(place, nextTarget) {
+  if (isRoutePlaceChecked(place)) return 'done'
+  if (nextTarget && place.id === nextTarget.id) return 'current'
+  return 'todo'
+}
+
+/** 路段是否已走完：到达该段终点（第 index+1 站）即视为已走 */
+function routeSegmentDone(index) {
+  return isRoutePlaceChecked(routePlaces[index + 1])
+}
+
+function renderRouteSegments(segments) {
+  segments.forEach((path, index) => {
+    const style = routeSegmentDone(index) ? ROUTE_SEGMENT_STYLES.done : ROUTE_SEGMENT_STYLES.todo
+    const polyline = createRoutePolyline(AMapNS, path, style)
+    if (polyline) {
+      polyline.setMap(mapInstance)
+      routeSegmentPolylines.push(polyline)
+    }
+  })
+}
+
+/** 打卡状态变化时，原地刷新路线编号牌与路段样式（不重置视野） */
+function refreshRouteStates() {
+  if (!routeMode || !activeRoute || !routePlaces.length) return
+  const nextTarget = getNextTarget(activeRoute.id, activeRoute.points)
+  routeMarkers.forEach((marker, index) => {
+    marker.setContent(buildNumberBadgeHTML(index + 1, routeBadgeState(routePlaces[index], nextTarget)))
+  })
+  routeSegmentPolylines.forEach((polyline, index) => {
+    polyline.setOptions(routeSegmentDone(index) ? ROUTE_SEGMENT_STYLES.done : ROUTE_SEGMENT_STYLES.todo)
+  })
+}
+
 async function refineWalkingRoute(places, renderVersion) {
   try {
-    const refinedPath = await planWalkingRoute(AMapNS, mapInstance, places)
+    const refinedSegments = await planWalkingRoute(AMapNS, mapInstance, places)
     if (
-      refinedPath.length < 2 ||
+      !refinedSegments.length ||
       renderVersion !== routeRenderVersion ||
       !routeMode ||
-      !mapInstance ||
-      !routePolyline
+      !mapInstance
     ) return
 
-    // 只替换线条路径，不再次调整视野，避免地图在加载后突然缩放
-    routePolyline.setPath(refinedPath)
+    // 只替换各段线条路径，不再次调整视野，避免地图在加载后突然缩放
+    refinedSegments.forEach((path, index) => {
+      routeSegmentPolylines[index]?.setPath(path)
+    })
   } catch (err) {
     console.warn('[CampusMap] walking route refinement failed, keeping direct preview:', err)
   }
@@ -389,6 +440,8 @@ async function refineWalkingRoute(places, renderVersion) {
 function clearRoute() {
   routeRenderVersion += 1
   routeMode = false
+  activeRoute = null
+  routePlaces = []
 
   removeRouteOverlays()
   rebuildMarkers()
@@ -398,10 +451,8 @@ function removeRouteOverlays() {
   routeMarkers.forEach(m => m.setMap(null))
   routeMarkers.length = 0
 
-  if (routePolyline) {
-    routePolyline.setMap(null)
-    routePolyline = null
-  }
+  routeSegmentPolylines.forEach(p => p.setMap(null))
+  routeSegmentPolylines.length = 0
 }
 
 function locateUser() {
@@ -465,6 +516,10 @@ watch(() => props.selectedId, (newId, oldId) => {
 
 watch(checkedPlaces, () => {
   if (!mapInstance || !AMapNS) return
+  if (routeMode) {
+    refreshRouteStates()
+    return
+  }
   rebuildMarkers()
   if (props.selectedId) refreshMarker(props.selectedId)
 }, { deep: true })
@@ -537,4 +592,17 @@ onUnmounted(() => destroyMap())
 }
 
 .retry-btn:hover { background: #0f766e; }
+</style>
+
+<style>
+/* 路线「下一站」编号牌的呼吸脉冲；Marker 内容是高德注入的 DOM，必须用非 scoped 样式 */
+@keyframes route-badge-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(199, 242, 74, .55); }
+  70% { box-shadow: 0 0 0 10px rgba(199, 242, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(199, 242, 74, 0); }
+}
+.route-badge-current { animation: route-badge-pulse 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .route-badge-current { animation: none; }
+}
 </style>

@@ -631,6 +631,7 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
   u.pendingCheckins   = Array.isArray(u.pendingCheckins)   ? u.pendingCheckins   : [];
   u.checkinReviewRecords = Array.isArray(u.checkinReviewRecords) ? u.checkinReviewRecords : [];
   u.points = Number.isFinite(u.points) ? u.points : 0;
+  const pointsBefore = u.points;
 
   const alreadyUnlocked = u.unlockedLocations.includes(locationId);
   const newlyCompletedRoutes = [];
@@ -668,6 +669,9 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
       }
     }
   }
+
+  // 积分增加时记录“达到当前积分”的时间，积分榜同分时先到者排名靠前
+  if (u.points > pointsBefore) u.pointsUpdatedAt = Date.now();
 
   const appealedRecord = [...u.checkinReviewRecords]
     .reverse()

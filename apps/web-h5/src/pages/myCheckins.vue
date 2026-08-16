@@ -109,15 +109,15 @@
               <strong>{{ completedRouteCount }}</strong>
               <small>路线已完成</small>
             </div>
-            <div>
+            <RouterLink class="stat-entry" to="/my/submissions" aria-label="投稿状态，查看我的投稿记录">
               <span>REVIEW</span>
-              <strong>{{ submissionCounts.pending }}</strong>
-              <small>投稿待审核</small>
-            </div>
+              <strong>{{ overallSubmissionCounts.pending }}</strong>
+              <small>投稿状态 · 查看记录</small>
+            </RouterLink>
             <div>
               <span>WORKS</span>
-              <strong>{{ submissionCounts.all }}</strong>
-              <small>投稿总数</small>
+              <strong>{{ overallSubmissionCounts.total }}</strong>
+              <small>投稿总数（打卡照片 + 作品）</small>
             </div>
           </div>
         </section>
@@ -1022,6 +1022,34 @@ const submissionCounts = computed(() => ({
   pending: submissions.value.filter(item => item.status === 'pending').length,
   approved: submissions.value.filter(item => item.status === 'approved').length,
   rejected: submissions.value.filter(item => item.status === 'rejected').length
+}))
+
+/**
+ * 打卡照片投稿统计：待审核按条数计；已审核的按地点去重（同一地点可能有多条历史审核记录），
+ * 与「我的投稿记录」页的合并口径保持一致
+ */
+const photoSubmissionCounts = computed(() => {
+  const pending = userInfo.value.pendingCheckins || []
+  const records = userInfo.value.checkinReviewRecords || []
+  const pendingIds = new Set(pending.map(item => Number(item.locationId)))
+  const reviewedIds = new Set()
+  let pendingReviewed = 0
+  for (const item of records) {
+    const id = Number(item.locationId)
+    if (pendingIds.has(id)) continue
+    reviewedIds.add(id)
+    if (item.status === 'pending') pendingReviewed += 1
+  }
+  return {
+    pending: pending.length + pendingReviewed,
+    total: pendingIds.size + reviewedIds.size
+  }
+})
+
+/** 个人概览卡口径：打卡照片 + 作品投稿 */
+const overallSubmissionCounts = computed(() => ({
+  pending: photoSubmissionCounts.value.pending + submissionCounts.value.pending,
+  total: photoSubmissionCounts.value.total + submissionCounts.value.all
 }))
 
 const submissionFilters = computed(() => [
