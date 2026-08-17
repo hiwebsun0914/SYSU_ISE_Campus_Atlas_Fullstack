@@ -90,17 +90,24 @@
           <ul v-if="filteredPhotoItems.length" class="photo-list">
             <li v-for="item in filteredPhotoItems" :key="item.key" class="photo-card">
               <a
-                v-if="item.photo"
+                v-if="item.photo && !failedPhotoImages.has(item.key)"
                 class="photo-thumb"
                 :href="item.photo"
                 target="_blank"
                 rel="noopener"
                 :aria-label="`查看${item.name}的打卡照片大图`"
               >
-                <img :src="item.photo" :alt="`${item.name}打卡照片`" loading="lazy" decoding="async" />
+                <img
+                  :src="item.photo"
+                  :alt="`${item.name}打卡照片`"
+                  loading="lazy"
+                  decoding="async"
+                  @error="markPhotoImageFailed(item.key)"
+                />
               </a>
               <span v-else class="photo-thumb photo-thumb-empty">
                 <ImageIcon :size="22" aria-hidden="true" />
+                <small v-if="item.photo">图片暂不可用</small>
               </span>
 
               <div class="photo-info">
@@ -232,6 +239,7 @@ const workItems = ref([])
 const activeTab = ref('photos')
 const photoFilter = ref('all')
 const workFilter = ref('all')
+const failedPhotoImages = ref(new Set())
 const failedWorkImages = ref(new Set())
 
 function statusMeta(item) {
@@ -265,53 +273,209 @@ function placeOf(locationId) {
   return slug ? getPlaceById(slug) : null
 }
 
-/** 待审核与审核记录按地点合并：同一地点有待审核记录时以待审核为准 */
-function mergePhotoItems(pendingList, recordList) {
-  const byLocation = new Map()
+function canonicalPhotoKey(value) {
+  if (!value) return ''
+  try {
+    return decodeURIComponent(String(value))
+      .split('?')[0]
+      .split('#')[0]
+      .replace(/^https?:\/\/[^/]+/i, '')
+  } catch {
+    return String(value).split('?')[0].split('#')[0]
+  }
+}
+
+function photoMetaFromKey(key) {
+  const parts = String(key || '').split('/')
+  const locationId = Number(parts[2])
+  const filename = parts[3] || ''
+  const match = filename.match(/^(\d{10,})_/)
+  return {
+    locationId: Number.isInteger(locationId) ? locationId : 0,
+    uploadedAt: match ? Number(match[1]) : 0
+  }
+}
+
+function normalizePhotoItem(item, status, history = null) {
+  const locationId = Number(item.locationId || history?.locationId)
+  const place = placeOf(locationId)
+  const time = Number(
+    item.submittedAt || history?.uploadedAt || item.reviewedAt || item.appealedAt || 0
+  )
+  const photo = item.photo || history?.url || ''
+  const objectKey = item.key || history?.key || canonicalPhotoKey(photo)
+  const identity = canonicalPhotoKey(objectKey) || `location-${locationId}-${time}`
+
+  return {
+    key: `${status}-${locationId}-${time}-${identity}`,
+    locationId,
+    name: place?.name || `地点 ${locationId}`,
+    isHidden: place?.isHidden === 1,
+    photo,
+    status,
+    note: item.note || '',
+    appealStatus: item.appealStatus || '',
+    appealReason: item.appealReason || '',
+    timeValue: time,
+    timeText: formatTime(time),
+    isoTime: toDate(time)?.toISOString() || '',
+    identity
+  }
+}
+
+function historyStatusByLocation(pendingList, recordList, unlockedLocations) {
+  const statusByLocation = new Map()
 
   for (const item of recordList || []) {
     const locationId = Number(item.locationId)
-    const place = placeOf(locationId)
-    const existing = byLocation.get(locationId)
-    const time = Number(item.reviewedAt || 0)
-    if (existing && existing.timeValue >= time) continue
-    byLocation.set(locationId, {
-      key: `record-${locationId}-${time}`,
-      locationId,
-      name: place?.name || `地点 ${locationId}`,
-      isHidden: place?.isHidden === 1,
-      photo: item.photo || '',
-      status: item.status === 'approved' ? 'approved' : 'rejected',
-      note: item.note || '',
-      appealStatus: item.appealStatus || '',
-      appealReason: item.appealReason || '',
-      timeValue: time,
-      timeText: formatTime(time),
-      isoTime: toDate(time)?.toISOString() || ''
-    })
+    const current = statusByLocation.get(locationId)
+    const time = Number(item.submittedAt || item.reviewedAt || item.appealedAt || 0)
+    if (!current || current.timeValue < time) {
+      statusByLocation.set(locationId, {
+        status: item.status === 'approved' ? 'approved' : 'rejected',
+        timeValue: time
+      })
+    }
   }
 
   for (const item of pendingList || []) {
     const locationId = Number(item.locationId)
-    const place = placeOf(locationId)
-    const time = Number(item.submittedAt || 0)
-    byLocation.set(locationId, {
-      key: `pending-${locationId}`,
-      locationId,
-      name: place?.name || `地点 ${locationId}`,
-      isHidden: place?.isHidden === 1,
-      photo: item.photo || '',
+    statusByLocation.set(locationId, {
       status: 'pending',
-      note: '',
-      appealStatus: item.appealStatus || '',
-      appealReason: item.appealReason || '',
-      timeValue: time,
-      timeText: formatTime(time),
-      isoTime: toDate(time)?.toISOString() || ''
+      timeValue: Number(item.submittedAt || 0)
     })
   }
 
-  return [...byLocation.values()].sort((a, b) => b.timeValue - a.timeValue)
+  for (const locationId of unlockedLocations || []) {
+    if (!statusByLocation.has(Number(locationId))) {
+      statusByLocation.set(Number(locationId), { status: 'approved', timeValue: 0 })
+    }
+  }
+
+  return statusByLocation
+}
+
+/**
+ * 保留每一次实际上传的照片，而不是按地点只显示最新一条。
+ * 待审核记录优先覆盖同一张照片的历史审核记录；COS 历史照片用于补齐早期记录里缺失的 photo URL。
+ */
+function mergePhotoItems(pendingList, recordList, historyList = [], unlockedLocations = []) {
+  const normalizedRecords = (recordList || []).map(item => ({
+    item,
+    status: item.status === 'approved' ? 'approved' : 'rejected'
+  }))
+  const normalizedPending = (pendingList || []).map(item => ({ item, status: 'pending' }))
+  const history = (historyList || []).filter(item => item?.url || item?.key)
+  const historyByLocation = new Map()
+
+  for (const item of history) {
+    const meta = item.locationId ? item : { ...item, ...photoMetaFromKey(item.key) }
+    const list = historyByLocation.get(Number(meta.locationId)) || []
+    list.push({ ...item, ...meta })
+    historyByLocation.set(Number(meta.locationId), list)
+  }
+  for (const list of historyByLocation.values()) {
+    list.sort((a, b) => Number(b.uploadedAt || 0) - Number(a.uploadedAt || 0))
+  }
+
+  const usedHistory = new Set()
+  const items = []
+  const add = (item, status, historyItem = null) => {
+    const normalized = normalizePhotoItem(item, status, historyItem)
+    const existingIndex = items.findIndex(candidate => candidate.identity === normalized.identity)
+    if (existingIndex === -1) {
+      items.push(normalized)
+      return
+    }
+
+    // 同一张照片在“待审核”和“审核记录”中都会出现时，只保留当前状态。
+    if (status === 'pending') items[existingIndex] = normalized
+  }
+
+  for (const { item, status } of normalizedRecords) {
+    const locationId = Number(item.locationId)
+    const candidates = historyByLocation.get(locationId) || []
+    const recordTime = Number(item.submittedAt || item.reviewedAt || item.appealedAt || 0)
+    const matchingHistory = !item.photo
+      ? candidates
+          .filter(candidate => !usedHistory.has(candidate.key))
+          .sort((a, b) => (
+            Math.abs(Number(a.uploadedAt || 0) - recordTime)
+            - Math.abs(Number(b.uploadedAt || 0) - recordTime)
+          ))[0]
+      : null
+    if (matchingHistory) usedHistory.add(matchingHistory.key)
+    add(item, status, matchingHistory || null)
+  }
+
+  for (const { item, status } of normalizedPending) {
+    const locationId = Number(item.locationId)
+    const candidates = historyByLocation.get(locationId) || []
+    const submittedAt = Number(item.submittedAt || 0)
+    const matchingHistory = !item.photo
+      ? candidates
+          .filter(candidate => !usedHistory.has(candidate.key))
+          .sort((a, b) => (
+            Math.abs(Number(a.uploadedAt || 0) - submittedAt)
+            - Math.abs(Number(b.uploadedAt || 0) - submittedAt)
+          ))[0]
+      : null
+    if (matchingHistory) usedHistory.add(matchingHistory.key)
+    add(item, status, matchingHistory || null)
+  }
+
+  const statusByLocation = historyStatusByLocation(pendingList, recordList, unlockedLocations)
+  for (const historyItem of history) {
+    if (usedHistory.has(historyItem.key)) continue
+    const identity = canonicalPhotoKey(historyItem.key || historyItem.url)
+    if (items.some(item => item.identity === identity)) continue
+    const locationId = Number(historyItem.locationId || photoMetaFromKey(historyItem.key).locationId)
+    const fallbackStatus = statusByLocation.get(locationId)?.status || 'approved'
+    add({ locationId }, fallbackStatus, historyItem)
+  }
+
+  return items.sort((a, b) => b.timeValue - a.timeValue)
+}
+
+async function loadPhotoHistory(locationIds) {
+  const historyResponse = await request('/checkin/photo/history', 'GET', null, {
+    cacheBust: true,
+    timeout: 15000
+  })
+  if (historyResponse?.ok && historyResponse?.data?.code === 0) {
+    return historyResponse.data.data?.photos || []
+  }
+
+  // 兼容尚未部署 history 接口的旧后端：按地点读取 key，再换取签名 URL。
+  const ids = [...new Set((locationIds || []).map(Number).filter(Number.isInteger))]
+  const entries = []
+  const listResponses = await Promise.all(ids.map(locationId => request(
+    '/checkin/photo/list',
+    'GET',
+    { locationId },
+    { cacheBust: true, timeout: 15000 }
+  )))
+
+  for (const response of listResponses) {
+    if (!response?.ok || response?.data?.code !== 0) continue
+    entries.push(...(response.data.data?.photos || []))
+  }
+
+  const signedPhotos = await Promise.all(entries.slice(0, 100).map(async entry => {
+    const signResponse = await request('/checkin/photo/sign', 'GET', { key: entry.key }, {
+      cacheBust: true,
+      timeout: 15000
+    })
+    if (!signResponse?.ok || signResponse?.data?.code !== 0) return null
+    const meta = photoMetaFromKey(entry.key)
+    return {
+      key: entry.key,
+      url: signResponse.data.data?.url || '',
+      ...meta
+    }
+  }))
+
+  return signedPhotos.filter(item => item?.url)
 }
 
 function countByStatus(list) {
@@ -345,6 +509,10 @@ const filteredWorkItems = computed(() => (
     ? workItems.value
     : workItems.value.filter(item => item.status === workFilter.value)
 ))
+
+function markPhotoImageFailed(key) {
+  failedPhotoImages.value = new Set([...failedPhotoImages.value, String(key)])
+}
 
 function markWorkImageFailed(id) {
   failedWorkImages.value = new Set([...failedWorkImages.value, String(id)])
@@ -385,9 +553,20 @@ async function loadRecords() {
       throw new Error(submissionsResponse?.data?.message || '无法读取作品投稿记录')
     }
 
+    const pendingCheckins = statusResponse.data.pendingCheckins || []
+    const reviewRecords = statusResponse.data.checkinReviewRecords || []
+    const locationIds = [
+      ...(statusResponse.data.unlockedLocations || []),
+      ...pendingCheckins.map(item => item.locationId),
+      ...reviewRecords.map(item => item.locationId)
+    ]
+    const photoHistory = await loadPhotoHistory(locationIds).catch(() => [])
+
     photoItems.value = mergePhotoItems(
-      statusResponse.data.pendingCheckins,
-      statusResponse.data.checkinReviewRecords
+      pendingCheckins,
+      reviewRecords,
+      photoHistory,
+      statusResponse.data.unlockedLocations || []
     )
     workItems.value = (submissionsResponse.data.list || []).map(item => ({
       id: item.id,
@@ -627,7 +806,13 @@ onMounted(() => {
   color: var(--muted);
 }
 .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.photo-thumb-empty { color: var(--muted); }
+.photo-thumb-empty {
+  gap: 4px;
+  padding: 6px;
+  color: var(--muted);
+  text-align: center;
+}
+.photo-thumb-empty small { font-size: 9px; line-height: 1.25; }
 
 .photo-info { min-width: 0; }
 .photo-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
