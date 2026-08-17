@@ -92,11 +92,14 @@
           <!-- 距离达标 → 拍照上传（真实点击触发，保证文件选择器能弹出） -->
           <button
             v-else-if="geoStatus === 'success'"
-            class="checkin-btn checkin-btn--primary"
+            class="checkin-btn"
+            :class="photoBusy ? 'checkin-btn--locating' : 'checkin-btn--primary'"
             type="button"
+            :disabled="photoBusy"
             @click="emit('photo-checkin')"
           >
-            <Camera :size="18" />拍照上传
+            <template v-if="photoBusy"><span class="checkin-geo-spinner" />正在上传照片</template>
+            <template v-else><Camera :size="18" />拍照上传</template>
           </button>
 
           <!-- 定位中 -->
@@ -152,6 +155,8 @@ const props = defineProps({
   geoAccuracy: { type: Number, default: null },
   /** 当前地点的打卡半径（米） */
   geoRadius: { type: Number, default: 50 },
+  /** 拍照上传进行中（含选图与上传），禁用按钮防重复提交 */
+  photoBusy: { type: Boolean, default: false },
   /** 定位失败信息 */
   geoError: { type: String, default: '' },
   /** 整体滚动模式：封面、名称、标签随内容一起滚动，打卡按钮跟随内容末尾（移动端手势底卡用） */

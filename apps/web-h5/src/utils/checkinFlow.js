@@ -58,7 +58,27 @@ function pickImageOnce() {
     const input = ensureFileInput()
     // 清空上次选择，确保重复选择同一文件也能触发 change
     input.value = ''
-    input.onchange = () => resolve((input.files && input.files[0]) || null)
+    let settled = false
+    const cleanup = () => {
+      input.onchange = null
+      input.oncancel = null
+      window.removeEventListener('focus', onFocus)
+    }
+    const done = (file) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve(file)
+    }
+    const onFocus = () => {
+      // 旧浏览器不支持 input cancel 事件：窗口重新聚焦且未选到文件时兜底判定为取消
+      setTimeout(() => {
+        if (!input.files || !input.files.length) done(null)
+      }, 400)
+    }
+    input.onchange = () => done((input.files && input.files[0]) || null)
+    input.oncancel = () => done(null)
+    window.addEventListener('focus', onFocus)
     input.click()
   })
 }
@@ -77,7 +97,14 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
     return { ok: false, reason: 'unauthorized' }
   }
 
-  // 在打开文件选择器前先同步状态，避免用户对待审/已通过地点重复上传。
+  // 先同步唤起文件选择器：input.click() 必须处于用户真实点击的手势激活窗口内。
+  // iOS Safari / 微信 WebView 的用户激活跨不过网络 await，若先做状态校验再选图，
+  // 文件选择器会被静默拦截（此前“距离达标却弹不出上传窗口”的根因之一）。
+  const file = await pickImageOnce()
+  if (!file) return { ok: false, reason: 'no-file' }
+
+  // 选图后再同步状态，避免对待审/已通过地点发起无效上传；
+  // 服务端 presign/commit 也有同样的校验兜底，此处仅用于提前友好提示。
   const statusResponse = await request('/checkin/status', 'GET', null, { cacheBust: true })
   if (statusResponse?.ok && statusResponse?.data?.code === 0) {
     const unlocked = (statusResponse.data.unlockedLocations || []).map(Number)
@@ -91,9 +118,6 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
       return { ok: false, reason: 'review-pending' }
     }
   }
-
-  const file = await pickImageOnce()
-  if (!file) return { ok: false, reason: 'no-file' }
 
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
   const fileType = file.type || 'image/jpeg'
