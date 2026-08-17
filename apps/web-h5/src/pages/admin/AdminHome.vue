@@ -825,6 +825,9 @@
         <input id="loc-edit-image" v-model.trim="locationForm.image" class="admin-dialog-input" type="url" maxlength="2000" placeholder="https://…" />
         <label for="loc-edit-points">单点积分</label>
         <input id="loc-edit-points" v-model.number="locationForm.points" class="admin-dialog-input" type="number" min="0" max="100" step="0.5" required />
+        <label for="loc-edit-radius">打卡半径（米）</label>
+        <input id="loc-edit-radius" v-model.number="locationForm.checkinRadius" class="admin-dialog-input" type="number" min="10" max="500" step="5" required />
+        <small>默认 50 米；体育馆等大型场所可调大（如 150 米），覆盖馆外广场范围。</small>
         <label for="loc-edit-description">地点介绍（支持简单 HTML）</label>
         <textarea id="loc-edit-description" v-model="locationForm.description" rows="6" maxlength="20000"></textarea>
         <small :class="{ error: locationForm.error }">{{ locationForm.error || '保存后立即生效；已发放的历史积分不受影响。' }}</small>
@@ -986,7 +989,7 @@ const locationQuery = ref('')
 const locationLoading = ref(false)
 const locationPoints = reactive({})
 const locationDialog = ref(null)
-const locationForm = reactive({ id: null, name: '', position: '', image: '', description: '', points: 0, error: '', saving: false })
+const locationForm = reactive({ id: null, name: '', position: '', image: '', description: '', points: 0, checkinRadius: 50, error: '', saving: false })
 let locationSearchTimer = 0
 
 const initialLoading = ref(true)
@@ -1209,6 +1212,8 @@ function openLocationEdit(loc) {
   locationForm.image = loc.image || ''
   locationForm.description = loc.description || ''
   locationForm.points = Number(loc.points)
+  const radius = Number(loc.checkinRadius)
+  locationForm.checkinRadius = Number.isFinite(radius) && radius > 0 ? radius : 50
   locationForm.error = ''
   locationForm.saving = false
   locationDialog.value?.showModal()
@@ -1219,6 +1224,11 @@ async function saveLocationEdit() {
   const points = Number(locationForm.points)
   if (!Number.isFinite(points) || points < 0 || points > 100 || Math.round(points * 2) !== points * 2) {
     locationForm.error = '单点积分必须是 0–100 之间、以 0.5 为步进的分值'
+    return
+  }
+  const checkinRadius = Number(locationForm.checkinRadius)
+  if (!Number.isInteger(checkinRadius) || checkinRadius < 10 || checkinRadius > 500) {
+    locationForm.error = '打卡半径必须是 10–500 之间的整数（米）'
     return
   }
   if (!locationForm.name.trim()) {
@@ -1233,7 +1243,8 @@ async function saveLocationEdit() {
       position: locationForm.position,
       image: locationForm.image,
       description: locationForm.description,
-      points
+      points,
+      checkinRadius
     })
     const updated = payload.data?.location
     const target = locations.value.find(item => Number(item.backendId) === Number(locationForm.id))

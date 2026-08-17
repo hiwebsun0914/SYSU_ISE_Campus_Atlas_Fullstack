@@ -31,12 +31,33 @@ function showStepError(step, errOrMsg, extra = {}) {
   alert(`${step} 失败：${msg}`)
 }
 
-/* ===== 共享拍照打卡流程：选图 ===== */
+/* ===== 共享拍照打卡流程：选图 =====
+ * 文件选择 input 常驻 DOM（而非临时创建）：
+ * 1) 部分 WebView 会忽略未挂载节点的 click()；
+ * 2) 必须在用户真实点击的同步调用栈里触发 click()，
+ *    否则浏览器手势激活过期后会静默拦截文件选择器。
+ * capture="environment" 让移动端优先唤起后置相机，仍可切换相册。
+ */
+let fileInput = null
+
+function ensureFileInput() {
+  if (fileInput && document.body.contains(fileInput)) return fileInput
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.setAttribute('capture', 'environment')
+  // 视觉隐藏但保留可触发性（display:none 在个别 WebView 中 click 无效）
+  input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;'
+  document.body.appendChild(input)
+  fileInput = input
+  return input
+}
+
 function pickImageOnce() {
   return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
+    const input = ensureFileInput()
+    // 清空上次选择，确保重复选择同一文件也能触发 change
+    input.value = ''
     input.onchange = () => resolve((input.files && input.files[0]) || null)
     input.click()
   })

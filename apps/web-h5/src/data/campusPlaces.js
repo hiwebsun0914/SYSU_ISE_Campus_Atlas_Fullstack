@@ -1029,6 +1029,7 @@ export const campusLocations = [
     id: "new-gym",
     backendId: 65,
     name: "新体育馆",
+    checkinRadius: 150,
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_065_new_gymnasium.jpg",
     lnglat: [113.302117,23.100898],
     isHidden: 0,

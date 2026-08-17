@@ -1387,6 +1387,7 @@ module.exports = {
       backendId: 65,
       name: '新体育馆',
       position: '南校园369号',
+      checkinRadius: 150,
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_065_new_gymnasium.jpg',
       description: `<p><strong>中山大学体育馆</strong>，位于<strong>广州大学城中山大学新校区主轴线南端</strong>，北邻图书馆，南接大学城中环路。建筑面积约<strong>11600平方米</strong>，包括主馆及三层副馆，按国际比赛标准建造，可容纳<strong>5000名观众</strong>，其中设有1700余个可伸缩座椅。</p>
 

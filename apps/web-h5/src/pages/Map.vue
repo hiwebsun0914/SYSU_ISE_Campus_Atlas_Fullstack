@@ -77,6 +77,7 @@
         v-bind="checkinCardProps"
         scroll-all
         @geo-checkin="onGeoCheckin"
+        @photo-checkin="onPhotoCheckin"
         @close="closeSheet"
       />
     </div>
@@ -87,6 +88,7 @@
         <CheckinCard
           v-bind="checkinCardProps"
           @geo-checkin="onGeoCheckin"
+          @photo-checkin="onPhotoCheckin"
           @close="closeSheet"
         />
       </div>
@@ -148,7 +150,8 @@ import {
   resetRouteCheckin,
 } from '@/stores/routeCheckin'
 import { fetchUserProgress } from '@/stores/userProgress'
-import { CHECKIN_RADIUS } from '@/utils/geoCheckin'
+import { CHECKIN_RADIUS, withinCheckinRange } from '@/utils/geoCheckin'
+import { request } from '@/utils/request'
 import checkinFlow from '@/utils/checkinFlow'
 
 const router = useRouter()
@@ -202,6 +205,8 @@ const checkinCardProps = computed(() => ({
   primaryLabel: isExploring.value && selectedPlace.value?.id === currentPlace.value?.id ? '完成打卡' : '',
   geoStatus: geoStatus.value,
   geoDistance: geoDistance.value,
+  geoAccuracy: geoAccuracy.value,
+  geoRadius: currentCheckinRadius(selectedPlace.value),
   geoError: geoError.value,
 }))
 
@@ -305,7 +310,21 @@ function onMobileSheetMediaChange() {
 // 定位打卡状态
 const geoStatus = ref('idle') // 'idle' | 'locating' | 'too_far' | 'success' | 'error'
 const geoDistance = ref(null)
+const geoAccuracy = ref(null) // 定位精度半径（米），用于误差补偿与展示
 const geoError = ref('')
+
+// 后端可配置的打卡半径覆盖（backendId → checkinRadius），公开接口 /locations 下发
+const radiusOverrides = ref({})
+
+/** 当前选中地点的打卡半径：后端覆盖 > 静态数据 > 默认 50m */
+function currentCheckinRadius(place) {
+  if (!place) return CHECKIN_RADIUS
+  const override = Number(radiusOverrides.value?.[place.backendId])
+  if (Number.isFinite(override) && override > 0) return override
+  const local = Number(place.checkinRadius)
+  if (Number.isFinite(local) && local > 0) return local
+  return CHECKIN_RADIUS
+}
 
 const filteredPlaces = computed(() => {
   const list = searchPlaces(searchQuery.value)
@@ -324,6 +343,7 @@ function onMarkerClick(place) {
   // 重置打卡定位状态
   geoStatus.value = 'idle'
   geoDistance.value = null
+  geoAccuracy.value = null
   geoError.value = ''
 }
 
@@ -386,6 +406,7 @@ watch(currentPlace, (place) => {
     selectedPlace.value = place
     geoStatus.value = 'idle'
     geoDistance.value = null
+    geoAccuracy.value = null
     geoError.value = ''
   }
 })
@@ -433,26 +454,29 @@ function selectFromList(place) {
   })
 }
 
-/** 定位打卡：获取用户位置并判断距离 */
+/** 第一步 · 定位打卡：获取用户位置并判断距离（达标后由用户再点“拍照上传”） */
 async function onGeoCheckin() {
   if (!selectedPlace.value || !campusMapRef.value) return
 
   // 重置状态，开始定位
   geoStatus.value = 'locating'
   geoDistance.value = null
+  geoAccuracy.value = null
   geoError.value = ''
 
   try {
     const pos = await campusMapRef.value.getUserPosition()
     const targetLnglat = selectedPlace.value.lnglat
     const dist = campusMapRef.value.getDistance(pos, targetLnglat)
+    const radius = currentCheckinRadius(selectedPlace.value)
 
     geoDistance.value = dist
+    geoAccuracy.value = Number.isFinite(pos?.accuracy) ? pos.accuracy : null
 
-    if (dist <= CHECKIN_RADIUS) {
-      // 在 50m 范围内：进入拍照打卡流程，照片通过审核后才计分
+    if (withinCheckinRange(dist, geoAccuracy.value, radius)) {
+      // 在打卡范围内（含定位误差补偿）：等待用户点击“拍照上传”
+      // 文件选择器必须由真实点击触发，不能在这里自动唤起（会被浏览器手势策略拦截）
       geoStatus.value = 'success'
-      submitPhotoCheckin()
     } else {
       // 距离过远
       geoStatus.value = 'too_far'
@@ -463,7 +487,13 @@ async function onGeoCheckin() {
   }
 }
 
-/** 50m 范围内进入拍照打卡：上传照片并通过审核才计分、解锁地点 */
+/** 第二步 · 拍照上传：距离达标后由用户真实点击触发（浏览器手势窗口内唤起相机/相册） */
+function onPhotoCheckin() {
+  if (!selectedPlace.value || geoStatus.value !== 'success') return
+  submitPhotoCheckin()
+}
+
+/** 打卡范围内进入拍照打卡：上传照片并通过审核才计分、解锁地点 */
 async function submitPhotoCheckin() {
   const placeId = selectedPlace.value.id
   const backendId = placeIdToBackend[placeId]
@@ -578,6 +608,22 @@ onMounted(() => {
       showToast('请先登录，打卡数据将同步到云端')
     }
   })
+  // 同步后端配置的打卡半径覆盖（管理端可调大场馆类地点的打卡范围）
+  request('/locations', 'GET')
+    .then((res) => {
+      const list = res?.data?.data?.locations || res?.data?.locations || []
+      const map = {}
+      for (const loc of list) {
+        const r = Number(loc?.checkinRadius)
+        if (loc?.backendId != null && Number.isFinite(r) && r > 0) {
+          map[Number(loc.backendId)] = r
+        }
+      }
+      radiusOverrides.value = map
+    })
+    .catch((err) => {
+      console.warn('[Map] fetch checkin radius overrides failed:', err)
+    })
 })
 
 onBeforeUnmount(() => {
