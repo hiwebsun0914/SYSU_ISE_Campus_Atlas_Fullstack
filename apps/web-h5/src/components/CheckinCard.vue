@@ -49,16 +49,16 @@
           <span>正在获取位置...</span>
         </div>
 
-        <!-- 距离检测通过（进入拍照上传） -->
+        <!-- 距离检测通过（等待用户点击拍照上传） -->
         <div v-if="geoStatus === 'success'" class="checkin-geo-row checkin-geo-row--ok">
           <span class="checkin-geo-icon">✅</span>
-          <span>距离 {{ geoDistance }} 米，在打卡范围内，请拍照上传</span>
+          <span>距离 {{ geoDistance }} 米，在打卡范围内{{ accuracyHint }}，请拍照上传</span>
         </div>
 
         <!-- 距离不足 -->
         <div v-if="geoStatus === 'too_far'" class="checkin-geo-row checkin-geo-row--warn">
           <span class="checkin-geo-icon">⚠️</span>
-          <span>距离过远（{{ geoDistance }} 米），超出打卡范围</span>
+          <span>距离过远（{{ geoDistance }} 米），超出打卡范围（{{ geoRadius }} 米内可打卡）{{ accuracyHint }}</span>
         </div>
 
         <!-- 定位失败 -->
@@ -81,12 +81,25 @@
           </button>
           <!-- 空闲 → 开始定位打卡 -->
           <button
-            v-else-if="geoStatus === 'idle' || geoStatus === 'success'"
+            v-else-if="geoStatus === 'idle'"
             class="checkin-btn checkin-btn--primary"
             type="button"
             @click="emit('geo-checkin')"
           >
             <Camera :size="18" />定位并拍照打卡
+          </button>
+
+          <!-- 距离达标 → 拍照上传（真实点击触发，保证文件选择器能弹出） -->
+          <button
+            v-else-if="geoStatus === 'success'"
+            class="checkin-btn"
+            :class="photoBusy ? 'checkin-btn--locating' : 'checkin-btn--primary'"
+            type="button"
+            :disabled="photoBusy"
+            @click="emit('photo-checkin')"
+          >
+            <template v-if="photoBusy"><span class="checkin-geo-spinner" />正在上传照片</template>
+            <template v-else><Camera :size="18" />拍照上传</template>
           </button>
 
           <!-- 定位中 -->
@@ -138,18 +151,31 @@ const props = defineProps({
   geoStatus: { type: String, default: 'idle' },
   /** 用户到目标地点的距离（米），保留一位小数 */
   geoDistance: { type: Number, default: null },
+  /** 定位精度半径（米），未知为 null */
+  geoAccuracy: { type: Number, default: null },
+  /** 当前地点的打卡半径（米） */
+  geoRadius: { type: Number, default: 50 },
+  /** 拍照上传进行中（含选图与上传），禁用按钮防重复提交 */
+  photoBusy: { type: Boolean, default: false },
   /** 定位失败信息 */
   geoError: { type: String, default: '' },
   /** 整体滚动模式：封面、名称、标签随内容一起滚动，打卡按钮跟随内容末尾（移动端手势底卡用） */
   scrollAll: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['geo-checkin', 'close'])
+const emit = defineEmits(['geo-checkin', 'photo-checkin', 'close'])
 
 const imageError = ref(false)
 
 watch(() => props.place?.id, () => {
   imageError.value = false
+})
+
+/** 定位误差提示：精度已知且较差时追加展示，帮用户理解距离读数 */
+const accuracyHint = computed(() => {
+  const acc = Number(props.geoAccuracy)
+  if (!Number.isFinite(acc) || acc <= 0) return ''
+  return `（定位误差 ±${acc} 米）`
 })
 
 const checked = computed(() => props.place ? isPlaceChecked(props.place.id) : false)

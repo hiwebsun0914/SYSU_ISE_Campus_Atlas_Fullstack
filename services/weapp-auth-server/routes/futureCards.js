@@ -118,7 +118,10 @@ function moderationFingerprint(value) {
     .replace(/[\p{White_Space}\p{Punctuation}\p{Symbol}]+/gu, '');
 }
 
+// 字典内容在进程内不变，首次使用后缓存，避免每次审核都读盘+重建指纹
+let cachedSensitiveWords = null;
 function loadSensitiveWords() {
+  if (cachedSensitiveWords) return cachedSensitiveWords;
   const chunks = [];
   if (process.env.SENSITIVE_WORDS) chunks.push(process.env.SENSITIVE_WORDS);
   if (process.env.SENSITIVE_WORDS_FILE) {
@@ -130,11 +133,12 @@ function loadSensitiveWords() {
     }
   }
   if (!chunks.length) chunks.push('自杀,暴恐,诈骗,赌博');
-  return chunks
+  cachedSensitiveWords = chunks
     .join('\n')
     .split(/[,\r\n]+/)
     .map(word => moderationFingerprint(word.trim()))
     .filter(Boolean);
+  return cachedSensitiveWords;
 }
 
 function contentRejected(content) {
@@ -377,6 +381,8 @@ function registerRoutes(router, cosClient) {
       const store = readStore();
       const card = ownCard(store, String(req.params.id || ''), req.userId);
       if (!card) throw new ApiError(404, 'CARD_NOT_FOUND', '信笺不存在');
+      // 内容类型创建后不可变更，防止 PATCH 把一类内容改成另一类
+      if (validated.mode !== card.mode) throw new ApiError(400, 'INVALID_MODE', '内容类型创建后不可修改');
       Object.assign(card, validated, { updatedAt: new Date().toISOString() });
       writeStore(store);
       return res.json({ code: 0, data: { card: cardForResponse(card, req.futureCardsCos) } });

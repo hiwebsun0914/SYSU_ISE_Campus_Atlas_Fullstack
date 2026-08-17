@@ -1,4 +1,5 @@
 import { getPlaceById } from '@/data/campusPlaces'
+import staticRoutePaths from '@/data/routePaths'
 import { request } from '@/utils/request'
 
 /**
@@ -114,7 +115,41 @@ export function buildRoutePath(route) {
 }
 
 /**
- * 规划真实步行路线（经由后端 /route/walking 代理 + 缓存）
+ * 静态贴路路径的段 key（与 scripts/generate-route-paths.mjs 及后端 cacheKeyOf 一致）
+ */
+export function segmentKeyOf(start, end) {
+  return `${start[0].toFixed(6)},${start[1].toFixed(6)}->${end[0].toFixed(6)},${end[1].toFixed(6)}`
+}
+
+/**
+ * 查静态贴路路径（生成脚本固化在 routePaths.js 中），未命中返回 null
+ */
+export function getStaticSegment(start, end) {
+  const path = staticRoutePaths[segmentKeyOf(start, end)]
+  return Array.isArray(path) && path.length >= 2 ? path : null
+}
+
+/**
+ * 整段路线全部命中静态数据时返回分段路径数组，否则返回 null
+ * （供 startRoute 首屏直接画贴路线，跳过直线预览阶段）
+ */
+export function getStaticRouteSegments(places) {
+  if (!places || places.length < 2) return null
+  const segments = []
+  for (let i = 0; i < places.length - 1; i++) {
+    const seg = getStaticSegment(
+      normalizeLngLat(places[i].lnglat),
+      normalizeLngLat(places[i + 1].lnglat)
+    )
+    if (!seg) return null
+    segments.push(seg)
+  }
+  return segments
+}
+
+/**
+ * 规划真实步行路线：优先静态贴路数据（routePaths.js，秒出且不依赖高德），
+ * 静态未覆盖的段再经后端 /route/walking 代理 + 缓存兜底。
  * 后端对高德上游串行限速并缓存路段结果，避免前端并发直调触发
  * 高德 CUQPS 限流（2026-08-16 实测：并发 4 直调 54 段有 21 段被限流）。
  * @param {object} AMapNS - 保留参数，兼容旧调用（不再使用）
@@ -136,11 +171,12 @@ export async function planWalkingRoute(AMapNS, mapInstance, places) {
       const index = nextSegmentIndex++
       const start = normalizeLngLat(places[index].lnglat)
       const end = normalizeLngLat(places[index + 1].lnglat)
-      segmentPaths[index] = await planWalkingSegmentViaServer(start, end)
+      segmentPaths[index] = getStaticSegment(start, end)
+        ?? await planWalkingSegmentViaServer(start, end)
     }
   }
 
-  // 缓存命中时后端即时返回，冷缓存时由后端串行限速；前端保持低并发即可
+  // 静态命中时无网络请求；未命中段由后端串行限速，前端保持低并发即可
   const concurrency = Math.min(2, segmentCount)
   await Promise.all(Array.from({ length: concurrency }, () => planNextSegment()))
 

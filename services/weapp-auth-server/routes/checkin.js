@@ -61,6 +61,8 @@ function publicReviewRecords(user) {
       status: item.status,
       note: item.note || '',
       photo: item.photo || (item.key ? toUrl(item.key) : ''),
+      key: item.key || '',
+      submittedAt: Number(item.submittedAt || 0),
       reviewedAt: Number(item.reviewedAt || 0),
       appealStatus: item.appealStatus || '',
       appealReason: item.appealReason || '',
@@ -73,6 +75,7 @@ function publicPendingCheckins(user) {
   return user.pendingCheckins.map(item => ({
     locationId: Number(item.locationId),
     photo: item.photo || (item.key ? toUrl(item.key) : ''),
+    key: item.key || '',
     submittedAt: Number(item.submittedAt || 0),
     appealStatus: item.appealStatus || '',
     appealReason: item.appealReason || ''
@@ -478,7 +481,33 @@ router.get('/photo/list', auth, async (req, res) => {
   }
 });
 
-// 2) 最新一张：GET /checkin/photo/latest?locationId=xxx
+// 2) 历史照片：GET /checkin/photo/history
+// 返回当前用户在 COS 中保存过的全部打卡照片，兼容早期记录没有保存 photo URL 的情况。
+router.get('/photo/history', auth, async (req, res) => {
+  try {
+    // 实际目录格式是 checkin/<uid>__<slug>/，保持与上传和其它取图接口一致。
+    const userPrefix = `checkin/${req.userId}__${getUserSlug(req)}/`;
+    const keys = await listObjectsByPrefix(userPrefix, 1000);
+    const photos = keys.map(key => {
+      const parts = String(key).split('/');
+      const locationId = Number(parts[2]);
+      const filename = parts[3] || '';
+      const timestampMatch = filename.match(/^(\d{10,})_/);
+      return {
+        key,
+        url: toSignedUrl(key, 600),
+        locationId: Number.isInteger(locationId) ? locationId : 0,
+        uploadedAt: timestampMatch ? Number(timestampMatch[1]) : 0
+      };
+    });
+    return res.json({ code: 0, data: { photos, count: photos.length } });
+  } catch (e) {
+    console.error('[checkin/photo/history] error:', e);
+    return res.status(500).json({ code: 1, message: 'history failed' });
+  }
+});
+
+// 3) 最新一张：GET /checkin/photo/latest?locationId=xxx
 router.get('/photo/latest', auth, async (req, res) => {
   try {
     const { locationId } = req.query || {};
@@ -501,7 +530,7 @@ router.get('/photo/latest', auth, async (req, res) => {
   }
 });
 
-// 3) 签名直链：GET /checkin/photo/sign?key=...
+// 4) 签名直链：GET /checkin/photo/sign?key=...
 router.get('/photo/sign', auth, async (req, res) => {
   try {
     const { key } = req.query || {};

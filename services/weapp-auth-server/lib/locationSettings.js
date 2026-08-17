@@ -6,6 +6,9 @@ const baseLocationData = require('../data/locations');
 
 const DEFAULT_POINTS = 1;
 const HIDDEN_DEFAULT_POINTS = 1.5;
+const DEFAULT_CHECKIN_RADIUS = 50;
+const MIN_CHECKIN_RADIUS = 10;
+const MAX_CHECKIN_RADIUS = 500;
 
 function settingsFile() {
   return path.resolve(
@@ -46,13 +49,18 @@ function getLocations(options = {}) {
     .map(location => {
       const override = settings[String(location.backendId)] || {};
       const overridePoints = Number(override.points);
+      const overrideRadius = Number(override.checkinRadius);
+      const baseRadius = Number(location.checkinRadius);
       return {
         ...location,
         ...override,
         backendId: Number(location.backendId),
         points: Number.isFinite(overridePoints) && override.points !== undefined && override.points !== ''
           ? overridePoints
-          : (location.isHidden ? HIDDEN_DEFAULT_POINTS : DEFAULT_POINTS)
+          : (location.isHidden ? HIDDEN_DEFAULT_POINTS : DEFAULT_POINTS),
+        checkinRadius: Number.isFinite(overrideRadius) && overrideRadius > 0
+          ? overrideRadius
+          : (Number.isFinite(baseRadius) && baseRadius > 0 ? baseRadius : DEFAULT_CHECKIN_RADIUS)
       };
     });
 }
@@ -109,6 +117,14 @@ function validatePatch(input = {}) {
     patch.points = points;
   }
 
+  if (Object.prototype.hasOwnProperty.call(input, 'checkinRadius')) {
+    const radius = Number(input.checkinRadius);
+    if (!Number.isInteger(radius) || radius < MIN_CHECKIN_RADIUS || radius > MAX_CHECKIN_RADIUS) {
+      throw new Error(`打卡半径必须是 ${MIN_CHECKIN_RADIUS}–${MAX_CHECKIN_RADIUS} 之间的整数（米）`);
+    }
+    patch.checkinRadius = radius;
+  }
+
   if (!Object.keys(patch).length) throw new Error('没有可保存的地点字段');
   return patch;
 }
@@ -135,6 +151,7 @@ function updateLocation(backendId, input) {
 module.exports = {
   DEFAULT_POINTS,
   HIDDEN_DEFAULT_POINTS,
+  DEFAULT_CHECKIN_RADIUS,
   getLocations,
   getLocation,
   updateLocation,
