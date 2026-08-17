@@ -2013,7 +2013,7 @@ module.exports = {
       backendId: 102,
       name: '春晖园',
       position: '东北区353号',
-      image: 'https://store.is.autonavi.com/showpic/44bdf82bf5b58a2a50a2a07abe4d4510',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_102_chunhui_yuan.jpg',
       description: `<p><strong>春晖园</strong>，位于<strong>中山大学南校园东北区353号</strong>，毗邻东区宿舍，与松涛园一墙之隔，是南校园师生日常就餐的主要场所之一。食堂由<strong>中厅</strong>与<strong>东厅</strong>两部分构成，共<strong>一至二楼</strong>。</p>
 
 <p><strong>菜品与特色：</strong></p>
@@ -2030,7 +2030,7 @@ module.exports = {
       backendId: 103,
       name: '熊德龙学生活动中心',
       position: '南校园东区',
-      image: 'https://store.is.autonavi.com/showpic/3caa396ee13252602a9061b1c24d6578',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_103_xiong_delong_student_activity_center.jpg',
       description: `<p><strong>熊德龙学生活动中心</strong>，位于<strong>中山大学南校园东区、东湖之滨</strong>，坐西向东，是南校园学生课外活动与社团文化的核心场所。该中心由爱国华侨、著名侨领<strong>熊德龙先生</strong>捐资兴建。</p>
 
 <p><strong>历史沿革：</strong></p>
@@ -2053,7 +2053,7 @@ module.exports = {
       backendId: 104,
       name: '学五食堂',
       position: '园东区109号',
-      image: 'https://store.is.autonavi.com/showpic/b18da5a0f569a020ed1b3aa7d909c9ae',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_104_xuewu_canteen.jpg',
       description: `<p><strong>学五食堂</strong>，位于<strong>中山大学南校园园东区109号</strong>，临近东门，是距离东区生活区最近、规模最大的食堂，被誉为校园“性价比之王”。食堂共<strong>两层</strong>。</p>
 
 <p><strong>菜品与特色：</strong></p>
@@ -2070,7 +2070,7 @@ module.exports = {
       backendId: 105,
       name: '106栋机房',
       position: '南校园106栋',
-      image: '',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_105_building_106_computer_room.jpg',
       description: `<p><strong>106栋机房</strong>，位于<strong>中山大学南校园106栋</strong>，是学校集中提供计算机教学与实践的机房所在楼栋。</p>
 
 <p><strong>功能与用途：</strong></p>
@@ -2085,7 +2085,7 @@ module.exports = {
       backendId: 106,
       name: '英东体育场',
       position: '英东体育中心',
-      image: '',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_106_yingdong_sports_field.jpg',
       description: `<p><strong>英东体育场</strong>，又称<strong>东区运动场</strong>，位于<strong>中山大学南校园英东体育中心</strong>内，是校园内重要的室外体育运动场所。该体育场由香港著名实业家、慈善家<strong>霍英东先生</strong>捐资兴建的英东体育中心的一部分。</p>
 
 <p><strong>场地与设施：</strong></p>
@@ -2107,7 +2107,7 @@ module.exports = {
       backendId: 107,
       name: '中文堂',
       position: '东南区274号',
-      image: 'https://store.is.autonavi.com/showpic/b64edd73df52b617bffa4d5e4a6bfd4c',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_107_zhongwen_hall.jpg',
       description: `<p><strong>中文堂</strong>，位于<strong>中山大学南校园东南区274号</strong>，建成于<strong>2006年11月</strong>，楼高<strong>9层</strong>，是国内楼层最高的中文系楼，为中山大学中国语言文学系的所在地。</p>
 
 <p><strong>建筑与特色：</strong></p>
@@ -2126,7 +2126,7 @@ module.exports = {
       backendId: 108,
       name: '文科楼',
       position: '西北区550号',
-      image: 'https://store.is.autonavi.com/showpic/cf2a2f5151871ca557809cc5a21e8f39',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_108_wenke_building.jpg',
       description: `<p><strong>文科楼</strong>，位于<strong>中山大学南校园西北区550号</strong>，是南校园人文社会科学相关院系教学与办公的重要场所。</p>
 
 <p><strong>功能与用途：</strong></p>
@@ -2141,7 +2141,7 @@ module.exports = {
       backendId: 109,
       name: '学一食堂',
       position: '西南区496号',
-      image: 'https://aos-comment.amap.com/B00140U3D8/comment/content_media_external_file_80752_ss__1759397053156_15905054.jpg',
+      image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_109_xueyi_canteen.jpg',
       description: `<p><strong>学一食堂</strong>，位于<strong>中山大学南校园西南区496号</strong>、逸夫艺术中心西侧，西大球场旁，是南校园师生日常就餐的主要场所之一。食堂共<strong>三层</strong>。</p>
 
 <p><strong>菜品与特色：</strong></p>
