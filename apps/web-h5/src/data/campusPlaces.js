@@ -422,7 +422,7 @@ export const campusLocations = [
     backendId: 26,
     name: "达尔文雕塑",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_026_charles_darwin_sculpture.jpg",
-    lnglat: [113.296616,23.092475],
+    lnglat: [113.296790,23.093024],
     isHidden: 0,
     category: "landmark",
     position: "南校园生物楼正前方",
