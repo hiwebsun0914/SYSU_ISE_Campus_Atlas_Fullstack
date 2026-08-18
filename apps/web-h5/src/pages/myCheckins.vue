@@ -109,15 +109,15 @@
               <strong>{{ completedRouteCount }}</strong>
               <small>路线已完成</small>
             </div>
-            <RouterLink class="stat-entry" to="/my/submissions" aria-label="投稿状态，查看我的投稿记录">
+            <RouterLink class="stat-entry" to="/my/submissions" aria-label="被驳回的投稿数，查看我的投稿记录">
               <span>REVIEW</span>
-              <strong>{{ overallSubmissionCounts.pending }}</strong>
-              <small>投稿状态 · 查看记录</small>
+              <strong>{{ overallSubmissionCounts.rejected }}</strong>
+              <small>被驳回的投稿</small>
             </RouterLink>
             <div>
               <span>WORKS</span>
               <strong>{{ overallSubmissionCounts.total }}</strong>
-              <small>投稿总数（打卡照片 + 作品）</small>
+              <small>投稿总数</small>
             </div>
           </div>
         </section>
@@ -1025,6 +1025,26 @@ const submissionCounts = computed(() => ({
 }))
 
 /**
+ * 作品投稿的活跃驳回数：同一奖项重新投稿后，只有新投稿审核通过才清除该奖项的驳回提醒。
+ * 这样审核中的重新投稿不会提前把提醒数字减掉，和用户看到的审核状态保持一致。
+ */
+const rejectedWorkSubmissionCount = computed(() => {
+  const rejectedCategories = new Set(
+    submissions.value
+      .filter(item => item.status === 'rejected')
+      .map(item => item.category || item.categoryName)
+      .filter(Boolean)
+  )
+  const approvedCategories = new Set(
+    submissions.value
+      .filter(item => item.status === 'approved')
+      .map(item => item.category || item.categoryName)
+      .filter(Boolean)
+  )
+  return [...rejectedCategories].filter(category => !approvedCategories.has(category)).length
+})
+
+/**
  * 打卡照片投稿统计：待审核按条数计；已审核的按地点去重（同一地点可能有多条历史审核记录），
  * 与「我的投稿记录」页的合并口径保持一致
  */
@@ -1032,6 +1052,8 @@ const photoSubmissionCounts = computed(() => {
   const pending = userInfo.value.pendingCheckins || []
   const records = userInfo.value.checkinReviewRecords || []
   const pendingIds = new Set(pending.map(item => Number(item.locationId)))
+  const unlockedIds = new Set((userInfo.value.unlockedLocations || []).map(Number))
+  const activeIds = new Set([...pendingIds, ...unlockedIds])
   const reviewedIds = new Set()
   let pendingReviewed = 0
   for (const item of records) {
@@ -1040,15 +1062,22 @@ const photoSubmissionCounts = computed(() => {
     reviewedIds.add(id)
     if (item.status === 'pending') pendingReviewed += 1
   }
+  const rejectedIds = new Set(
+    records
+      .filter(item => item.status === 'rejected' && !activeIds.has(Number(item.locationId)))
+      .map(item => Number(item.locationId))
+  )
   return {
     pending: pending.length + pendingReviewed,
+    rejected: rejectedIds.size,
     total: pendingIds.size + reviewedIds.size
   }
 })
 
-/** 个人概览卡口径：打卡照片 + 作品投稿 */
+/** 个人概览卡口径：地图打卡照片 + 摄影奖/创意奖作品投稿 */
 const overallSubmissionCounts = computed(() => ({
   pending: photoSubmissionCounts.value.pending + submissionCounts.value.pending,
+  rejected: photoSubmissionCounts.value.rejected + rejectedWorkSubmissionCount.value,
   total: photoSubmissionCounts.value.total + submissionCounts.value.all
 }))
 
