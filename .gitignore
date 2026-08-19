@@ -17,6 +17,7 @@
 **/dist/
 **/build/
 **/.cache/
+scripts/.route-optimization-cache.json
 **/.gradle/
 **/.cxx/
 **/.externalNativeBuild/

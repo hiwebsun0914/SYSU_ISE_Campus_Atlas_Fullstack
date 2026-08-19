@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 const OUT_FILE = path.join(ROOT, 'apps/web-h5/src/data/routePaths.js')
+const OPTIMIZATION_CACHE_FILE = path.join(ROOT, 'scripts/.route-optimization-cache.json')
 
 const UPSTREAM_GAP_MS = 350
 const UPSTREAM_TIMEOUT_MS = 8000
@@ -74,6 +75,15 @@ const round6 = n => Number(n.toFixed(6))
 const keyOf = (from, to) =>
   `${from[0].toFixed(6)},${from[1].toFixed(6)}->${to[0].toFixed(6)},${to[1].toFixed(6)}`
 
+function loadOptimizationCache() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(OPTIMIZATION_CACHE_FILE, 'utf8'))
+    return parsed?.entries || {}
+  } catch {
+    return {}
+  }
+}
+
 async function main() {
   const key = loadAmapKey()
   if (!key) {
@@ -83,6 +93,10 @@ async function main() {
 
   const { getPlaceById } = await import(path.join(ROOT, 'apps/web-h5/src/data/campusPlaces.js'))
   const { default: routes } = await import(path.join(ROOT, 'apps/web-h5/src/data/routes.js'))
+  const { default: manualRoutePathOverrides } = await import(
+    path.join(ROOT, 'apps/web-h5/src/data/routePathOverrides.js')
+  )
+  const optimizationCache = loadOptimizationCache()
 
   // 汇总所有路段（跨路线去重）
   const segments = new Map()
@@ -103,7 +117,10 @@ async function main() {
   let done = 0
   let lastCallAt = 0
   for (const [k, seg] of segments) {
-    let pathResult = null
+    let pathResult = Array.isArray(optimizationCache[k]?.path)
+      ? optimizationCache[k].path
+      : null
+    if (pathResult) console.log(`  [cache] ${k}`)
     for (let attempt = 1; attempt <= MAX_RETRY && !pathResult; attempt++) {
       const wait = Math.max(0, UPSTREAM_GAP_MS - (Date.now() - lastCallAt))
       if (wait) await sleep(wait)
@@ -129,6 +146,15 @@ async function main() {
     console.error(`\n有 ${failures.length} 段规划失败，未写出文件：`)
     failures.forEach(f => console.error(`  ${f}`))
     process.exit(2)
+  }
+
+  // 人工体验路径覆盖高德直接最短路，并随生成结果一起固化到前端。
+  for (const [key, overridePath] of Object.entries(manualRoutePathOverrides)) {
+    if (!Array.isArray(overridePath) || overridePath.length < 2) {
+      throw new Error(`人工路线覆盖无效: ${key}`)
+    }
+    results[key] = overridePath.map(([lng, lat]) => [round6(lng), round6(lat)])
+    console.log(`[manual override] ${key}  ${overridePath.length} 点`)
   }
 
   const banner = `// 本文件由 scripts/generate-route-paths.mjs 自动生成，请勿手改
