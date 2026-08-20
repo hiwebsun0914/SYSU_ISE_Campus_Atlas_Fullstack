@@ -326,7 +326,7 @@ export const campusLocations = [
     backendId: 20,
     name: "附属小学方亭",
     image: "https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_020_affiliated_primary_school_pavilion.jpg",
-    lnglat: [113.290511,23.094417],
+    lnglat: [113.299619,23.098989],
     isHidden: 0,
     category: "landmark",
     position: "南草坪餐厅后",
