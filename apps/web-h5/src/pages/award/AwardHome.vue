@@ -148,10 +148,10 @@
         </div>
       </section>
 
-      <!-- 作品展示 / 人气排行 -->
+      <!-- 作品展示 -->
       <section class="gallery-section" aria-labelledby="gallery-title">
         <div class="gallery-head">
-          <h2 id="gallery-title">{{ galleryFilter === 'rank' ? '人气排行' : '作品展示' }}</h2>
+          <h2 id="gallery-title">作品展示</h2>
           <div class="filter-chips">
             <button
               v-for="f in galleryFilters"
@@ -160,6 +160,27 @@
               :class="{ active: galleryFilter === f.value }"
               @click="setGalleryFilter(f.value)"
             >{{ f.label }}</button>
+          </div>
+          <div class="sort-controls" role="group" aria-label="作品排序方式">
+            <span class="sort-label">排序</span>
+            <button
+              v-for="option in sortOptions"
+              :key="option.value"
+              type="button"
+              :class="{ active: sortKey === option.value }"
+              :aria-pressed="sortKey === option.value"
+              :aria-label="sortButtonLabel(option)"
+              @click="setSort(option.value)"
+            >
+              <span>{{ option.label }}</span>
+              <component
+                :is="sortDirection === 'desc' ? ArrowDown : ArrowUp"
+                v-if="sortKey === option.value"
+                :size="13"
+                :stroke-width="2.2"
+                aria-hidden="true"
+              />
+            </button>
           </div>
           <span v-if="loggedIn" class="quota-chip" :class="{ ended: closed }">
             <template v-if="!closed">今日剩余 <b>{{ remainingVotes }}</b> 票</template>
@@ -173,7 +194,7 @@
           暂无已通过的作品，快去投出第一份吧！
         </div>
         <div v-else class="work-grid">
-          <article v-for="w in works" :key="w.id" class="work-card" @click="openWorkModal(w)">
+          <article v-for="w in sortedWorks" :key="w.id" class="work-card" @click="openWorkModal(w)">
             <img :src="w.images[0]?.url" :alt="w.title" loading="lazy" />
             <div class="work-info">
               <div class="work-title-row">
@@ -267,7 +288,9 @@ import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
 import { AWARD_CONFIG } from '@/data/awards'
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   CalendarDays,
   Camera,
   Check,
@@ -283,6 +306,8 @@ const meta = ref(null)
 const works = ref([])
 const featured = ref([])
 const galleryFilter = ref('all')
+const sortKey = ref('likes')
+const sortDirection = ref('desc')
 const loading = ref(true)
 const quota = ref(null)
 const modalWork = ref(null)
@@ -342,9 +367,39 @@ function categoryIcon(category) {
 
 const galleryFilters = computed(() => [
   { value: 'all', label: '全部' },
-  ...categories.value.map(c => ({ value: c.id, label: c.name })),
-  { value: 'rank', label: '人气排行' }
+  ...categories.value.map(c => ({ value: c.id, label: c.name }))
 ])
+
+const sortOptions = [
+  { value: 'likes', label: '点赞量' },
+  { value: 'createdAt', label: '发布时间' }
+]
+
+const sortedWorks = computed(() => {
+  const direction = sortDirection.value === 'desc' ? -1 : 1
+  return works.value.slice().sort((a, b) => {
+    const aValue = sortKey.value === 'likes' ? Number(a.likeCount || 0) : Number(a.createdAt || 0)
+    const bValue = sortKey.value === 'likes' ? Number(b.likeCount || 0) : Number(b.createdAt || 0)
+    return (aValue - bValue) * direction
+  })
+})
+
+function setSort(value) {
+  if (sortKey.value === value) {
+    sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+    return
+  }
+  sortKey.value = value
+  sortDirection.value = 'desc'
+}
+
+function sortButtonLabel(option) {
+  if (sortKey.value !== option.value) return `按${option.label}排序`
+  const directionLabel = option.value === 'likes'
+    ? (sortDirection.value === 'desc' ? '从高到低' : '从低到高')
+    : (sortDirection.value === 'desc' ? '从新到旧' : '从旧到新')
+  return `按${option.label}${directionLabel}排序，再次点击切换顺序`
+}
 
 function fmtTime(ts) {
   if (!ts) return ''
@@ -403,14 +458,10 @@ async function reloadFiltered() {
   loading.value = true
   try {
     const params = {}
-    if (galleryFilter.value !== 'all' && galleryFilter.value !== 'rank') {
+    if (galleryFilter.value !== 'all') {
       params.category = galleryFilter.value
     }
-    let list = await fetchWorks(params)
-    if (galleryFilter.value === 'rank') {
-      list = list.slice().sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
-    }
-    works.value = list
+    works.value = await fetchWorks(params)
   } catch {
     works.value = []
   } finally {
@@ -666,6 +717,11 @@ onMounted(() => {
 .filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-chips button { border: 1px solid #d8d4c9; background: #fff; color: #49584f; padding: 7px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; }
 .filter-chips button.active { background: #102a2e; border-color: #102a2e; color: #fff; }
+.sort-controls { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid #d8d4c9; border-radius: 999px; background: rgba(255,255,255,.72); }
+.sort-label { padding-left: 8px; color: #87918b; font-size: 11px; }
+.sort-controls button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; border: 0; border-radius: 999px; padding: 5px 9px; background: transparent; color: #526159; font-size: 11px; cursor: pointer; transition: color .16s ease, background-color .16s ease; }
+.sort-controls button:hover { color: var(--award-primary); }
+.sort-controls button.active { background: #e7f3ef; color: #0b7568; font-weight: 700; }
 .quota-chip { padding: 7px 14px; border-radius: 999px; background: #eef7f3; border: 1px solid #cfe6dc; color: #0d6e5f; font-size: 12px; }
 .quota-chip b { font-size: 14px; }
 .quota-chip.ended { background: #eef2f7; border-color: #dbe2ea; color: #64748b; }
@@ -718,6 +774,7 @@ onMounted(() => {
 .ghost-btn:focus-visible,
 .results-link:focus-visible,
 .filter-chips button:focus-visible,
+.sort-controls button:focus-visible,
 .category-tab:focus-visible,
 .intro-btn:focus-visible,
 .vote-btn:focus-visible {
