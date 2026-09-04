@@ -1,166 +1,38 @@
 <template>
   <div class="award-page">
-    <header class="award-header">
-      <a class="back-link" href="#/" @click.prevent="router.push('/')">‹ 返回首页</a>
-      <div class="header-inner">
-        <div class="header-title">
-          <p class="eyebrow"><span></span> SYSU ISE · 2026 WELCOME</p>
-          <h1>打卡作品投稿</h1>
+    <header class="discovery-header">
+      <div class="topbar">
+        <a class="back-link" href="#/" @click.prevent="router.push('/')" aria-label="返回首页">‹</a>
+        <div class="brand-title">
+          <span>SYSU ISE</span>
+          <h1>作品广场</h1>
         </div>
-        <div class="header-summary">
-          <p class="lede">
-            用一张照片或一个创意，记录你眼中的校园。<br />
-            选择一个方向，让这段迎新路线留下你的视角。
-          </p>
-          <div class="deadline-chip" :class="{ closed }">
-            <CalendarDays :size="15" aria-hidden="true" />
-            <span v-if="!closed">投稿截止 · {{ deadlineText }}</span>
-            <span v-else>投稿已截止</span>
-          </div>
-        </div>
+        <button class="mine-link" type="button" @click="goMine">我的投稿</button>
+      </div>
+
+      <div class="award-tabs" role="tablist" aria-label="作品奖项">
+        <button
+          v-for="cat in categories"
+          :key="cat.id"
+          type="button"
+          role="tab"
+          :aria-selected="galleryFilter === cat.id"
+          :class="{ active: galleryFilter === cat.id }"
+          @click="setGalleryFilter(cat.id)"
+        >
+          {{ cat.name }}
+        </button>
       </div>
     </header>
 
     <main class="award-main">
-      <!-- 两个奖项入口 -->
-      <section class="category-section" aria-labelledby="category-title">
-        <div class="section-heading">
-          <p>CHOOSE A CATEGORY / 选择赛道</p>
-          <h2 id="category-title">你想怎样记录校园？</h2>
-        </div>
-
-        <div class="category-tabs" role="tablist" aria-label="投稿方向" @keydown="onTabKeydown">
-          <button
-            v-for="(cat, index) in categories"
-            :key="cat.id"
-            :id="`category-tab-${cat.id}`"
-            class="category-tab"
-            :class="{ active: activeCategory && activeCategory.id === cat.id }"
-            type="button"
-            role="tab"
-            :aria-selected="activeCategory ? activeCategory.id === cat.id : false"
-            aria-controls="category-panel"
-            :tabindex="activeCategory && activeCategory.id === cat.id ? 0 : -1"
-            @click="selectCategory(cat.id)"
-          >
-            <component :is="categoryIcon(cat.id)" :size="15" :stroke-width="2" aria-hidden="true" />
-            <span>0{{ index + 1 }} · {{ cat.name }}</span>
-          </button>
-        </div>
-
-        <Transition name="cat-fade" mode="out-in">
-          <article
-            v-if="activeCategory"
-            :key="activeCategory.id"
-            id="category-panel"
-            class="category-card"
-            role="tabpanel"
-            :aria-labelledby="`category-tab-${activeCategory.id}`"
-          >
-            <div class="category-topline">
-              <span class="category-index">0{{ activeCategoryIndex + 1 }}</span>
-              <span class="category-rule" aria-hidden="true"></span>
-              <span class="category-code">{{ activeCategory.id.toUpperCase() }}</span>
-            </div>
-
-            <div class="category-title-row">
-              <div class="cat-icon" aria-hidden="true">
-                <component :is="categoryIcon(activeCategory.id)" :size="22" :stroke-width="1.8" />
-              </div>
-              <div>
-                <p>投稿方向</p>
-                <h3>{{ activeCategory.name }}</h3>
-              </div>
-            </div>
-
-            <p class="cat-tagline">{{ activeCategory.description }}</p>
-            <p class="cat-welcome">{{ activeCategory.welcome || activeCategory.description }}</p>
-
-            <ul class="req-list" aria-label="投稿要求">
-              <li v-for="(r, i) in activeCategory.requirements" :key="i">
-                <Check :size="15" :stroke-width="2.2" aria-hidden="true" />
-                <span>{{ r }}</span>
-              </li>
-            </ul>
-
-            <button class="submit-btn" :class="{ closed }" type="button" @click="goSubmit(activeCategory.id)">
-              <span>{{ closed ? '投稿已截止' : `投稿${activeCategory.shortName || activeCategory.name}` }}</span>
-              <ArrowRight :size="17" aria-hidden="true" />
-            </button>
-          </article>
-        </Transition>
-      </section>
-
-      <!-- 活动说明 -->
-      <section class="activity-note">
-        <p>
-          请在投稿前认真阅读投稿须知，填写好作品名字、介绍、和打卡地点等内容。我们在审核通过后会将投稿作品展出，大家也可以为自己喜欢的作品投票（每人每天三票，最多每天给一个作品投一票）。我们将会在2026年9月16日23:59截止投稿、点赞等相关活动，并在2026年9月19日的迎新晚会后颁奖。
-        </p>
-      </section>
-
-      <!-- 投稿规则 -->
-      <section class="rules-panel" aria-labelledby="rules-title">
-        <h2 id="rules-title">投稿须知</h2>
-        <div class="rules-grid">
-          <div class="rule-item">
-            <b>{{ perUserPerCategory }}</b>
-            <span>每人每项限投 {{ perUserPerCategory }} 份</span>
-          </div>
-          <div class="rule-item">
-            <b>{{ maxImagesPerWork }}</b>
-            <span>每份作品限 {{ maxImagesPerWork }} 张图片</span>
-          </div>
-          <div class="rule-item">
-            <b>{{ maxImageMB }}MB</b>
-            <span>单张图片不超过 {{ maxImageMB }}MB</span>
-          </div>
-          <div class="rule-item">
-            <b>JPG / PNG</b>
-            <span>支持 JPG、PNG、WebP、GIF 格式</span>
-          </div>
-        </div>
-        <div class="vote-rule">
-          <Vote :size="17" aria-hidden="true" />
-          <span>每人每天最多投 <b>{{ maxVotesPerDay }}</b> 票，同一作品每天限 1 票，次日可重新投票。</span>
-        </div>
-        <p class="winner-rule">
-          <Trophy :size="17" aria-hidden="true" />
-          <span>获奖规则：活动截止后按票数自动评选——最佳创意奖前 <b>{{ winnerCounts.creative }}</b> 名、最佳摄影奖前 <b>{{ winnerCounts.photography }}</b> 名获奖。</span>
-        </p>
-        <p class="rules-note">
-          投稿作品经管理员审核通过后将在下方展示；优秀作品将被选在首行特别展出。
-        </p>
-        <p class="ceremony-line"><CalendarDays :size="16" aria-hidden="true" /> 颁奖时间：{{ ceremonyText }}</p>
-        <button class="ghost-btn" type="button" @click="goMine">查看我的投稿 →</button>
-      </section>
-
-      <!-- 优秀作品轮播 -->
-      <section v-if="featured.length" class="featured-section" aria-labelledby="featured-title">
-        <h2 id="featured-title"><Sparkles :size="20" aria-hidden="true" /> 优秀作品</h2>
-        <div class="featured-track">
-          <figure v-for="w in featured" :key="w.id" class="featured-card" @click="openWorkModal(w)">
-            <img :src="w.images[0]?.url" :alt="w.title" loading="lazy" />
-            <figcaption>
-              <b>{{ w.title }}</b>
-              <span>{{ w.categoryName }} · {{ w.username }}</span>
-            </figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <!-- 作品展示 -->
       <section class="gallery-section" aria-labelledby="gallery-title">
         <div class="gallery-head">
-          <h2 id="gallery-title">作品展示</h2>
-          <div class="filter-chips">
-            <button
-              v-for="f in galleryFilters"
-              :key="f.value"
-              type="button"
-              :class="{ active: galleryFilter === f.value }"
-              @click="setGalleryFilter(f.value)"
-            >{{ f.label }}</button>
-          </div>
+          <h2 id="gallery-title" class="sr-only">{{ currentCategoryName }}</h2>
+          <span v-if="loggedIn" class="quota-chip" :class="{ ended: closed }">
+            <template v-if="!closed">今日剩余 <b>{{ remainingVotes }}</b> 票</template>
+            <template v-else>投票已截止</template>
+          </span>
           <div class="sort-controls" role="group" aria-label="作品排序方式">
             <span class="sort-label">排序</span>
             <button
@@ -182,11 +54,6 @@
               />
             </button>
           </div>
-          <span v-if="loggedIn" class="quota-chip" :class="{ ended: closed }">
-            <template v-if="!closed">今日剩余 <b>{{ remainingVotes }}</b> 票</template>
-            <template v-else>投票已截止</template>
-          </span>
-          <button class="results-link" type="button" @click="goResults"><Trophy :size="15" aria-hidden="true" /> 获奖结果公示</button>
         </div>
 
         <div v-if="loading" class="empty">加载中…</div>
@@ -195,21 +62,19 @@
         </div>
         <div v-else class="work-grid">
           <article v-for="w in sortedWorks" :key="w.id" class="work-card" @click="openWorkModal(w)">
-            <img :src="w.images[0]?.url" :alt="w.title" loading="lazy" />
+            <div class="work-cover">
+              <img :src="w.images[0]?.url" :alt="w.title" loading="lazy" />
+              <span v-if="w.featured" class="featured-badge">优秀</span>
+              <span v-if="w.winnerRank" class="winner-badge">{{ w.winnerLabel }}</span>
+            </div>
             <div class="work-info">
-              <div class="work-title-row">
-                <b>{{ w.title }}</b>
-                <span v-if="w.featured" class="featured-badge">优秀</span>
-                <span v-if="w.winnerRank" class="winner-badge">{{ w.winnerLabel }}</span>
-              </div>
+              <b class="work-title">{{ w.title }}</b>
               <p>{{ w.description }}</p>
-              <div class="work-meta">
-                <span>{{ w.categoryName }}</span>
-                <span>{{ w.locationName }}</span>
-                <span>{{ w.username }}</span>
-              </div>
               <div class="work-actions">
-                <button class="intro-btn" type="button" @click.stop="openWorkModal(w)">查看作品介绍</button>
+                <span class="author-line">
+                  <img :src="w.avatar || DEFAULT_AVATAR" :alt="`${w.username || '匿名同学'}的头像`" loading="lazy" />
+                  {{ w.username || '匿名同学' }}
+                </span>
                 <button
                   class="vote-btn"
                   :class="{ voted: w.votedToday, closed }"
@@ -225,6 +90,16 @@
         </div>
       </section>
     </main>
+
+    <button
+      class="publish-fab"
+      :class="{ closed }"
+      type="button"
+      :aria-label="closed ? '投稿已截止' : `发布${currentCategoryName}作品`"
+      @click="goSubmit(galleryFilter)"
+    >
+      <Plus :size="29" :stroke-width="2.5" aria-hidden="true" />
+    </button>
 
     <!-- 作品介绍弹窗 -->
     <div v-if="modalWork" class="modal-mask" @click.self="modalWork = null">
@@ -289,23 +164,16 @@ import { request } from '@/utils/request'
 import { AWARD_CONFIG } from '@/data/awards'
 import {
   ArrowDown,
-  ArrowRight,
   ArrowUp,
-  CalendarDays,
-  Camera,
-  Check,
   Heart,
-  Lightbulb,
-  Sparkles,
-  Trophy,
-  Vote
+  Plus,
 } from '@lucide/vue'
 
 const router = useRouter()
+const DEFAULT_AVATAR = 'https://img.yzcdn.cn/vant/user-active.png'
 const meta = ref(null)
 const works = ref([])
-const featured = ref([])
-const galleryFilter = ref('all')
+const galleryFilter = ref('creative')
 const sortKey = ref('likes')
 const sortDirection = ref('desc')
 const loading = ref(true)
@@ -316,59 +184,20 @@ const toast = ref('')
 let toastTimer = 0
 
 const categories = computed(() => meta.value?.categories || AWARD_CONFIG.categories)
-const activeCategoryId = ref('')
-const activeCategoryIndex = computed(() => {
-  const idx = categories.value.findIndex(c => c.id === activeCategoryId.value)
-  return idx >= 0 ? idx : 0
-})
-const activeCategory = computed(() => categories.value[activeCategoryIndex.value] || null)
-
-function selectCategory(id) {
-  activeCategoryId.value = id
-}
-
-function onTabKeydown(event) {
-  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
-  const list = categories.value
-  if (!list.length) return
-  event.preventDefault()
-  const step = event.key === 'ArrowRight' ? 1 : -1
-  const next = (activeCategoryIndex.value + step + list.length) % list.length
-  activeCategoryId.value = list[next].id
-  document.getElementById(`category-tab-${list[next].id}`)?.focus()
-}
+const currentCategoryName = computed(() =>
+  categories.value.find(category => category.id === galleryFilter.value)?.name || '作品展示'
+)
 const deadline = computed(() => meta.value?.deadline || AWARD_CONFIG.deadline)
-const perUserPerCategory = computed(() => meta.value?.perUserPerCategory ?? AWARD_CONFIG.perUserPerCategory)
-const maxImagesPerWork = computed(() => meta.value?.maxImagesPerWork ?? AWARD_CONFIG.maxImagesPerWork)
-const maxImageMB = computed(() => meta.value?.maxImageMB ?? AWARD_CONFIG.maxImageMB)
 const maxVotesPerDay = computed(() => meta.value?.maxVotesPerDay ?? AWARD_CONFIG.maxVotesPerDay)
-const winnerCounts = computed(() => meta.value?.winnerCounts || AWARD_CONFIG.winnerCounts || { creative: 5, photography: 2 })
 const closed = computed(() => {
   if (!deadline.value) return false
   return Date.now() > new Date(deadline.value).getTime()
 })
-const deadlineText = computed(() => {
-  try {
-    return new Date(deadline.value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
-  } catch {
-    return deadline.value
-  }
-})
-const ceremonyText = computed(() => meta.value?.awardCeremony || AWARD_CONFIG.awardCeremony || '待定')
 const loggedIn = computed(() => !!localStorage.getItem('token'))
 const remainingVotes = computed(() =>
   quota.value != null ? quota.value.remaining : maxVotesPerDay.value
 )
 const modalImages = computed(() => (modalWork.value?.images || []).map(img => img.url).filter(Boolean))
-
-function categoryIcon(category) {
-  return category === 'photography' ? Camera : Lightbulb
-}
-
-const galleryFilters = computed(() => [
-  { value: 'all', label: '全部' },
-  ...categories.value.map(c => ({ value: c.id, label: c.name }))
-])
 
 const sortOptions = [
   { value: 'likes', label: '点赞量' },
@@ -435,18 +264,6 @@ async function fetchWorks(params = {}) {
   const res = await request('/submissions', 'GET', { limit: 200, ...params })
   if (res?.data?.code === 0) return res.data.list || []
   return []
-}
-
-async function loadWorks() {
-  loading.value = true
-  try {
-    works.value = await fetchWorks()
-    featured.value = works.value.filter(w => w.featured).slice(0, 10)
-  } catch {
-    works.value = []
-  } finally {
-    loading.value = false
-  }
 }
 
 async function setGalleryFilter(value) {
@@ -517,14 +334,10 @@ function goMine() {
   router.push('/award/my')
 }
 
-function goResults() {
-  router.push('/award/results')
-}
-
 onMounted(() => {
   document.title = '打卡作品投稿 · 2026 迎新'
   loadMeta()
-  loadWorks()
+  reloadFiltered()
   loadQuota()
 })
 </script>
@@ -803,5 +616,130 @@ onMounted(() => {
   .cat-fade-enter-active, .cat-fade-leave-active { transition: none; }
   .submit-btn:hover, .work-card:hover { transform: none; }
   .cat-fade-enter-from, .cat-fade-leave-to { transform: none; }
+}
+
+/* Discovery-first gallery: compact, image-led and mobile friendly. */
+.award-page {
+  --award-accent: #0d9488;
+  --award-canvas: #f8faf9;
+  padding-bottom: 24px;
+  background-image: none;
+}
+.discovery-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid rgba(10,46,59,.09);
+  background: rgba(248,250,249,.94);
+  backdrop-filter: blur(18px) saturate(1.35);
+}
+.topbar {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  max-width: 1120px;
+  min-height: 64px;
+  margin: 0 auto;
+  padding: 0 clamp(12px, 4vw, 52px);
+}
+.back-link {
+  width: 40px;
+  min-height: 40px;
+  justify-content: center;
+  color: var(--award-ink);
+  font-size: 30px;
+  line-height: 1;
+}
+.brand-title { min-width: 0; text-align: center; }
+.brand-title span { display: block; color: #89938e; font: 700 9px "SFMono-Regular", Menlo, monospace; letter-spacing: .12em; }
+.brand-title h1 { margin: 2px 0 0; color: var(--award-ink); font-size: 20px; line-height: 1.2; letter-spacing: -.02em; }
+.mine-link { border: 0; background: transparent; color: #526159; padding: 9px 0 9px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.award-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+.award-tabs button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: #7a8580;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.award-tabs button::after { content: ""; position: absolute; left: 24%; right: 24%; bottom: 0; height: 3px; border-radius: 3px; background: transparent; transform: scaleX(.5); transition: background .18s ease, transform .18s ease; }
+.award-tabs button.active { color: var(--award-ink); }
+.award-tabs button.active::after { background: var(--award-accent); transform: scaleX(1); }
+.award-main { max-width: 1120px; margin: 0 auto; padding: 22px clamp(10px, 3vw, 40px) 88px; }
+.gallery-section { margin-top: 0; }
+.gallery-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.gallery-head > div:first-child { min-width: 0; }
+.gallery-kicker { margin: 0 0 3px; color: #9aa39e; font: 700 9px "SFMono-Regular", Menlo, monospace; letter-spacing: .12em; }
+.gallery-head h2 { font-size: 20px; }
+.sort-controls { justify-self: end; border-color: #e2e8e5; background: #fff; box-shadow: 0 4px 16px rgba(10,46,59,.04); }
+.sort-controls button.active { background: #edf5f2; color: #08766d; }
+.quota-chip { grid-column: 1; width: max-content; margin-top: 2px; padding: 5px 10px; }
+.results-link { grid-column: 2; grid-row: 2; justify-self: end; padding: 6px 10px; border: 0; background: transparent; color: #66736d; font-size: 11px; }
+.work-grid { display: block; column-count: 2; column-gap: 10px; margin-top: 16px; }
+.work-card { display: inline-block; width: 100%; margin: 0 0 10px; break-inside: avoid; border: 0; border-radius: 10px; box-shadow: 0 2px 12px rgba(18,43,35,.07); vertical-align: top; }
+.work-card:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(23,35,30,.11); }
+.work-cover { position: relative; overflow: hidden; border-radius: 10px 10px 0 0; background: #e9efec; }
+.work-card img { width: 100%; height: auto; min-height: 145px; max-height: 340px; object-fit: cover; }
+.work-cover .featured-badge, .work-cover .winner-badge { position: absolute; top: 8px; left: 8px; backdrop-filter: blur(8px); }
+.work-cover .winner-badge { left: auto; right: 8px; }
+.work-info { padding: 10px 10px 11px; }
+.work-title { display: block; color: #18231e; font-size: 14px; line-height: 1.45; }
+.work-info p { margin: 5px 0 9px; font-size: 11px; line-height: 1.55; -webkit-line-clamp: 2; }
+.work-actions { margin-top: 0; }
+.author-line { display: inline-flex; min-width: 0; align-items: center; gap: 6px; overflow: hidden; color: #7a8580; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+.work-card .author-line img { display: block; width: 23px; height: 23px; min-height: 0; flex: 0 0 23px; border-radius: 50%; background: #e8f1ed; object-fit: cover; }
+.vote-btn { flex: 0 0 auto; gap: 4px; border: 0; padding: 5px 2px 5px 7px; background: transparent; }
+.vote-btn.voted { border: 0; background: transparent; color: var(--award-accent); }
+.publish-fab {
+  position: fixed;
+  right: max(20px, calc((100vw - 1120px) / 2 + 24px));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 55;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--award-primary);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(13,148,136,.3);
+  cursor: pointer;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease;
+}
+.publish-fab:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 14px 34px rgba(13,148,136,.38); }
+.publish-fab:active { transform: scale(.95); }
+.publish-fab.closed { background: #9aa39e; box-shadow: 0 8px 20px rgba(60,74,67,.2); }
+.award-tabs button:focus-visible, .mine-link:focus-visible, .publish-fab:focus-visible { outline: 3px solid var(--award-accent); outline-offset: 3px; }
+
+@media (min-width: 720px) {
+  .work-grid { column-count: 3; column-gap: 16px; }
+  .work-card { margin-bottom: 16px; }
+  .work-info { padding: 13px 14px 14px; }
+  .work-title { font-size: 15px; }
+  .work-info p { font-size: 12px; }
+}
+@media (min-width: 1080px) {
+  .work-grid { column-count: 4; }
+}
+@media (max-width: 420px) {
+  .sort-label { display: none; }
+  .sort-controls { gap: 0; }
+  .sort-controls button { padding-inline: 7px; }
+  .gallery-head { gap: 10px 6px; }
 }
 </style>
