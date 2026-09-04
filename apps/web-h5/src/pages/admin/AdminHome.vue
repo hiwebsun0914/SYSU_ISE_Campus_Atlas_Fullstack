@@ -146,10 +146,6 @@
               <b>{{ feedbackStat.submitted + feedbackStat.in_progress }}</b>
               待处理反馈
             </button>
-            <button type="button" @click="goSection('anomalies')">
-              <b>{{ anomalyStat.all }}</b>
-              异常线索
-            </button>
           </nav>
         </header>
 
@@ -285,7 +281,7 @@
                     type="button"
                     :disabled="!item.photo"
                     :aria-label="item.photo ? '查看打卡照片大图' : '该打卡没有可预览照片'"
-                    @click="item.photo && openPreview(item.photo, item.locationName)"
+                    @click="item.photo && openCheckinPreview(item)"
                   >
                     <img v-if="item.photo" :src="item.photo" :alt="item.username + '在' + item.locationName + '的打卡照片'" width="320" height="240" loading="lazy" />
                     <Camera v-else :size="28" aria-hidden="true" />
@@ -867,11 +863,30 @@
       </form>
     </dialog>
 
-    <dialog ref="previewDialog" class="admin-preview-dialog" aria-label="图片预览" @close="previewState.url = ''" @click="closeDialogBackdrop">
-      <div>
-        <img v-if="previewState.url" :src="previewState.url" :alt="previewState.label" />
-        <button type="button" aria-label="关闭图片预览" @click="previewDialog?.close()"><X :size="22" aria-hidden="true" /></button>
-        <p>{{ previewState.label }}</p>
+    <dialog ref="previewDialog" class="admin-preview-dialog" aria-label="图片预览" @close="resetPreview" @click="closeDialogBackdrop">
+      <div :class="{ 'is-comparing': previewState.comparing }">
+        <div v-if="previewState.comparing" class="admin-preview-compare">
+          <figure>
+            <img :src="previewState.referenceUrl" :alt="previewState.label + '的地点原图'" />
+            <figcaption>地点原图</figcaption>
+          </figure>
+          <figure>
+            <img :src="previewState.url" :alt="previewState.label + '的用户打卡图'" />
+            <figcaption>用户上传</figcaption>
+          </figure>
+        </div>
+        <img v-else-if="previewState.url" class="admin-preview-single" :src="previewState.url" :alt="previewState.label" />
+        <button class="admin-preview-close" type="button" aria-label="关闭图片预览" @click="previewDialog?.close()"><X :size="22" aria-hidden="true" /></button>
+        <div class="admin-preview-toolbar">
+          <p>{{ previewState.label }}</p>
+          <button
+            v-if="previewState.referenceUrl"
+            class="admin-compare-button"
+            type="button"
+            :aria-pressed="previewState.comparing"
+            @click="previewState.comparing = !previewState.comparing"
+          >{{ previewState.comparing ? '返回单图' : '对比原图' }}</button>
+        </div>
       </div>
     </dialog>
 
@@ -922,6 +937,7 @@ import {
   X
 } from '@lucide/vue'
 import { request } from '@/utils/request'
+import { campusLocations } from '@/data/campusPlaces'
 
 const router = useRouter()
 const route = useRoute()
@@ -931,7 +947,6 @@ const navigation = [
   { id: 'overview', label: '运营总览', icon: Activity },
   { id: 'review', label: '审核中心', icon: ClipboardCheck },
   { id: 'feedback', label: '问题反馈', icon: MessageSquareText },
-  { id: 'anomalies', label: '打卡异常', icon: TriangleAlert },
   { id: 'awards', label: '投稿管理', icon: Images },
   { id: 'locations', label: '地点配置', icon: MapPinned },
   { id: 'users', label: '用户权限', icon: Users }
@@ -1015,7 +1030,7 @@ const menuOpen = ref(false)
 const userSearch = ref('')
 
 const rejectState = reactive({ kind: '', item: null, note: '', touched: false, error: '', submitting: false })
-const previewState = reactive({ url: '', label: '' })
+const previewState = reactive({ url: '', label: '', referenceUrl: '', comparing: false })
 const userDeleteDialog = ref(null)
 const deleteState = reactive({ user: null, error: '', deleting: false })
 const toast = reactive({ message: '', tone: 'error', retry: null })
@@ -1528,7 +1543,25 @@ function resetRejectDialog() {
 function openPreview(url, label) {
   previewState.url = url
   previewState.label = label || '审核图片'
+  previewState.referenceUrl = ''
+  previewState.comparing = false
   previewDialog.value?.showModal()
+}
+
+function openCheckinPreview(item) {
+  const location = campusLocations.find(place => Number(place.backendId) === Number(item.locationId))
+  previewState.url = item.photo
+  previewState.label = item.locationName || location?.name || '打卡照片'
+  previewState.referenceUrl = location?.image || ''
+  previewState.comparing = false
+  previewDialog.value?.showModal()
+}
+
+function resetPreview() {
+  previewState.url = ''
+  previewState.label = ''
+  previewState.referenceUrl = ''
+  previewState.comparing = false
 }
 
 function closeDialogBackdrop(event) {

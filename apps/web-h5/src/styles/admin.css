@@ -1387,6 +1387,102 @@ body {
   font-size: var(--text-sm);
 }
 
+.admin-preview-dialog > div.is-comparing {
+  display: block;
+  padding: var(--space-xl) var(--space-sm) 5.5rem;
+}
+
+.admin-preview-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.admin-preview-compare figure {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 16rem;
+  margin: 0;
+  overflow: hidden;
+  place-items: center;
+  background: #071719;
+  border: var(--rule) solid var(--color-graphite-soft);
+  border-radius: var(--radius-sm);
+}
+
+.admin-preview-dialog .admin-preview-compare img {
+  width: 100%;
+  height: 100%;
+  max-height: 68dvh;
+  object-fit: contain;
+}
+
+.admin-preview-compare figcaption {
+  position: absolute;
+  inset-block-start: var(--space-xs);
+  inset-inline-start: var(--space-xs);
+  padding: .35rem .65rem;
+  background: rgba(7,23,25,.86);
+  color: #fff;
+  border: var(--rule) solid rgba(255,255,255,.24);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.admin-preview-toolbar {
+  position: absolute;
+  inset-inline: var(--space-sm);
+  inset-block-end: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.admin-preview-dialog .admin-preview-toolbar p {
+  position: static;
+  min-width: 0;
+  margin: 0;
+}
+
+.admin-preview-dialog .admin-compare-button {
+  position: static;
+  display: inline-flex;
+  width: auto;
+  height: 44px;
+  padding-inline: var(--space-md);
+  white-space: nowrap;
+  background: var(--color-accent);
+  color: var(--color-ink);
+  border-color: var(--color-accent);
+  font-weight: 800;
+}
+
+.admin-preview-dialog .admin-preview-close {
+  z-index: 3;
+}
+
+@media (max-width: 44rem) {
+  .admin-preview-dialog > div.is-comparing {
+    padding-top: 4.25rem;
+  }
+
+  .admin-preview-compare {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-preview-compare figure {
+    min-height: 0;
+  }
+
+  .admin-preview-dialog .admin-preview-compare img {
+    height: min(29dvh, 18rem);
+  }
+}
+
 .admin-toast {
   position: fixed;
   z-index: var(--z-toast);
