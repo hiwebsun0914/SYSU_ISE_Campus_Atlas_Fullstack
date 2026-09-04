@@ -4,12 +4,11 @@
       <a class="back-link" href="#/award" @click.prevent="router.push('/award')">‹ 返回投稿首页</a>
       <div class="header-inner">
         <div class="header-title">
-          <p class="eyebrow"><span></span> MY SUBMISSIONS / 投稿记录</p>
           <h1>我的投稿</h1>
         </div>
         <div class="header-side">
-          <p class="lede">每个奖项每人限投 1 个作品，已在同类别投稿时会提示你。</p>
-          <button class="new-btn" type="button" @click="router.push('/award/submit')">
+          <p class="lede">每个奖项每人限投 1 个作品。</p>
+          <button v-if="!loading && list.length" class="new-btn" type="button" @click="router.push('/award/submit')">
             <Plus :size="15" :stroke-width="2.4" aria-hidden="true" />
             <span>继续投稿</span>
           </button>
