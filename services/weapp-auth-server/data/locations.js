@@ -595,7 +595,7 @@ module.exports = {
       name: '蒲蛰龙雕塑',
       position: '曾宪梓堂北侧',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_028_pu_zhelong_sculpture.jpg',
-      description: `<p><strong>蒲蛰龙雕塑</strong>，位于<strong>中山大学南校园（生命科学学院片区）</strong>，为纪念著名<strong>昆虫学家、植物保护学家蒲蛰龙先生</strong>而设。雕塑以朴素凝练的写实手法呈现学者风貌，传递<strong>“顺应生态、科学治虫”</strong>的绿色植保理念。</p>
+      description: `<p><strong>蒲蛰龙雕塑</strong>位于<strong>南校园曾宪梓堂北侧</strong>，为纪念著名<strong>昆虫学家、植物保护学家蒲蛰龙先生</strong>而设。雕塑以朴素凝练的写实手法呈现学者风貌，传递<strong>“顺应生态、科学治虫”</strong>的绿色植保理念。</p>
 
 <p><strong>历史沿革：</strong></p>
 <ul>
@@ -2005,7 +2005,7 @@ module.exports = {
       name: '震寰堂',
       position: '南校园629号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_100_zhenhuan_hall.jpg',
-      description: `<p><strong>震寰堂（Zhenhuan Hall）</strong>原由中山大学管理学院使用，现在为数学学院使用，是学院重要的学术与培训活动场所。</p>
+      description: `<p><strong>震寰堂（Zhenhuan Hall）</strong>位于<strong>南校园629号</strong>，原由中山大学管理学院使用，现在为数学学院使用，是学院重要的学术与培训活动场所。</p>
 
 <p><strong>建筑与功能：</strong> 震寰堂作为数学学院的核心大楼之一，常年承载教学、培训、学术会议与社会服务功能。其庄重的建筑风格与学院整体环境相融合，成为学术交流与校企合作的重要平台。</p>`
     },
