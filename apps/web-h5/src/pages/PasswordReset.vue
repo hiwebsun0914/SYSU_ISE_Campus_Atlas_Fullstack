@@ -11,7 +11,7 @@
         <p class="reset-description">{{ token ? '设置完成后，使用新密码重新登录。' : '填写账号信息，核实身份后即可重置密码。' }}</p>
       </header>
       <section class="reset-card" :aria-label="token ? '设置新密码' : '密码重置申请'">
-        <div class="card-heading"><ShieldCheck :size="18" aria-hidden="true" /><h2>{{ done ? '提交完成' : token ? '设置密码' : '重置申请' }}</h2><span>{{ token ? '02 / 02' : '01 / 02' }}</span></div>
+        <div class="card-heading"><ShieldCheck :size="18" aria-hidden="true" /><h2>{{ done ? '提交完成' : token ? '设置密码' : '重置申请' }}</h2></div>
         <div v-if="done" role="status" class="result">
           <Check :size="24" aria-hidden="true" />
           <strong>{{ message }}</strong>
@@ -26,8 +26,8 @@
           <template v-if="!token">
             <label>账户名<input v-model.trim="form.username" autocomplete="username" maxlength="100" required placeholder="填写登录时使用的账户名" /></label>
             <div class="identity-fields">
-              <label>姓名<input v-model.trim="form.realName" autocomplete="name" maxlength="100" required placeholder="真实姓名" /></label>
-              <label>学号<input v-model.trim="form.studentId" maxlength="100" required placeholder="你的学号" /></label>
+              <label><span>姓名 <small class="required-mark">必填</small></span><input v-model.trim="form.realName" autocomplete="name" maxlength="100" required aria-required="true" placeholder="真实姓名" /></label>
+              <label><span>学号 <small class="required-mark">必填</small></span><input v-model.trim="form.studentId" maxlength="100" required aria-required="true" placeholder="你的学号" /></label>
             </div>
             <label>申请说明<textarea v-model.trim="form.note" rows="2" maxlength="500" required placeholder="简要说明无法登录的情况，请勿填写密码" /></label>
             <div class="wechat-note"><span class="note-dot" aria-hidden="true"></span><p>提交后，<strong>微信私聊奶小龙学长</strong><br /><span>核实身份后，学长会发送重置链接。</span></p></div>
@@ -99,7 +99,7 @@ async function submit() {
 .reset-nav { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--reset-border); padding-bottom: 8px; }
 .reset-nav a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; }
 a { color: inherit; text-decoration: none; }
-.reset-nav > span, .card-heading > span { font: 10px "SFMono-Regular", Menlo, Consolas, monospace; color: var(--reset-muted); }
+.reset-nav > span { font: 10px "SFMono-Regular", Menlo, Consolas, monospace; color: var(--reset-muted); }
 .reset-header { padding: 24px 4px; }
 .eyebrow { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 11px; font-weight: 600; }
 .eyebrow > span, .note-dot { width: 7px; height: 7px; background: var(--reset-accent); border: 1px solid var(--reset-ink); border-radius: 50%; flex-shrink: 0; }
@@ -108,9 +108,9 @@ h1 { font-family: "DIN Alternate", "Avenir Next", "Noto Sans SC", sans-serif; fo
 .reset-card { background: #fff; border: 1px solid var(--reset-border); border-radius: 24px; padding: 20px; }
 .card-heading { display: flex; align-items: center; gap: 8px; padding-bottom: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--reset-border); }
 .card-heading h2 { font-size: 15px; margin: 0; font-weight: 650; }
-.card-heading > span { margin-left: auto; }
 form { display: grid; gap: 16px; }
 label { display: grid; min-width: 0; gap: 6px; font-size: 12px; font-weight: 600; }
+.required-mark { margin-left: 4px; color: #08766d; font-size: 10px; font-weight: 600; }
 .identity-fields { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; }
 input, textarea { min-width: 0; width: 100%; box-sizing: border-box; border: 1px solid var(--reset-border); border-radius: 8px; background: #fbfcfb; color: #102a2e; font-family: inherit; font-size: 16px; font-weight: 400; line-height: 1.5; padding: 9px 12px; }
 input { height: 44px; }
