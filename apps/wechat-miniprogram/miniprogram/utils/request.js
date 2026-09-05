@@ -1,5 +1,5 @@
 // utils/request.js
-const API_BASE = 'https://hiwebsun.top/api';
+const API_BASE = 'https://sysuzgxytj.top/api';
 
 function buildUrl(url) {
   if (/^https?:\/\//i.test(url)) return url;

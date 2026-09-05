@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         // 本地开发默认代理到线上后端；如需连本地后端，设置 VITE_API_PROXY_TARGET=http://127.0.0.1:3000
-        target: process.env.VITE_API_PROXY_TARGET || 'https://hiwebsun.top',
+        target: process.env.VITE_API_PROXY_TARGET || 'https://sysuzgxytj.top',
         changeOrigin: true,
         // 你证书是 Let's Encrypt，默认 secure:true 就够了；若是自签名才需要 secure:false
         // secure: false,
@@ -19,4 +19,3 @@ export default defineConfig({
     },
   },
 })
-

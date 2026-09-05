@@ -370,7 +370,7 @@ COS 图片审核还需要正确配置 `COS_BUCKET`、`COS_REGION`、`PUBLIC_ASSE
 
 ## 9. 发布与验收
 
-代码合并到 GitHub 不会自动同步到 `hiwebsun.top`，除非仓库已经配置自动部署。一次完整发布必须同时完成：
+代码合并到 GitHub 不会自动同步到宣传站点 `sysuzgxytj.top`，除非仓库已经配置自动部署。一次完整发布必须同时完成：
 
 1. 合并 PR，并在目标服务器拉取合并后的提交。
 2. 在 `apps/web-h5` 设置 `VITE_API_BASE=/api` 后执行 `npm install && npm run build`，替换站点静态文件。

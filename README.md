@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://hiwebsun.top"><img alt="Online demo" src="https://img.shields.io/badge/在线体验-hiwebsun.top-138A5B?style=flat-square&logo=googlechrome&logoColor=white" /></a>
+  <a href="https://sysuzgxytj.top"><img alt="Online demo" src="https://img.shields.io/badge/在线体验-sysuzgxytj.top-138A5B?style=flat-square&logo=googlechrome&logoColor=white" /></a>
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3.5-42B883?style=flat-square&logo=vuedotjs&logoColor=white" />
   <img alt="Node" src="https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
   <img alt="Capacitor" src="https://img.shields.io/badge/Capacitor-8.1-119EFF?style=flat-square&logo=capacitor&logoColor=white" />
@@ -41,7 +41,7 @@
 
 | 你的目标 | 建议入口 |
 | --- | --- |
-| 只想看看成品 | 打开 [在线体验](https://hiwebsun.top) |
+| 只想看看成品 | 打开 [在线体验](https://sysuzgxytj.top) |
 | 第一次运行项目 | 直接阅读 [5 分钟跑起来](#quick-start) |
 | 只修改网页 | `apps/web-h5/` |
 | 开发微信小程序 | [微信小程序说明](#wechat-mini-program) |

@@ -20,7 +20,7 @@ function resolveBaseURL() {
   ).trim()
 
   if (isNativeApp() && envBase.startsWith('/')) {
-    return nativeBase || 'https://hiwebsun.top/api'
+    return nativeBase || 'https://sysuzgxytj.top/api'
   }
   return envBase
 }

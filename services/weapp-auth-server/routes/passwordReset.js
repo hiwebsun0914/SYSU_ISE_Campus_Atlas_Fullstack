@@ -102,7 +102,7 @@ router.post('/requests/:id/decision', auth, owner, (req, res) => {
   r.reviewNote = note.trim();
   r.audit = [...(r.audit || []), { action, by: req.userId, at: r.reviewedAt, note: r.reviewNote }];
   write(users);
-  const base = process.env.PASSWORD_RESET_PUBLIC_URL || 'https://hiwebsun.top';
+  const base = process.env.PASSWORD_RESET_PUBLIC_URL || 'https://sysuzgxytj.top';
   res.set('Cache-Control', 'no-store').json({ code: 0, message: action === 'reject' ? '申请已拒绝，请通过微信告知原因' : '已批准，请将链接发给已核实的本人', link: token ? `${base.replace(/\/$/, '')}/#/reset-password?token=${token}` : undefined });
 });
 router.post('/complete', rateLimit, (req, res) => {

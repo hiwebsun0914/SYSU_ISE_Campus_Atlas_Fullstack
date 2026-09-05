@@ -14,7 +14,7 @@
 
 需要同时发布前端和后端，尤其是 app.js、middleware/auth.js、routes/passwordReset.js。仅更新本地前端且仍连接旧云端接口时，申请和审批不可用。
 
-`PASSWORD_RESET_PUBLIC_URL` 为接收重置链接的网站地址，默认 `https://hiwebsun.top`。本地隔离测试可设置为本地前端地址；不能把 localhost 链接发给真实用户。
+`PASSWORD_RESET_PUBLIC_URL` 为接收重置链接的网站地址，默认使用宣传域名 `https://sysuzgxytj.top`。本地隔离测试可设置为本地前端地址；不能把 localhost 链接发给真实用户。`hiwebsun.top` 只作为兼容访问域名。
 
 公共提交接口在单进程内每个来源地址限制 10 分钟 20 次请求。云端 Nginx 必须如现有配置一样从本机代理并覆盖 X-Real-IP。非本机代理部署需要调整可信代理规则；限流计数会在服务重启时清空。
 
