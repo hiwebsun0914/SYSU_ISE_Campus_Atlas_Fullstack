@@ -595,7 +595,7 @@ module.exports = {
       name: '蒲蛰龙雕塑',
       position: '曾宪梓堂北侧',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_028_pu_zhelong_sculpture.jpg',
-      description: `<p><strong>蒲蛰龙雕塑</strong>，位于<strong>中山大学南校园（生命科学学院片区）</strong>，为纪念著名<strong>昆虫学家、植物保护学家蒲蛰龙先生</strong>而设。雕塑以朴素凝练的写实手法呈现学者风貌，传递<strong>“顺应生态、科学治虫”</strong>的绿色植保理念。</p>
+      description: `<p><strong>蒲蛰龙雕塑</strong>位于<strong>南校园曾宪梓堂北侧</strong>，为纪念著名<strong>昆虫学家、植物保护学家蒲蛰龙先生</strong>而设。雕塑以朴素凝练的写实手法呈现学者风貌，传递<strong>“顺应生态、科学治虫”</strong>的绿色植保理念。</p>
 
 <p><strong>历史沿革：</strong></p>
 <ul>
@@ -1343,13 +1343,13 @@ module.exports = {
       name: '翘燊堂、文虎堂',
       position: '南校园116、118号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_063_qiaoshen_hall_and_wenhu_hall.jpg',
-      description: `<p><strong>翘燊堂（Kiw San Hall）</strong>由澳门著名人士<strong>李翘燊</strong>捐建，落成于<strong>1933年</strong>。1931年前后，岭南大学为解决附属中学校舍紧张问题，决定筹款兴建新中学，先后建成五栋建筑，形成新中学建筑群。现存三栋，其余两栋分别为<strong>文虎堂</strong>和<strong>中学新教室（园东区110号）</strong>。翘燊堂坐北朝南，为三层建筑，楼匾“翘燊堂”三字由<strong>南海冯愿</strong>于1934年10月题写。</p>
+      description: `<p><strong>翘燊堂（Kiw San Hall）</strong>位于<strong>中山大学广州校区南校园116号</strong>，由澳门著名人士<strong>李翘燊</strong>捐建，落成于<strong>1933年</strong>。1931年前后，岭南大学为解决附属中学校舍紧张问题，决定筹款兴建新中学，先后建成五栋建筑，形成新中学建筑群。现存三栋，其余两栋分别为<strong>文虎堂</strong>和<strong>中学新教室（园东区110号）</strong>。翘燊堂坐北朝南，为三层建筑，楼匾“翘燊堂”三字由<strong>南海冯愿</strong>于1934年10月题写。</p>
 
 <p><strong>李翘燊</strong>是澳门著名赌商李光的长子，年少便才名显赫，22岁时即“按例位列翰林”，并创造了澳门开埠以来的两项独特纪录：其一，成为澳门唯一在科举会试中中进士的本埠人士；其二，作为澳门出身的最显赫的朝廷命官。同时，由于他加入了葡萄牙籍，他也成为“中国历史上唯一一位葡萄牙籍的翰林院编修”。</p>
 
 <hr/>
 
-<p><strong>文虎堂（Boon Haw Hall）</strong>由新加坡华侨企业家<strong>胡文虎</strong>兄弟捐赠，落成于<strong>1933年</strong>。1951年一度更名为<strong>仲恺堂</strong>，1981年恢复原名。文虎堂坐南朝北，原为三层建筑，1947年加建一层。楼匾“文虎堂”三字同样由<strong>南海冯愿</strong>于1934年题写。</p>
+<p><strong>文虎堂（Boon Haw Hall）</strong>位于<strong>中山大学广州校区南校园118号</strong>，由新加坡华侨企业家<strong>胡文虎</strong>兄弟捐赠，落成于<strong>1933年</strong>。1951年一度更名为<strong>仲恺堂</strong>，1981年恢复原名。文虎堂坐南朝北，原为三层建筑，1947年加建一层。楼匾“文虎堂”三字同样由<strong>南海冯愿</strong>于1934年题写。</p>
 
 <p><strong>胡文虎（1882–1954）</strong>，福建永定下洋中川村人，著名华侨企业家、报业家和慈善家，被誉为<strong>“南洋华侨的传奇人物”</strong>。他以制药业起家，研制出的<strong>“万金油”</strong>等成药享誉全球，使其赢得“万金油大王”的美誉，成为亿万富翁。他同时在报业上独资创办十多家中英文报纸，包括《星岛日报》《星洲日报》，一度享有“报业巨子”的称号。这些报纸不仅传播新闻，也积极宣传抗日救国，凝聚华侨力量，鼓舞民族信心。</p>
 
@@ -1439,7 +1439,7 @@ module.exports = {
       position: '南校园378号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_068_carpenter_building.jpg',
       description: `<p><strong>卡彭特楼（Carpentier Hall）</strong><br>
-卡彭特楼因美国纽约<strong>豪拉斯·卡彭特将军</strong>（Horace Carpentier）遗赠2.5万美元而建，由<strong>纽约斯道顿建筑师事务</strong>所于1910年设计，1911年落成。原为岭南学堂医院楼，后改作女生第一宿舍，因在新女学（广寒宫）建成后而被称为“旧女学”。</p>
+卡彭特楼位于<strong>中山大学广州校区南校园378号</strong>，因美国纽约<strong>豪拉斯·卡彭特将军</strong>（Horace Carpentier）遗赠2.5万美元而建，由<strong>纽约斯道顿建筑师事务</strong>所于1910年设计，1911年落成。原为岭南学堂医院楼，后改作女生第一宿舍，因在新女学（广寒宫）建成后而被称为“旧女学”。</p>
 
 <p>岭南大学在20世纪初便开创中国近代教育<strong>男女同校</strong>的先河。早期未设女生宿舍时，女学生寄宿于钟荣光校长寓所。随着女生人数增加，卡彭特楼成为她们的首个宿舍楼，具有重要的教育史意义。</p>
 
@@ -2005,7 +2005,7 @@ module.exports = {
       name: '震寰堂',
       position: '南校园629号',
       image: 'https://sysuzngcxy-1322240898.cos.ap-guangzhou.myqcloud.com/Position/sysu_100_zhenhuan_hall.jpg',
-      description: `<p><strong>震寰堂（Zhenhuan Hall）</strong>原由中山大学管理学院使用，现在为数学学院使用，是学院重要的学术与培训活动场所。</p>
+      description: `<p><strong>震寰堂（Zhenhuan Hall）</strong>位于<strong>南校园629号</strong>，原由中山大学管理学院使用，现在为数学学院使用，是学院重要的学术与培训活动场所。</p>
 
 <p><strong>建筑与功能：</strong> 震寰堂作为数学学院的核心大楼之一，常年承载教学、培训、学术会议与社会服务功能。其庄重的建筑风格与学院整体环境相融合，成为学术交流与校企合作的重要平台。</p>`
     },

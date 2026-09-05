@@ -6,6 +6,14 @@ const router = createRouter({
   history: createWebHashHistory(),
   // 路由切换时回到页面顶端；浏览器前进/后退时恢复原滚动位置
   scrollBehavior(to, from, savedPosition) {
+    // 隐藏地点导航直接定位，避免继承 html 的 smooth 而从旧位置滑过详情或列表。
+    const isHiddenCheckpointRoute = (path: string) =>
+      path === '/hidden-checkpoints' || path.startsWith('/hidden-checkpoints/')
+    if (isHiddenCheckpointRoute(to.path) || isHiddenCheckpointRoute(from.path)) {
+      if (savedPosition) return { ...savedPosition, behavior: 'instant' }
+      if (to.hash) return { el: to.hash, behavior: 'instant' }
+      return { top: 0, left: 0, behavior: 'instant' }
+    }
     if (savedPosition) return savedPosition
     if (to.hash) return { el: to.hash }
     return { top: 0, left: 0 }

@@ -880,12 +880,13 @@
         <div class="admin-preview-toolbar">
           <p>{{ previewState.label }}</p>
           <button
-            v-if="previewState.referenceUrl"
-            class="admin-compare-button"
+            v-if="previewState.checkin && ['pending', 'appealed'].includes(previewState.checkin.status)"
+            class="admin-button admin-preview-approve"
             type="button"
-            :aria-pressed="previewState.comparing"
-            @click="previewState.comparing = !previewState.comparing"
-          >{{ previewState.comparing ? '返回单图' : '对比原图' }}</button>
+            :disabled="isBusy(previewState.checkin.id)"
+            @click="approveCheckin(previewState.checkin)"
+          ><Check :size="17" aria-hidden="true" /><span>{{ isBusy(previewState.checkin.id) ? '处理中' : '通过' }}</span></button>
+          <small v-if="previewState.error" class="admin-preview-error" role="alert">{{ previewState.error }}</small>
         </div>
       </div>
     </dialog>
@@ -1030,7 +1031,7 @@ const menuOpen = ref(false)
 const userSearch = ref('')
 
 const rejectState = reactive({ kind: '', item: null, note: '', touched: false, error: '', submitting: false })
-const previewState = reactive({ url: '', label: '', referenceUrl: '', comparing: false })
+const previewState = reactive({ url: '', label: '', referenceUrl: '', comparing: false, checkin: null, error: '' })
 const userDeleteDialog = ref(null)
 const deleteState = reactive({ user: null, error: '', deleting: false })
 const toast = reactive({ message: '', tone: 'error', retry: null })
@@ -1335,7 +1336,19 @@ async function runModeration(id, operation, retry) {
 function approveCheckin(item) {
   return runModeration(
     item.id,
-    () => api(`/admin/checkins/${encodeURIComponent(item.id)}/approve`, 'POST', {}),
+    async () => {
+      previewState.error = ''
+      try {
+        await api(`/admin/checkins/${encodeURIComponent(item.id)}/approve`, 'POST', {})
+      } catch (error) {
+        if (previewState.checkin?.id === item.id) previewState.error = error.message || '审核失败，请重试'
+        throw error
+      }
+      if (previewState.checkin?.id === item.id) {
+        previewDialog.value?.close()
+        showMsg('已通过审核')
+      }
+    },
     () => approveCheckin(item)
   )
 }
@@ -1541,6 +1554,7 @@ function resetRejectDialog() {
 }
 
 function openPreview(url, label) {
+  resetPreview()
   previewState.url = url
   previewState.label = label || '审核图片'
   previewState.referenceUrl = ''
@@ -1548,16 +1562,30 @@ function openPreview(url, label) {
   previewDialog.value?.showModal()
 }
 
-function openCheckinPreview(item) {
+async function openCheckinPreview(item) {
+  resetPreview()
+  previewState.checkin = item
   const location = campusLocations.find(place => Number(place.backendId) === Number(item.locationId))
   previewState.url = item.photo
-  previewState.label = item.locationName || location?.name || '打卡照片'
+  const name = item.locationName || location?.name || '打卡照片'
+  previewState.label = [name, location?.position].filter(Boolean).join(' ')
   previewState.referenceUrl = location?.image || ''
-  previewState.comparing = false
+  previewState.comparing = Boolean(previewState.referenceUrl)
   previewDialog.value?.showModal()
+  try {
+    const payload = await api('/locations')
+    const remoteLocation = payload.data?.locations?.find(place => Number(place.backendId) === Number(item.locationId))
+    if (previewState.checkin === item && remoteLocation) {
+      previewState.label = [remoteLocation.name || name, remoteLocation.position].filter(Boolean).join(' ')
+    }
+  } catch {
+    // 云端暂不可用时，继续展示随网站附带的地点信息。
+  }
 }
 
 function resetPreview() {
+  previewState.checkin = null
+  previewState.error = ''
   previewState.url = ''
   previewState.label = ''
   previewState.referenceUrl = ''

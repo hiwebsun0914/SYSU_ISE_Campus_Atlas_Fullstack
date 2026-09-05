@@ -1359,6 +1359,11 @@ body {
   display: grid;
   min-height: 12rem;
   place-items: center;
+  width: 100%;
+}
+
+.admin-preview-dialog .admin-preview-single {
+  max-height: 65dvh;
 }
 
 .admin-preview-dialog img {
@@ -1389,7 +1394,7 @@ body {
 
 .admin-preview-dialog > div.is-comparing {
   display: block;
-  padding: var(--space-xl) var(--space-sm) 5.5rem;
+  padding: var(--space-xl) var(--space-sm) var(--space-sm);
 }
 
 .admin-preview-compare {
@@ -1433,32 +1438,52 @@ body {
 }
 
 .admin-preview-toolbar {
-  position: absolute;
-  inset-inline: var(--space-sm);
-  inset-block-end: var(--space-sm);
+  position: sticky;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-sm);
+  background: var(--color-graphite);
+  z-index: 2;
 }
 
 .admin-preview-dialog .admin-preview-toolbar p {
   position: static;
   min-width: 0;
   margin: 0;
+  flex: 1 1 6rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
 }
 
-.admin-preview-dialog .admin-compare-button {
+.admin-preview-dialog .admin-preview-approve {
   position: static;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
   width: auto;
-  height: 44px;
-  padding-inline: var(--space-md);
+  min-width: 6rem;
+  height: auto;
+  min-height: 44px;
+  padding: .75rem 1rem;
   white-space: nowrap;
-  background: var(--color-accent);
+  line-height: 1;
+  background: var(--ise-accent);
   color: var(--color-ink);
-  border-color: var(--color-accent);
-  font-weight: 800;
+  border: var(--rule) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  margin-inline-start: auto;
+}
+
+.admin-preview-error {
+  flex-basis: 100%;
 }
 
 .admin-preview-dialog .admin-preview-close {
