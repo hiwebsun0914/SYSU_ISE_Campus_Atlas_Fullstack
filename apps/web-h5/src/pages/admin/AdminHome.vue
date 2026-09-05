@@ -692,7 +692,7 @@
           <div class="admin-section-head">
             <div>
               <h2 id="users-title">用户权限</h2>
-              <p>超级管理员可以查看全部注册账号的资料、把特定账号设为审核员，或删除违规账号；审核员不能提权、删除，也不能修改受保护账号。</p>
+              <p>超级管理员可以查看全部注册账号的资料、把特定账号设为审核员，审批密码重置申请，或删除违规账号；审核员不能提权、重置密码、删除，也不能修改受保护账号。</p>
             </div>
             <span>{{ adminUserCount }} 位管理员</span>
           </div>
@@ -706,6 +706,7 @@
           </div>
 
           <template v-else>
+            <PasswordResetRequests v-if="activeSection === 'users'" />
             <div class="admin-search-field">
               <label for="user-search">查找账号</label>
               <div>
@@ -906,6 +907,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PasswordResetRequests from '@/components/admin/PasswordResetRequests.vue'
 import '@fontsource/space-grotesk/latin-500.css'
 import '@fontsource/space-grotesk/latin-600.css'
 import '@fontsource/jetbrains-mono/latin-500.css'

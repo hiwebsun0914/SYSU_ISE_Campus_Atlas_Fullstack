@@ -79,6 +79,7 @@
             </span>
           </button>
         </form>
+        <RouterLink v-if="mode === 'login'" to="/reset-password" class="link-btn">忘记密码？申请重置</RouterLink>
       </section>
 
       <!-- 头像上传进度与操作（仅注册后） -->

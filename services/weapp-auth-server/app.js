@@ -134,6 +134,7 @@ app.use('/route', routeWalkingRouter);
 app.use('/submissions',  submissionsRouter);
 app.use('/user', profileRouter);
 app.use('/feedback', feedbackRouter);
+app.use('/password-reset', require('./routes/passwordReset'));
 app.use('/admin',   auth, adminOnly, adminRouter);
 
 /* ========= 文件路径 ========= */
@@ -189,7 +190,7 @@ function toAvatarUrl(key) {
   return base ? `${base}/${encodeURI(key)}` : null;
 }
 function issueTokenAndPersist(user) {
-  const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: user.id, tokenVersion: Number(user.tokenVersion) || 0 }, JWT_SECRET, { expiresIn: '7d' });
   const users = readUsers();
   const idx = users.findIndex(u => String(u.id) === String(user.id));
   if (idx !== -1) {

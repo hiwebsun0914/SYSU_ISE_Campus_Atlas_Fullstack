@@ -132,6 +132,7 @@ function auth(req, res, next) {
 
     const user = getUserById(uid);
     if (!user) return send401(res, '用户不存在或已被删除');
+    if ((Number(payload.tokenVersion) || 0) !== (Number(user.tokenVersion) || 0)) return send401(res, '密码已重置，请重新登录');
 
     // 可选：校验与库里最近一次 token 一致
     if (VERIFY_LAST_TOKEN && user.lastToken && user.lastToken !== token) {
@@ -161,7 +162,7 @@ function optionalAuth(req, res, next) {
     const uid = getUserIdFromPayload(payload);
     if (uid == null) return next();
     const user = getUserById(uid);
-    if (user) {
+    if (user && (Number(payload.tokenVersion) || 0) === (Number(user.tokenVersion) || 0)) {
       req.userId = user.id;
       req.user = user;
       req.role = user.role || 'visitor';
