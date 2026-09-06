@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # 前端发布脚本（web-h5 → 生产服务器）
 # 生产域名：sysuzgxytj.top（2026-08-16 起），旧域名 hiwebsun.top 并列保留。
-# 两个域名解析到同一台服务器，SSH 目标沿用 hiwebsun.top 即可。
+# 宣传域名也是当前生产服务器的 SSH 入口；旧域名可能指向其他服务器，不用于部署。
 # 关键实践：切换 dist 前把上一代 assets 合并进新目录，
 # 避免浏览器缓存旧 index.html 的用户因旧哈希资源 404 而白屏。
 #
 # 用法：在仓库根目录执行  bash deploy/release-web.sh
 set -euo pipefail
 
-SERVER="root@hiwebsun.top"
+SERVER="root@sysuzgxytj.top"
 WEB_DIR="/www/web-h5"
 TS="$(date +%Y%m%d-%H%M%S)"
 STAGE_DIR="/root/web-h5-dist-new-${TS}"
