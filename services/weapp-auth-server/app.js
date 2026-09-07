@@ -546,6 +546,7 @@ app.get('/auth/me', auth, (req, res) => {
       pendingCheckins: (u.pendingCheckins || []).map(item => ({
         locationId: Number(item.locationId),
         photo: item.photo || '',
+        thumbnail: item.thumbnail || '',
         submittedAt: Number(item.submittedAt || 0),
         appealStatus: item.appealStatus || ''
       })),
@@ -554,6 +555,7 @@ app.get('/auth/me', auth, (req, res) => {
         status: item.status,
         note: item.note || '',
         photo: item.photo || '',
+        thumbnail: item.thumbnail || '',
         key: item.key || '',
         submittedAt: Number(item.submittedAt || 0),
         reviewedAt: Number(item.reviewedAt || 0),
@@ -578,6 +580,7 @@ app.get('/checkin/status', auth, (req, res) => {
     pendingCheckins: (u.pendingCheckins || []).map(item => ({
       locationId: Number(item.locationId),
       photo: item.photo || '',
+      thumbnail: item.thumbnail || '',
       submittedAt: Number(item.submittedAt || 0),
       appealStatus: item.appealStatus || ''
     })),
@@ -586,6 +589,7 @@ app.get('/checkin/status', auth, (req, res) => {
       status: item.status,
       note: item.note || '',
       photo: item.photo || '',
+      thumbnail: item.thumbnail || '',
       key: item.key || '',
       submittedAt: Number(item.submittedAt || 0),
       reviewedAt: Number(item.reviewedAt || 0),

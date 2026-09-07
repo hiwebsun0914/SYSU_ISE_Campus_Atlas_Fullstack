@@ -51,6 +51,8 @@ const users = [
       {
         locationId: 2,
         photo: 'https://example.com/checkin.jpg',
+        thumbnail: 'https://example.com/checkin_thumb.webp',
+        thumbnailKey: 'checkin/3__student/2/checkin_thumb.webp',
         submittedAt: now - 72 * 60 * 60 * 1000,
         pointsDeferred: true
       },
@@ -258,6 +260,14 @@ test('persists checkpoint content and point settings', async () => {
   const list = await api(2, '/admin/locations?query=%E9%AB%98%E5%88%A9%E5%A3%AB');
   assert.equal(list.body.list.length, 1);
   assert.equal(list.body.list[0].points, 7);
+});
+
+test('returns a dedicated thumbnail for the check-in review queue', async () => {
+  const queue = await api(2, '/admin/checkins?status=pending');
+  assert.equal(queue.response.status, 200);
+  const item = queue.body.list.find(row => row.locationId === 2);
+  assert.equal(item.photo, 'https://example.com/checkin.jpg');
+  assert.equal(item.thumbnail, 'https://example.com/checkin_thumb.webp');
 });
 
 test('uses configured checkpoint points when approving a photo check-in', async () => {

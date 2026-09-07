@@ -10,6 +10,7 @@ const request = _reqNamed
 
 /* ===== 共享拍照打卡流程：鉴权判定 ===== */
 import auth from '@/utils/auth'
+import { prepareCheckinImages } from '@/utils/checkinImage'
 
 function isAuthed() {
   try {
@@ -119,14 +120,20 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
     }
   }
 
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-  const fileType = file.type || 'image/jpeg'
+  let prepared
+  try {
+    prepared = await prepareCheckinImages(file)
+  } catch (error) {
+    showStepError('处理图片', error)
+    if (onError) onError('compress', error)
+    return { ok: false, reason: 'compress' }
+  }
 
   try {
     /* 1) 预签名 */
     let sign
     try {
-      sign = await request('/checkin/presign', 'POST', { ext, locationId })
+      sign = await request('/checkin/presign', 'POST', { ext: 'webp', locationId })
     } catch (e) {
       showStepError('预签名(/checkin/presign) 网络', e)
       if (onError) onError('presign', e)
@@ -137,44 +144,56 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
       if (onError) onError('presign', sign)
       return { ok: false, reason: 'presign' }
     }
-    const { key, putUrl, contentType } = sign.data.data || {}
-    if (!putUrl || !key) {
-      showStepError('预签名', '返回缺少 putUrl 或 key', { signData: sign?.data })
+    const signData = sign.data.data || {}
+    const mainTarget = signData.main || { key: signData.key, putUrl: signData.putUrl, contentType: signData.contentType }
+    const thumbnailTarget = signData.thumbnail
+    if (!mainTarget?.putUrl || !mainTarget?.key || !thumbnailTarget?.putUrl || !thumbnailTarget?.key) {
+      showStepError('预签名', '返回缺少主图或缩略图上传地址', { signData: sign?.data })
       if (onError) onError('presign', sign)
       return { ok: false, reason: 'presign' }
     }
-    const usedContentType = contentType || fileType
+    const upload = async (target, blob) => fetch(target.putUrl, {
+      method: 'PUT',
+      mode: 'cors',
+      headers: {
+        'Content-Type': target.contentType || prepared.mime
+      },
+      body: blob,
+    })
 
-    /* 2) 直传对象存储（PUT） */
-    let putRes
+    /* 2) 主图与缩略图并行直传对象存储（PUT） */
+    let putResults
     try {
-      putRes = await fetch(putUrl, {
-        method: 'PUT',
-        mode: 'cors',
-        headers: { 'Content-Type': usedContentType },
-        body: file,
-      })
+      putResults = await Promise.all([upload(mainTarget, prepared.main), upload(thumbnailTarget, prepared.thumbnail)])
     } catch (e) {
-      showStepError('上传(对象存储 PUT) 网络/CORS', e, { putUrl, usedContentType })
+      showStepError('上传(对象存储 PUT) 网络/CORS', e)
       if (onError) onError('upload', e)
       return { ok: false, reason: 'upload' }
     }
-    if (!putRes.ok) {
+    const failedPut = putResults.find(response => !response.ok)
+    if (failedPut) {
       let bodyText = ''
-      try { bodyText = await putRes.text() } catch {}
-      showStepError('上传(对象存储 PUT) 状态码', `HTTP ${putRes.status}`, {
-        status: putRes.status,
-        headers: Object.fromEntries(putRes.headers.entries()),
+      try { bodyText = await failedPut.text() } catch {}
+      showStepError('上传(对象存储 PUT) 状态码', `HTTP ${failedPut.status}`, {
+        status: failedPut.status,
+        headers: Object.fromEntries(failedPut.headers.entries()),
         bodyText: bodyText?.slice(0, 400),
       })
-      if (onError) onError('upload', putRes)
+      if (onError) onError('upload', failedPut)
       return { ok: false, reason: 'upload' }
     }
 
     /* 3) 提交绑定 */
     let commit
     try {
-      commit = await request('/checkin/commit', 'POST', { key, size: file.size, locationId })
+      commit = await request('/checkin/commit', 'POST', {
+        key: mainTarget.key,
+        size: prepared.main.size,
+        thumbnailKey: thumbnailTarget.key,
+        thumbnailSize: prepared.thumbnail.size,
+        mime: prepared.mime,
+        locationId
+      })
     } catch (e) {
       showStepError('绑定(/checkin/commit) 网络', e)
       if (onError) onError('commit', e)

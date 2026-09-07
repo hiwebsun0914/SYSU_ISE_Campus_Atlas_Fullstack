@@ -228,6 +228,23 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 > [!NOTE]
 > 不配置 COS 也能学习项目结构和测试部分基础接口；头像、打卡图片及图片签名相关功能需要完整的 COS 配置。
 
+### 优化已有打卡与地点图片
+
+服务端依赖安装完成后，可先只读检查需要生成的缩略图和地点审核预览：
+
+```bash
+cd services/weapp-auth-server
+npm run backfill:checkin-images
+```
+
+确认环境变量与检查结果无误后，再执行实际回填：
+
+```bash
+npm run backfill:checkin-images:apply
+```
+
+回填只新增 WebP 派生图片并补充记录中的缩略图地址，不删除或覆盖历史打卡原图；地点原图仅更新长期缓存元数据。
+
 用户主页与管理员空间的全部 API、权限边界、状态流转及部署检查项见 [接口规范与使用准则](docs/profile-admin-api.md)。
 
 ### Web `apps/web-h5/.env.local`

@@ -70,6 +70,26 @@ test('creates a scoped avatar upload URL without exposing the server secret key'
   assert.equal(serialized.includes(cosSecretKey), false);
 });
 
+test('creates separate optimized check-in upload targets and publishes hard limits', async () => {
+  const response = await fetch(`${baseUrl}/checkin/presign`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ ext: 'webp', locationId: 1 })
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.code, 0);
+  assert.match(body.data.main.key, /^checkin\/101__\/1\/\d+_[a-z0-9]+_main\.webp$/);
+  assert.match(body.data.thumbnail.key, /^checkin\/101__\/1\/\d+_[a-z0-9]+_thumb\.webp$/);
+  assert.equal(body.data.main.contentType, 'image/webp');
+  assert.equal(body.data.thumbnail.contentType, 'image/webp');
+  assert.deepEqual(body.data.limits, { mainBytes: 2097152, thumbnailBytes: 204800 });
+});
+
 test('rejects non-image bytes before attempting a COS upload', async () => {
   const form = new FormData();
   form.append('avatar', new Blob(['not an image'], { type: 'image/webp' }), 'avatar.webp');

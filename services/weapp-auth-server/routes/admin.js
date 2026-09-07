@@ -570,6 +570,9 @@ router.get('/checkins', auth, adminOnly, async (req, res) => {
       || (pending?.key ? toUrl(pending.key) : '')
       || (reviewRecord?.key ? toUrl(reviewRecord.key) : '');
     const found = storedPhoto ? null : await listLatestPhoto(u.id, u.username, locId);
+    const storedThumbnail = pending?.thumbnail || reviewRecord?.thumbnail
+      || (pending?.thumbnailKey ? toUrl(pending.thumbnailKey) : '')
+      || (reviewRecord?.thumbnailKey ? toUrl(reviewRecord.thumbnailKey) : '');
     const location = getLocation(locId);
     return {
       id: `${u.id}_${locId}`,     // 组合键：userId_locationId
@@ -585,6 +588,7 @@ router.get('/checkins', auth, adminOnly, async (req, res) => {
       appealReason: pending?.appealReason || reviewRecord?.appealReason || '',
       appealedAt: Number(pending?.appealedAt || reviewRecord?.appealedAt || 0),
       photo: storedPhoto || (found ? found.url : ''),
+      thumbnail: storedThumbnail,
       uploadTime: timestampOf(pending?.submittedAt || reviewRecord?.submittedAt || reviewRecord?.reviewedAt || approvedRecord?.time) || (found ? found.uploadTime : 0)
     };
   }));
@@ -684,6 +688,8 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
     note: String(req.body?.note || '').trim(),
     photo: pending?.photo || '',
     key: pending?.key || '',
+    thumbnail: pending?.thumbnail || '',
+    thumbnailKey: pending?.thumbnailKey || '',
     submittedAt: Number(pending?.submittedAt || 0),
     appealStatus: pending?.appealStatus === 'pending' ? 'approved' : '',
     appealReason: pending?.appealReason || '',
@@ -746,6 +752,8 @@ router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
     note,
     photo: pending?.photo || '',
     key: pending?.key || '',
+    thumbnail: pending?.thumbnail || '',
+    thumbnailKey: pending?.thumbnailKey || '',
     submittedAt: Number(pending?.submittedAt || 0),
     appealStatus: pending?.appealStatus === 'pending' ? 'rejected' : '',
     appealReason: pending?.appealReason || '',

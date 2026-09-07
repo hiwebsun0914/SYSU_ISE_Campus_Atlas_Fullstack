@@ -17,6 +17,11 @@ const {
   STS_DURATION = 300
 } = process.env;
 
+const CHECKIN_MAIN_MAX_BYTES = 2 * 1024 * 1024;
+const CHECKIN_THUMBNAIL_MAX_BYTES = 200 * 1024;
+const CHECKIN_IMAGE_CONTENT_TYPE = 'image/webp';
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
 // ==== COS 实例 ====
 const cos = new COS({ SecretId: TENCENT_SECRET_ID, SecretKey: TENCENT_SECRET_KEY });
 
@@ -62,6 +67,8 @@ function publicReviewRecords(user) {
       note: item.note || '',
       photo: item.photo || (item.key ? toUrl(item.key) : ''),
       key: item.key || '',
+      thumbnail: item.thumbnail || (item.thumbnailKey ? toUrl(item.thumbnailKey) : ''),
+      thumbnailKey: item.thumbnailKey || '',
       submittedAt: Number(item.submittedAt || 0),
       reviewedAt: Number(item.reviewedAt || 0),
       appealStatus: item.appealStatus || '',
@@ -76,6 +83,8 @@ function publicPendingCheckins(user) {
     locationId: Number(item.locationId),
     photo: item.photo || (item.key ? toUrl(item.key) : ''),
     key: item.key || '',
+    thumbnail: item.thumbnail || (item.thumbnailKey ? toUrl(item.thumbnailKey) : ''),
+    thumbnailKey: item.thumbnailKey || '',
     submittedAt: Number(item.submittedAt || 0),
     appealStatus: item.appealStatus || '',
     appealReason: item.appealReason || ''
@@ -123,7 +132,7 @@ const safeExt = (e = 'jpg') => {
 };
 
 // checkin/<uid>__<slug>/<locationId>/<ts_rand>.<ext>
-function buildKey(req, ext = 'jpg') {
+function buildKey(req, ext = 'jpg', variant = '') {
   const u = req.user?.username
     ? { username: req.user.username }
     : getUserById(req.userId) || {};
@@ -132,7 +141,39 @@ function buildKey(req, ext = 'jpg') {
   const loc = (req.body?.locationId || 'general').toString();
   const ts = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
-  return `checkin/${uid}__${slug}/${loc}/${ts}_${rand}.${safeExt(ext)}`;
+  const suffix = variant ? `_${variant}` : '';
+  return `checkin/${uid}__${slug}/${loc}/${ts}_${rand}${suffix}.${safeExt(ext)}`;
+}
+
+function headSize(head) {
+  return Number(head?.headers?.['content-length'] || head?.headers?.['Content-Length'] || 0);
+}
+
+function headType(head) {
+  return String(head?.headers?.['content-type'] || head?.headers?.['Content-Type'] || '').split(';')[0].toLowerCase();
+}
+
+function validateUploadedImage(head, { maxBytes, expectedSize, label, requireWebp = false }) {
+  const actualSize = headSize(head);
+  if (!actualSize) return `${label}为空或无法读取大小`;
+  if (actualSize > maxBytes) return `${label}超过大小上限`;
+  if (expectedSize && Math.abs(actualSize - Number(expectedSize)) > 2048) return `${label}大小不匹配`;
+  if (requireWebp && headType(head) && headType(head) !== CHECKIN_IMAGE_CONTENT_TYPE) return `${label}必须为 WebP 图片`;
+  return '';
+}
+
+async function applyImmutableMetadata(key, contentType) {
+  const copySource = `${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com/${encodeURI(key)}`;
+  await cos.putObjectCopy({
+    Bucket: COS_BUCKET,
+    Region: COS_REGION,
+    Key: key,
+    CopySource: copySource,
+    MetadataDirective: 'Replaced',
+    ContentType: contentType || CHECKIN_IMAGE_CONTENT_TYPE,
+    CacheControl: IMMUTABLE_CACHE_CONTROL,
+    ACL: 'public-read'
+  });
 }
 
 // ======= 取图相关：前缀、签名、公网 URL、列举 =======
@@ -197,19 +238,35 @@ async function listObjectsByPrefix(prefix, max = 1000) {
 // ==== A. 预签名 PUT ====
 router.post('/presign', auth, (req, res) => {
   if (!checkSubmissionAvailability(req, res)) return;
-  const ext = req.body?.ext;
-  const key = buildKey(req, ext);
+  const requestedExt = safeExt(req.body?.ext || 'jpg');
+  const optimized = requestedExt === 'webp';
+  const key = buildKey(req, requestedExt, optimized ? 'main' : '');
+  const thumbnailKey = optimized
+    ? key.replace(/_main\.webp$/, '_thumb.webp')
+    : key.replace(/\.[^.]+$/, '_thumb.webp');
+  const sign = targetKey => new Promise((resolve, reject) => {
+    cos.getObjectUrl(
+      { Bucket: COS_BUCKET, Region: COS_REGION, Key: targetKey, Method: 'PUT', Sign: true, Expires: 300 },
+      (err, data) => err || !data?.Url ? reject(err || new Error('missing signed URL')) : resolve(data.Url)
+    );
+  });
 
-  cos.getObjectUrl(
-    { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300 },
-    (err, data) => {
-      if (err || !data?.Url) {
-        console.error('[PRESIGN ERROR]', err || data);
-        return res.status(500).json({ code: 1, message: '预签名失败' });
+  Promise.all([sign(key), sign(thumbnailKey)])
+    .then(([putUrl, thumbnailPutUrl]) => res.json({
+      code: 0,
+      data: {
+        // Legacy aliases keep an older web client able to upload its single image.
+        key,
+        putUrl,
+        main: { key, putUrl, contentType: CHECKIN_IMAGE_CONTENT_TYPE },
+        thumbnail: { key: thumbnailKey, putUrl: thumbnailPutUrl, contentType: CHECKIN_IMAGE_CONTENT_TYPE },
+        limits: { mainBytes: CHECKIN_MAIN_MAX_BYTES, thumbnailBytes: CHECKIN_THUMBNAIL_MAX_BYTES }
       }
-      res.json({ code: 0, data: { key, putUrl: data.Url } });
-    }
-  );
+    }))
+    .catch(error => {
+      console.error('[PRESIGN ERROR]', error);
+      res.status(500).json({ code: 1, message: '预签名失败' });
+    });
 });
 
 // ==== B. STS 临时凭证（可选直传）====
@@ -263,7 +320,7 @@ router.post('/init', auth, (req, res) => {
 
 // ==== C. 提交绑定（兜底设置 public-read 并校验归属）====
 router.post('/commit', auth, async (req, res) => {
-  const { key, size } = req.body || {};
+  const { key, size, thumbnailKey, thumbnailSize, mime } = req.body || {};
   const uid = req.userId;
   const slug = safeSlug(req.user?.username || 'user');
 
@@ -272,24 +329,46 @@ router.post('/commit', auth, async (req, res) => {
   if (!key || !key.startsWith(ownedPrefix)) {
     return res.status(400).json({ code: 1, message: '非法 key' });
   }
+  if (thumbnailKey && (!thumbnailKey.startsWith(ownedPrefix) || !/_thumb\.webp$/i.test(thumbnailKey))) {
+    return res.status(400).json({ code: 1, message: '非法缩略图 key' });
+  }
 
   const availability = checkSubmissionAvailability(req, res);
   if (!availability) return;
 
   const head = await cos.headObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }).catch(() => null);
   if (!head) return res.status(400).json({ code: 1, message: '对象不存在或未上传成功' });
+  const mainError = validateUploadedImage(head, {
+    maxBytes: CHECKIN_MAIN_MAX_BYTES,
+    expectedSize: size,
+    label: '打卡图片',
+    requireWebp: String(mime || '').toLowerCase() === CHECKIN_IMAGE_CONTENT_TYPE
+  });
+  if (mainError) return res.status(400).json({ code: 1, message: mainError });
 
-  if (size && Number(head.headers['content-length']) > Number(size) + 2048) {
-    return res.status(400).json({ code: 1, message: '文件大小不匹配' });
+  let thumbnailHead = null;
+  if (thumbnailKey) {
+    thumbnailHead = await cos.headObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: thumbnailKey }).catch(() => null);
+    if (!thumbnailHead) return res.status(400).json({ code: 1, message: '缩略图不存在或未上传成功' });
+    const thumbnailError = validateUploadedImage(thumbnailHead, {
+      maxBytes: CHECKIN_THUMBNAIL_MAX_BYTES,
+      expectedSize: thumbnailSize,
+      label: '缩略图',
+      requireWebp: true
+    });
+    if (thumbnailError) return res.status(400).json({ code: 1, message: thumbnailError });
   }
 
-  // 兜底：public-read（如果你是私有桶，可保留签名访问，ACL 设置不影响读不到的问题）
-  await cos.putObjectAcl({
-    Bucket: COS_BUCKET,
-    Region: COS_REGION,
-    Key: key,
-    ACL: 'public-read'
-  }).catch(e => console.warn('putObjectAcl fail', e?.message));
+
+  try {
+    await Promise.all([
+      applyImmutableMetadata(key, headType(head) || (mime === CHECKIN_IMAGE_CONTENT_TYPE ? CHECKIN_IMAGE_CONTENT_TYPE : 'image/jpeg')),
+      thumbnailKey ? applyImmutableMetadata(thumbnailKey, CHECKIN_IMAGE_CONTENT_TYPE) : Promise.resolve()
+    ]);
+  } catch (error) {
+    console.error('[checkin/commit] cache metadata error:', error?.code || error?.message || error);
+    return res.status(502).json({ code: 1, message: '图片缓存配置失败，请重试' });
+  }
 
   // === 关键：把 locationId 写入 users.json 的 lockingLocations（仅数字） ===
   // 说明：前端打卡时会把 locationId 一并传给 commit
@@ -310,6 +389,8 @@ router.post('/commit', auth, async (req, res) => {
           locationId: locNum,
           key,
           photo: toUrl(key),
+          thumbnailKey: thumbnailKey || '',
+          thumbnail: thumbnailKey ? toUrl(thumbnailKey) : '',
           submittedAt: Date.now(),
           pointsDeferred: true,
           appealStatus: ''
@@ -327,11 +408,20 @@ router.post('/commit', auth, async (req, res) => {
     code: 0,
     key,
     url: toUrl(key),
+    thumbnail: thumbnailKey ? toUrl(thumbnailKey) : '',
     awardedPoints: 0,
     reviewStatus: 'pending',
     message: '照片已提交审核，审核通过后计入积分'
   });
 });
+
+router._test = {
+  CHECKIN_MAIN_MAX_BYTES,
+  CHECKIN_THUMBNAIL_MAX_BYTES,
+  CHECKIN_IMAGE_CONTENT_TYPE,
+  IMMUTABLE_CACHE_CONTROL,
+  validateUploadedImage
+};
 
 // ==== D. 获取打卡状态 ====
 router.get('/status', auth, (req, res) => {
