@@ -23,6 +23,11 @@ const CHECKIN_THUMBNAIL_MAX_BYTES = 200 * 1024;
 const CHECKIN_IMAGE_CONTENT_TYPE = 'image/webp';
 const CHECKIN_JPEG_CONTENT_TYPE = 'image/jpeg';
 const CHECKIN_TEMP_MAX_BYTES = 20 * 1024 * 1024;
+const FALLBACK_RATE_WINDOW_MS = 60_000;
+const FALLBACK_RATE_MAX = 2;
+const FALLBACK_MAX_CONCURRENCY = 2;
+const fallbackAttempts = new Map();
+let activeFallbacks = 0;
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 // ==== COS 实例 ====
@@ -186,7 +191,7 @@ function callCos(method, params) {
 
 async function webpWithinReviewLimit(input, steps, maxBytes) {
   for (const { edge, quality } of steps) {
-    const output = await sharp(input, { failOn: 'none', limitInputPixels: 80_000_000 })
+    const output = await sharp(input, { failOn: 'none', limitInputPixels: 40_000_000 })
       .rotate()
       .resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true })
       .flatten({ background: '#ffffff' })
@@ -195,6 +200,38 @@ async function webpWithinReviewLimit(input, steps, maxBytes) {
     if (output.length > 0 && output.length <= maxBytes) return output;
   }
   throw new Error('SERVER_IMAGE_PROCESSING_FAILED');
+}
+
+function consumeFallbackAttempt(userId) {
+  const now = Date.now();
+  const recent = (fallbackAttempts.get(String(userId)) || []).filter(time => now - time < FALLBACK_RATE_WINDOW_MS);
+  if (recent.length >= FALLBACK_RATE_MAX) return false;
+  recent.push(now);
+  fallbackAttempts.set(String(userId), recent);
+  return true;
+}
+
+function deleteTemporaryObject(key, context) {
+  callCos('deleteObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: key })
+    .catch(error => console.warn(`[checkin] ${context} temporary cleanup failed:`, key, error?.code || error?.message || error));
+}
+
+async function cleanupExpiredTemporaryObjects(now = Date.now()) {
+  const cutoff = now - 24 * 60 * 60 * 1000;
+  try {
+    const listed = await callCos('getBucket', { Bucket: COS_BUCKET, Region: COS_REGION, Prefix: 'checkin-temp/', MaxKeys: 1000 });
+    const expired = (listed.Contents || []).filter(item => new Date(item.LastModified).getTime() < cutoff);
+    await Promise.all(expired.map(item => callCos('deleteObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: item.Key })
+      .catch(error => console.warn('[checkin] expired temporary cleanup failed:', item.Key, error?.code || error?.message || error))));
+    if (expired.length) console.log(`[checkin] removed ${expired.length} expired temporary image(s)`);
+  } catch (error) {
+    console.warn('[checkin] temporary lifecycle scan failed:', error?.code || error?.message || error);
+  }
+}
+
+if (COS_BUCKET && COS_REGION && TENCENT_SECRET_ID && TENCENT_SECRET_KEY) {
+  const cleanupTimer = setInterval(() => cleanupExpiredTemporaryObjects(), 60 * 60 * 1000);
+  cleanupTimer.unref?.();
 }
 
 async function applyImmutableMetadata(key, contentType) {
@@ -317,16 +354,24 @@ router.post('/fallback/presign', auth, (req, res) => {
   const normalKey = buildKey(req, ext, 'source');
   const key = normalKey.replace(/^checkin\//, 'checkin-temp/');
   cos.getObjectUrl(
-    { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300 },
+    { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300, Headers: { 'x-cos-acl': 'private' } },
     (error, data) => {
       if (error || !data?.Url) return res.status(500).json({ code: 1, message: '预签名失败' });
-      return res.json({ code: 0, data: { key, putUrl: data.Url, contentType: sourceType, maxBytes: CHECKIN_TEMP_MAX_BYTES } });
+      return res.json({ code: 0, data: { key, putUrl: data.Url, contentType: sourceType, headers: { 'x-cos-acl': 'private' }, maxBytes: CHECKIN_TEMP_MAX_BYTES } });
     }
   );
 });
 
 router.post('/fallback/process', auth, async (req, res) => {
   if (!checkSubmissionAvailability(req, res)) return;
+  if (!consumeFallbackAttempt(req.userId)) {
+    res.set('Retry-After', '60');
+    return res.status(429).json({ code: 1, errorCode: 'CHECKIN_PROCESS_RATE_LIMITED', message: '照片处理失败，请稍后重试' });
+  }
+  if (activeFallbacks >= FALLBACK_MAX_CONCURRENCY) {
+    res.set('Retry-After', '10');
+    return res.status(503).json({ code: 1, errorCode: 'CHECKIN_PROCESS_BUSY', message: '照片处理失败，请稍后重试' });
+  }
   const key = String(req.body?.key || '');
   const uid = req.userId;
   const slug = getUserSlug(req);
@@ -334,6 +379,7 @@ router.post('/fallback/process', auth, async (req, res) => {
     return res.status(400).json({ code: 1, message: '非法临时图片 key' });
   }
 
+  activeFallbacks += 1;
   try {
     const head = await callCos('headObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: key });
     const sourceError = validateUploadedImage(head, {
@@ -357,7 +403,7 @@ router.post('/fallback/process', auth, async (req, res) => {
       { edge: 400, quality: 60 },
       { edge: 320, quality: 50 }
     ], CHECKIN_THUMBNAIL_MAX_BYTES);
-    const mainKey = buildKey(req, 'webp', 'main');
+    const mainKey = key.replace(/^checkin-temp\//, 'checkin/').replace(/_source\.[^.]+$/, '_main.webp');
     const thumbnailKey = mainKey.replace(/_main\.webp$/, '_thumb.webp');
     const upload = (derivedKey, body) => callCos('putObject', {
       Bucket: COS_BUCKET,
@@ -370,18 +416,20 @@ router.post('/fallback/process', auth, async (req, res) => {
       ACL: 'public-read'
     });
     await Promise.all([upload(mainKey, main), upload(thumbnailKey, thumbnail)]);
-    callCos('deleteObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: key }).catch(() => {});
     return res.json({
       code: 0,
       data: {
         main: { key: mainKey, size: main.length },
         thumbnail: { key: thumbnailKey, size: thumbnail.length },
-        mime: CHECKIN_IMAGE_CONTENT_TYPE
+        mime: CHECKIN_IMAGE_CONTENT_TYPE,
+        temporaryKey: key
       }
     });
   } catch (error) {
     console.error('[checkin/fallback/process] error:', error?.code || error?.message || error);
     return res.status(422).json({ code: 1, message: '照片处理失败，请重新拍摄' });
+  } finally {
+    activeFallbacks -= 1;
   }
 });
 
@@ -436,7 +484,7 @@ router.post('/init', auth, (req, res) => {
 
 // ==== C. 提交绑定（兜底设置 public-read 并校验归属）====
 router.post('/commit', auth, async (req, res) => {
-  const { key, size, thumbnailKey, thumbnailSize, mime } = req.body || {};
+  const { key, size, thumbnailKey, thumbnailSize, mime, temporaryKey } = req.body || {};
   const uid = req.userId;
   const slug = safeSlug(req.user?.username || 'user');
 
@@ -447,6 +495,16 @@ router.post('/commit', auth, async (req, res) => {
   }
   if (thumbnailKey && (!thumbnailKey.startsWith(ownedPrefix) || !/_thumb\.(?:webp|jpe?g)$/i.test(thumbnailKey))) {
     return res.status(400).json({ code: 1, message: '非法缩略图 key' });
+  }
+
+  const currentUser = getUserById(uid);
+  if (currentUser) {
+    normalizeUserCheckins(currentUser);
+    const existing = currentUser.pendingCheckins.find(item => item.key === key);
+    if (existing) {
+      if (temporaryKey && temporaryKey.startsWith(`checkin-temp/${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'idempotent commit');
+      return res.json({ code: 0, key, url: existing.photo || toUrl(key), thumbnail: existing.thumbnail || '', awardedPoints: 0, reviewStatus: 'pending', idempotent: true });
+    }
   }
 
   const availability = checkSubmissionAvailability(req, res);
@@ -534,6 +592,7 @@ router.post('/commit', auth, async (req, res) => {
     reviewStatus: 'pending',
     message: '照片已提交审核，审核通过后计入积分'
   });
+  if (temporaryKey && temporaryKey.startsWith(`checkin-temp/${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'committed');
 });
 
 router._test = {
@@ -541,7 +600,8 @@ router._test = {
   CHECKIN_THUMBNAIL_MAX_BYTES,
   CHECKIN_IMAGE_CONTENT_TYPE,
   IMMUTABLE_CACHE_CONTROL,
-  validateUploadedImage
+  validateUploadedImage,
+  cleanupExpiredTemporaryObjects
 };
 
 // ==== D. 获取打卡状态 ====

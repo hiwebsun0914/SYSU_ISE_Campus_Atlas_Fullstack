@@ -98,14 +98,14 @@ function sourceExtension(file) {
   return 'jpg'
 }
 
-async function uploadWithRetry(putUrl, contentType, body) {
+async function uploadWithRetry(putUrl, contentType, body, extraHeaders = {}) {
   let lastError
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const response = await fetch(putUrl, {
         method: 'PUT',
         mode: 'cors',
-        headers: { 'Content-Type': contentType },
+        headers: { 'Content-Type': contentType, ...extraHeaders },
         body
       })
       if (response.ok || response.status < 500) return response
@@ -127,7 +127,7 @@ async function prepareCheckinOnServer(file, locationId) {
   if (!signed?.ok || signed?.data?.code !== 0 || !target?.key || !target?.putUrl) {
     throw new Error(signed?.data?.message || '照片处理失败，请重新拍摄')
   }
-  const uploaded = await uploadWithRetry(target.putUrl, target.contentType || file.type, file)
+  const uploaded = await uploadWithRetry(target.putUrl, target.contentType || file.type, file, target.headers)
   if (!uploaded.ok) throw new Error('照片处理失败，请重新拍摄')
   const processed = await request('/checkin/fallback/process', 'POST', {
     key: target.key,
@@ -248,6 +248,7 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
         thumbnailKey: thumbnailTarget.key,
         thumbnailSize: serverPrepared?.thumbnail?.size || prepared.thumbnail.size,
         mime: serverPrepared?.mime || prepared.mime,
+        temporaryKey: serverPrepared?.temporaryKey || '',
         locationId
       })
     } catch (e) {

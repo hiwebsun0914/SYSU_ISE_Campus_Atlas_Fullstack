@@ -144,6 +144,7 @@ test('uses a temporary original to create review-quality derivatives on the serv
   assert.equal(signed.response.status, 200);
   const target = signed.body.data;
   assert.match(target.key, /^checkin-temp\//);
+  assert.equal(target.headers['x-cos-acl'], 'private');
   heads.set(target.key, { headers: { 'content-length': String(source.length), 'content-type': 'image/jpeg' } });
   bodies.set(target.key, source);
 
@@ -154,6 +155,24 @@ test('uses a temporary original to create review-quality derivatives on the serv
   assert.ok(processed.body.data.main.size <= 2 * 1024 * 1024);
   assert.ok(processed.body.data.thumbnail.size <= 200 * 1024);
   assert.equal(heads.get(processed.body.data.main.key).headers['content-type'], 'image/webp');
+  assert.equal(bodies.has(target.key), true);
+
+  const commitBody = {
+    key: processed.body.data.main.key,
+    size: processed.body.data.main.size,
+    thumbnailKey: processed.body.data.thumbnail.key,
+    thumbnailSize: processed.body.data.thumbnail.size,
+    mime: processed.body.data.mime,
+    temporaryKey: target.key,
+    locationId: 5
+  };
+  const committed = await api('/checkin/commit', commitBody);
+  assert.equal(committed.response.status, 200);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(bodies.has(target.key), false);
+  const repeated = await api('/checkin/commit', commitBody);
+  assert.equal(repeated.response.status, 200);
+  assert.equal(repeated.body.idempotent, true);
 });
 
 test('rejects an oversized legacy upload even when the client reports a larger size', async () => {
