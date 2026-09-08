@@ -28,6 +28,7 @@ const router = createRouter({
     { path: '/points-rank', component: () => import('../pages/PointsRank.vue') },
     { path: '/rank', component: () => import('../pages/rank.vue') },
     { path: '/future-card', component: () => import('../pages/futureCard.vue') },
+    { path: '/reset-password', component: () => import('../pages/PasswordReset.vue') },
     { path: '/signin', component: () => import('../pages/signin.vue') },
     { path: '/hidden-checkpoints', component: () => import('../pages/HiddenCheckpoints.vue') },
     { path: '/hidden-checkpoints/:id', component: () => import('../pages/HiddenCheckpointDetail.vue') },

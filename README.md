@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://hiwebsun.top"><img alt="Online demo" src="https://img.shields.io/badge/在线体验-hiwebsun.top-138A5B?style=flat-square&logo=googlechrome&logoColor=white" /></a>
+  <a href="https://sysuzgxytj.top"><img alt="Online demo" src="https://img.shields.io/badge/在线体验-sysuzgxytj.top-138A5B?style=flat-square&logo=googlechrome&logoColor=white" /></a>
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3.5-42B883?style=flat-square&logo=vuedotjs&logoColor=white" />
   <img alt="Node" src="https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
   <img alt="Capacitor" src="https://img.shields.io/badge/Capacitor-8.1-119EFF?style=flat-square&logo=capacitor&logoColor=white" />
@@ -41,7 +41,7 @@
 
 | 你的目标 | 建议入口 |
 | --- | --- |
-| 只想看看成品 | 打开 [在线体验](https://hiwebsun.top) |
+| 只想看看成品 | 打开 [在线体验](https://sysuzgxytj.top) |
 | 第一次运行项目 | 直接阅读 [5 分钟跑起来](#quick-start) |
 | 只修改网页 | `apps/web-h5/` |
 | 开发微信小程序 | [微信小程序说明](#wechat-mini-program) |
@@ -227,6 +227,23 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 > [!NOTE]
 > 不配置 COS 也能学习项目结构和测试部分基础接口；头像、打卡图片及图片签名相关功能需要完整的 COS 配置。
+
+### 优化已有打卡与地点图片
+
+服务端依赖安装完成后，可先只读检查需要生成的缩略图和地点审核预览：
+
+```bash
+cd services/weapp-auth-server
+npm run backfill:checkin-images
+```
+
+确认环境变量与检查结果无误后，再执行实际回填：
+
+```bash
+npm run backfill:checkin-images:apply
+```
+
+回填只新增 WebP 派生图片并补充记录中的缩略图地址，不删除或覆盖历史打卡原图；地点原图仅更新长期缓存元数据。
 
 用户主页与管理员空间的全部 API、权限边界、状态流转及部署检查项见 [接口规范与使用准则](docs/profile-admin-api.md)。
 

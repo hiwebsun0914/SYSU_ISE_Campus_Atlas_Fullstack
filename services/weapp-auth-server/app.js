@@ -134,6 +134,7 @@ app.use('/route', routeWalkingRouter);
 app.use('/submissions',  submissionsRouter);
 app.use('/user', profileRouter);
 app.use('/feedback', feedbackRouter);
+app.use('/password-reset', require('./routes/passwordReset'));
 app.use('/admin',   auth, adminOnly, adminRouter);
 
 /* ========= 文件路径 ========= */
@@ -189,7 +190,7 @@ function toAvatarUrl(key) {
   return base ? `${base}/${encodeURI(key)}` : null;
 }
 function issueTokenAndPersist(user) {
-  const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: user.id, tokenVersion: Number(user.tokenVersion) || 0 }, JWT_SECRET, { expiresIn: '7d' });
   const users = readUsers();
   const idx = users.findIndex(u => String(u.id) === String(user.id));
   if (idx !== -1) {
@@ -545,6 +546,7 @@ app.get('/auth/me', auth, (req, res) => {
       pendingCheckins: (u.pendingCheckins || []).map(item => ({
         locationId: Number(item.locationId),
         photo: item.photo || '',
+        thumbnail: item.thumbnail || '',
         submittedAt: Number(item.submittedAt || 0),
         appealStatus: item.appealStatus || ''
       })),
@@ -553,6 +555,7 @@ app.get('/auth/me', auth, (req, res) => {
         status: item.status,
         note: item.note || '',
         photo: item.photo || '',
+        thumbnail: item.thumbnail || '',
         key: item.key || '',
         submittedAt: Number(item.submittedAt || 0),
         reviewedAt: Number(item.reviewedAt || 0),
@@ -577,6 +580,7 @@ app.get('/checkin/status', auth, (req, res) => {
     pendingCheckins: (u.pendingCheckins || []).map(item => ({
       locationId: Number(item.locationId),
       photo: item.photo || '',
+      thumbnail: item.thumbnail || '',
       submittedAt: Number(item.submittedAt || 0),
       appealStatus: item.appealStatus || ''
     })),
@@ -585,6 +589,7 @@ app.get('/checkin/status', auth, (req, res) => {
       status: item.status,
       note: item.note || '',
       photo: item.photo || '',
+      thumbnail: item.thumbnail || '',
       key: item.key || '',
       submittedAt: Number(item.submittedAt || 0),
       reviewedAt: Number(item.reviewedAt || 0),

@@ -283,7 +283,7 @@
                     :aria-label="item.photo ? '查看打卡照片大图' : '该打卡没有可预览照片'"
                     @click="item.photo && openCheckinPreview(item)"
                   >
-                    <img v-if="item.photo" :src="item.photo" :alt="item.username + '在' + item.locationName + '的打卡照片'" width="320" height="240" loading="lazy" />
+                    <img v-if="item.photo" :src="item.thumbnail || item.photo" :alt="item.username + '在' + item.locationName + '的打卡照片'" width="320" height="240" loading="lazy" decoding="async" />
                     <Camera v-else :size="28" aria-hidden="true" />
                   </button>
                   <div class="admin-review-copy">
@@ -692,7 +692,7 @@
           <div class="admin-section-head">
             <div>
               <h2 id="users-title">用户权限</h2>
-              <p>超级管理员可以查看全部注册账号的资料、把特定账号设为审核员，或删除违规账号；审核员不能提权、删除，也不能修改受保护账号。</p>
+              <p>超级管理员可以查看全部注册账号的资料、把特定账号设为审核员，审批密码重置申请，或删除违规账号；审核员不能提权、重置密码、删除，也不能修改受保护账号。</p>
             </div>
             <span>{{ adminUserCount }} 位管理员</span>
           </div>
@@ -706,6 +706,7 @@
           </div>
 
           <template v-else>
+            <PasswordResetRequests v-if="activeSection === 'users'" />
             <div class="admin-search-field">
               <label for="user-search">查找账号</label>
               <div>
@@ -863,15 +864,33 @@
       </form>
     </dialog>
 
-    <dialog ref="previewDialog" class="admin-preview-dialog" aria-label="图片预览" @close="resetPreview" @click="closeDialogBackdrop">
+    <dialog ref="previewDialog" class="admin-preview-dialog" aria-label="图片预览" @close="handlePreviewClose" @click="closeDialogBackdrop">
       <div :class="{ 'is-comparing': previewState.comparing }">
         <div v-if="previewState.comparing" class="admin-preview-compare">
           <figure>
-            <img :src="previewState.referenceUrl" :alt="previewState.label + '的地点原图'" />
+            <div class="admin-preview-frame">
+              <span v-if="previewState.referenceLoading" class="admin-preview-loading">地点图加载中…</span>
+              <img
+                v-if="previewState.referenceDisplayUrl"
+                :src="previewState.referenceDisplayUrl"
+                :alt="previewState.label + '的地点原图'"
+                :class="{ 'is-loading': previewState.referenceLoading }"
+              />
+              <button v-if="previewState.referenceFailed" type="button" class="admin-preview-retry" @click="retryPreview('reference')">重新加载地点图</button>
+            </div>
             <figcaption>地点原图</figcaption>
           </figure>
           <figure>
-            <img :src="previewState.url" :alt="previewState.label + '的用户打卡图'" />
+            <div class="admin-preview-frame">
+              <span v-if="previewState.userLoading" class="admin-preview-loading">打卡图加载中…</span>
+              <img
+                v-if="previewState.userDisplayUrl"
+                :src="previewState.userDisplayUrl"
+                :alt="previewState.label + '的用户打卡图'"
+                :class="{ 'is-loading': previewState.userLoading }"
+              />
+              <button v-if="previewState.userFailed" type="button" class="admin-preview-retry" @click="retryPreview('user')">重新加载打卡图</button>
+            </div>
             <figcaption>用户上传</figcaption>
           </figure>
         </div>
@@ -906,6 +925,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PasswordResetRequests from '@/components/admin/PasswordResetRequests.vue'
 import '@fontsource/space-grotesk/latin-500.css'
 import '@fontsource/space-grotesk/latin-600.css'
 import '@fontsource/jetbrains-mono/latin-500.css'
@@ -1031,7 +1051,15 @@ const menuOpen = ref(false)
 const userSearch = ref('')
 
 const rejectState = reactive({ kind: '', item: null, note: '', touched: false, error: '', submitting: false })
-const previewState = reactive({ url: '', label: '', referenceUrl: '', comparing: false, checkin: null, error: '' })
+const previewState = reactive({
+  url: '', label: '', referenceUrl: '', comparing: false, checkin: null, error: '',
+  userDisplayUrl: '', userLoading: false, userFailed: false,
+  referenceDisplayUrl: '', referenceLoading: false, referenceFailed: false,
+  referencePreferredUrl: '', referenceFallbackUrl: ''
+})
+let previewLoadId = 0
+let previewReturnScrollY = 0
+let previewReturnFocus = null
 const userDeleteDialog = ref(null)
 const deleteState = reactive({ user: null, error: '', deleting: false })
 const toast = reactive({ message: '', tone: 'error', retry: null })
@@ -1115,6 +1143,15 @@ async function fetchCheckins() {
   const payload = await api('/admin/checkins', 'GET', { status: checkinStatus.value })
   checkins.value = payload.list || []
   Object.assign(checkinStat, { all: 0, pending: 0, appealed: 0, approved: 0, rejected: 0, ...(payload.stat || {}) })
+}
+
+function preloadNextCheckinThumbnail(item) {
+  const index = checkins.value.findIndex(row => row.id === item.id)
+  const nextUrl = checkins.value[index + 1]?.thumbnail
+  if (!nextUrl) return
+  const run = () => { const image = new Image(); image.decoding = 'async'; image.src = nextUrl }
+  if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 1500 })
+  else window.setTimeout(run, 250)
 }
 
 async function fetchSubmissions() {
@@ -1554,6 +1591,7 @@ function resetRejectDialog() {
 }
 
 function openPreview(url, label) {
+  rememberPreviewOrigin()
   resetPreview()
   previewState.url = url
   previewState.label = label || '审核图片'
@@ -1563,15 +1601,20 @@ function openPreview(url, label) {
 }
 
 async function openCheckinPreview(item) {
+  rememberPreviewOrigin()
   resetPreview()
   previewState.checkin = item
   const location = campusLocations.find(place => Number(place.backendId) === Number(item.locationId))
   previewState.url = item.photo
+  previewState.userDisplayUrl = item.thumbnail || item.photo
   const name = item.locationName || location?.name || '打卡照片'
   previewState.label = [name, location?.position].filter(Boolean).join(' ')
   previewState.referenceUrl = location?.image || ''
+  previewState.referenceFallbackUrl = location?.image || ''
   previewState.comparing = Boolean(previewState.referenceUrl)
   previewDialog.value?.showModal()
+  loadCheckinPreviewImages(item, location)
+  preloadNextCheckinThumbnail(item)
   try {
     const payload = await api('/locations')
     const remoteLocation = payload.data?.locations?.find(place => Number(place.backendId) === Number(item.locationId))
@@ -1583,13 +1626,102 @@ async function openCheckinPreview(item) {
   }
 }
 
+function locationReviewImageUrl(location) {
+  if (location?.reviewImage) return location.reviewImage
+  const source = String(location?.image || '')
+  try {
+    const url = new URL(source)
+    const filename = url.pathname.split('/').pop()?.replace(/\.[^.]+$/, '.webp')
+    if (!filename || !url.pathname.includes('/Position/')) return source
+    url.pathname = `/Position/review-v1/${filename}`
+    url.search = ''
+    return url.toString()
+  } catch { return source }
+}
+
+function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    if (!url) return reject(new Error('图片地址为空'))
+    const image = new Image()
+    image.decoding = 'async'
+    image.onload = () => resolve(url)
+    image.onerror = reject
+    image.src = url
+  })
+}
+
+async function loadPreviewSide(side, preferredUrl, fallbackUrl = '') {
+  const loadId = previewLoadId
+  const loadingKey = `${side}Loading`
+  const failedKey = `${side}Failed`
+  const displayKey = `${side}DisplayUrl`
+  previewState[loadingKey] = true
+  previewState[failedKey] = false
+  try {
+    const loaded = await preloadImage(preferredUrl)
+    if (loadId === previewLoadId) previewState[displayKey] = loaded
+  } catch {
+    if (fallbackUrl && fallbackUrl !== preferredUrl) {
+      try {
+        const loaded = await preloadImage(fallbackUrl)
+        if (loadId === previewLoadId) previewState[displayKey] = loaded
+      } catch { if (loadId === previewLoadId) previewState[failedKey] = true }
+    } else if (loadId === previewLoadId) previewState[failedKey] = true
+  } finally {
+    if (loadId === previewLoadId) previewState[loadingKey] = false
+  }
+}
+
+function loadCheckinPreviewImages(item, location) {
+  previewLoadId += 1
+  previewState.userFailed = false
+  previewState.referenceFailed = false
+  previewState.referenceDisplayUrl = ''
+  previewState.referencePreferredUrl = locationReviewImageUrl(location)
+  loadPreviewSide('user', item.photo, item.thumbnail || '')
+  loadPreviewSide('reference', previewState.referencePreferredUrl, location?.image || '')
+}
+
+function retryPreview(side) {
+  if (side === 'user') loadPreviewSide('user', previewState.url, previewState.userDisplayUrl)
+  else loadPreviewSide('reference', previewState.referencePreferredUrl, previewState.referenceFallbackUrl)
+}
+
+function rememberPreviewOrigin() {
+  previewReturnScrollY = window.scrollY || document.scrollingElement?.scrollTop || 0
+  previewReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+}
+
+async function handlePreviewClose() {
+  const returnY = previewReturnScrollY
+  const returnFocus = previewReturnFocus
+  resetPreview()
+  await nextTick()
+  try { returnFocus?.focus({ preventScroll: true }) } catch {}
+  // Native dialog focus restoration differs between Safari/WebView versions.
+  // Restore after layout settles so closing a tall comparison never jumps the queue to its start.
+  window.requestAnimationFrame(() => {
+    window.scrollTo({ top: returnY, behavior: 'auto' })
+    window.requestAnimationFrame(() => window.scrollTo({ top: returnY, behavior: 'auto' }))
+  })
+}
+
 function resetPreview() {
+  previewLoadId += 1
   previewState.checkin = null
   previewState.error = ''
   previewState.url = ''
   previewState.label = ''
   previewState.referenceUrl = ''
   previewState.comparing = false
+  previewState.userDisplayUrl = ''
+  previewState.userLoading = false
+  previewState.userFailed = false
+  previewState.referenceDisplayUrl = ''
+  previewState.referenceLoading = false
+  previewState.referenceFailed = false
+  previewState.referencePreferredUrl = ''
+  previewState.referenceFallbackUrl = ''
 }
 
 function closeDialogBackdrop(event) {
