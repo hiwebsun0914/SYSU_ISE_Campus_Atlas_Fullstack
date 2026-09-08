@@ -26,3 +26,66 @@ test('publishes client limits that match the server contract', () => {
   assert.equal(image.CHECKIN_MAIN_MAX_BYTES, 2097152)
   assert.equal(image.CHECKIN_THUMBNAIL_MAX_BYTES, 204800)
 })
+
+test('keeps reducing a large photo and falls back to JPEG when WebP is not really encoded', async () => {
+  const originalDocument = globalThis.document
+  const originalCreateImageBitmap = globalThis.createImageBitmap
+  let closed = false
+  const requestedTypes = []
+  globalThis.createImageBitmap = async () => ({ width: 8000, height: 6000, close: () => { closed = true } })
+  globalThis.document = {
+    createElement() {
+      const canvas = {
+        width: 0,
+        height: 0,
+        getContext: () => ({ fillStyle: '', fillRect() {}, drawImage() {} }),
+        toBlob(callback, type) {
+          requestedTypes.push(type)
+          if (type === 'image/webp') return callback(new Blob(['not-webp'], { type: 'image/png' }))
+          const size = canvas.width > 1280 ? 3 * 1024 * 1024 : (canvas.width > 480 ? 1024 * 1024 : 100 * 1024)
+          callback(new Blob([new Uint8Array(size)], { type: 'image/jpeg' }))
+        }
+      }
+      return canvas
+    }
+  }
+
+  try {
+    const result = await image.prepareCheckinImages({ name: 'large.jpg', type: 'image/jpeg' })
+    assert.equal(result.mime, 'image/jpeg')
+    assert.equal(result.ext, 'jpg')
+    assert.ok(result.main.size <= image.CHECKIN_MAIN_MAX_BYTES)
+    assert.ok(result.thumbnail.size <= image.CHECKIN_THUMBNAIL_MAX_BYTES)
+    assert.ok(requestedTypes.includes('image/webp'))
+    assert.ok(requestedTypes.includes('image/jpeg'))
+    assert.equal(closed, true)
+  } finally {
+    globalThis.document = originalDocument
+    globalThis.createImageBitmap = originalCreateImageBitmap
+  }
+})
+
+test('uses a generic processing error instead of telling users the compressed photo is too large', async () => {
+  const originalDocument = globalThis.document
+  const originalCreateImageBitmap = globalThis.createImageBitmap
+  globalThis.createImageBitmap = async () => ({ width: 8000, height: 6000, close() {} })
+  globalThis.document = {
+    createElement() {
+      return {
+        width: 0,
+        height: 0,
+        getContext: () => ({ fillStyle: '', fillRect() {}, drawImage() {} }),
+        toBlob: callback => callback(new Blob([new Uint8Array(3 * 1024 * 1024)], { type: 'image/webp' }))
+      }
+    }
+  }
+  try {
+    await assert.rejects(
+      image.prepareCheckinImages({ name: 'large.jpg', type: 'image/jpeg' }),
+      /^Error: 照片处理失败，请重新拍摄$/
+    )
+  } finally {
+    globalThis.document = originalDocument
+    globalThis.createImageBitmap = originalCreateImageBitmap
+  }
+})

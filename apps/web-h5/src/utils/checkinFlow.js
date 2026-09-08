@@ -91,6 +91,56 @@ function pushOrRedirect(path, route, router) {
   else window.location.href = `${path}?redirect=${redirect}`
 }
 
+function sourceExtension(file) {
+  const type = String(file?.type || '').toLowerCase()
+  if (type === 'image/png') return 'png'
+  if (type === 'image/webp') return 'webp'
+  return 'jpg'
+}
+
+async function uploadWithRetry(putUrl, contentType, body) {
+  let lastError
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(putUrl, {
+        method: 'PUT',
+        mode: 'cors',
+        headers: { 'Content-Type': contentType },
+        body
+      })
+      if (response.ok || response.status < 500) return response
+      lastError = new Error(`HTTP ${response.status}`)
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError || new Error('上传失败')
+}
+
+async function prepareCheckinOnServer(file, locationId) {
+  const signed = await request('/checkin/fallback/presign', 'POST', {
+    ext: sourceExtension(file),
+    size: file.size,
+    locationId
+  })
+  const target = signed?.data?.data
+  if (!signed?.ok || signed?.data?.code !== 0 || !target?.key || !target?.putUrl) {
+    throw new Error(signed?.data?.message || '照片处理失败，请重新拍摄')
+  }
+  const uploaded = await uploadWithRetry(target.putUrl, target.contentType || file.type, file)
+  if (!uploaded.ok) throw new Error('照片处理失败，请重新拍摄')
+  const processed = await request('/checkin/fallback/process', 'POST', {
+    key: target.key,
+    size: file.size,
+    locationId
+  })
+  const data = processed?.data?.data
+  if (!processed?.ok || processed?.data?.code !== 0 || !data?.main?.key || !data?.thumbnail?.key) {
+    throw new Error(processed?.data?.message || '照片处理失败，请重新拍摄')
+  }
+  return data
+}
+
 /* ===== 共享拍照打卡流程：统一打卡主流程 ===== */
 async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
   if (!isAuthed()) {
@@ -121,66 +171,72 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
   }
 
   let prepared
+  let serverPrepared
   try {
     prepared = await prepareCheckinImages(file)
   } catch (error) {
-    showStepError('处理图片', error)
-    if (onError) onError('compress', error)
-    return { ok: false, reason: 'compress' }
+    try {
+      serverPrepared = await prepareCheckinOnServer(file, locationId)
+    } catch (fallbackError) {
+      showStepError('处理图片', fallbackError)
+      if (onError) onError('compress', fallbackError)
+      return { ok: false, reason: 'compress' }
+    }
   }
 
   try {
     /* 1) 预签名 */
-    let sign
-    try {
-      sign = await request('/checkin/presign', 'POST', { ext: 'webp', locationId })
-    } catch (e) {
-      showStepError('预签名(/checkin/presign) 网络', e)
-      if (onError) onError('presign', e)
-      return { ok: false, reason: 'presign' }
+    let mainTarget = serverPrepared?.main
+    let thumbnailTarget = serverPrepared?.thumbnail
+    if (!serverPrepared) {
+      let sign
+      try {
+        sign = await request('/checkin/presign', 'POST', { ext: prepared.ext, locationId })
+      } catch (e) {
+        showStepError('预签名(/checkin/presign) 网络', e)
+        if (onError) onError('presign', e)
+        return { ok: false, reason: 'presign' }
+      }
+      if ((sign?.status && sign.status !== 200) || sign?.data?.code !== 0) {
+        showStepError('预签名(/checkin/presign) 返回', sign?.data?.message || `HTTP ${sign?.status}`, { sign })
+        if (onError) onError('presign', sign)
+        return { ok: false, reason: 'presign' }
+      }
+      const signData = sign.data.data || {}
+      mainTarget = signData.main || { key: signData.key, putUrl: signData.putUrl, contentType: signData.contentType }
+      thumbnailTarget = signData.thumbnail
+      if (!mainTarget?.putUrl || !mainTarget?.key || !thumbnailTarget?.putUrl || !thumbnailTarget?.key) {
+        showStepError('预签名', '返回缺少主图或缩略图上传地址', { signData: sign?.data })
+        if (onError) onError('presign', sign)
+        return { ok: false, reason: 'presign' }
+      }
     }
-    if ((sign?.status && sign.status !== 200) || sign?.data?.code !== 0) {
-      showStepError('预签名(/checkin/presign) 返回', sign?.data?.message || `HTTP ${sign?.status}`, { sign })
-      if (onError) onError('presign', sign)
-      return { ok: false, reason: 'presign' }
-    }
-    const signData = sign.data.data || {}
-    const mainTarget = signData.main || { key: signData.key, putUrl: signData.putUrl, contentType: signData.contentType }
-    const thumbnailTarget = signData.thumbnail
-    if (!mainTarget?.putUrl || !mainTarget?.key || !thumbnailTarget?.putUrl || !thumbnailTarget?.key) {
-      showStepError('预签名', '返回缺少主图或缩略图上传地址', { signData: sign?.data })
-      if (onError) onError('presign', sign)
-      return { ok: false, reason: 'presign' }
-    }
-    const upload = async (target, blob) => fetch(target.putUrl, {
-      method: 'PUT',
-      mode: 'cors',
-      headers: {
-        'Content-Type': target.contentType || prepared.mime
-      },
-      body: blob,
-    })
 
     /* 2) 主图与缩略图并行直传对象存储（PUT） */
-    let putResults
-    try {
-      putResults = await Promise.all([upload(mainTarget, prepared.main), upload(thumbnailTarget, prepared.thumbnail)])
-    } catch (e) {
-      showStepError('上传(对象存储 PUT) 网络/CORS', e)
-      if (onError) onError('upload', e)
-      return { ok: false, reason: 'upload' }
-    }
-    const failedPut = putResults.find(response => !response.ok)
-    if (failedPut) {
-      let bodyText = ''
-      try { bodyText = await failedPut.text() } catch {}
-      showStepError('上传(对象存储 PUT) 状态码', `HTTP ${failedPut.status}`, {
-        status: failedPut.status,
-        headers: Object.fromEntries(failedPut.headers.entries()),
-        bodyText: bodyText?.slice(0, 400),
-      })
-      if (onError) onError('upload', failedPut)
-      return { ok: false, reason: 'upload' }
+    if (!serverPrepared) {
+      let putResults
+      try {
+        putResults = await Promise.all([
+          uploadWithRetry(mainTarget.putUrl, mainTarget.contentType || prepared.mime, prepared.main),
+          uploadWithRetry(thumbnailTarget.putUrl, thumbnailTarget.contentType || prepared.mime, prepared.thumbnail)
+        ])
+      } catch (e) {
+        showStepError('上传(对象存储 PUT) 网络/CORS', e)
+        if (onError) onError('upload', e)
+        return { ok: false, reason: 'upload' }
+      }
+      const failedPut = putResults.find(response => !response.ok)
+      if (failedPut) {
+        let bodyText = ''
+        try { bodyText = await failedPut.text() } catch {}
+        showStepError('上传(对象存储 PUT) 状态码', `HTTP ${failedPut.status}`, {
+          status: failedPut.status,
+          headers: Object.fromEntries(failedPut.headers.entries()),
+          bodyText: bodyText?.slice(0, 400),
+        })
+        if (onError) onError('upload', failedPut)
+        return { ok: false, reason: 'upload' }
+      }
     }
 
     /* 3) 提交绑定 */
@@ -188,10 +244,10 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
     try {
       commit = await request('/checkin/commit', 'POST', {
         key: mainTarget.key,
-        size: prepared.main.size,
+        size: serverPrepared?.main?.size || prepared.main.size,
         thumbnailKey: thumbnailTarget.key,
-        thumbnailSize: prepared.thumbnail.size,
-        mime: prepared.mime,
+        thumbnailSize: serverPrepared?.thumbnail?.size || prepared.thumbnail.size,
+        mime: serverPrepared?.mime || prepared.mime,
         locationId
       })
     } catch (e) {

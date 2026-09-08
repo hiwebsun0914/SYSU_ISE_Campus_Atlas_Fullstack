@@ -33,7 +33,7 @@ test('accepts valid main and thumbnail image metadata', () => {
   }), '');
 });
 
-test('rejects oversized, mismatched, and non-WebP optimized uploads', () => {
+test('rejects oversized, mismatched, and incorrectly encoded optimized uploads', () => {
   assert.match(validateUploadedImage(head(CHECKIN_MAIN_MAX_BYTES + 1), {
     maxBytes: CHECKIN_MAIN_MAX_BYTES, label: '打卡图片'
   }), /超过大小上限/);
@@ -42,5 +42,5 @@ test('rejects oversized, mismatched, and non-WebP optimized uploads', () => {
   }), /大小不匹配/);
   assert.match(validateUploadedImage(head(100000, 'image/jpeg'), {
     maxBytes: CHECKIN_MAIN_MAX_BYTES, label: '打卡图片', requireWebp: true
-  }), /必须为 WebP/);
+  }), /格式不匹配/);
 });

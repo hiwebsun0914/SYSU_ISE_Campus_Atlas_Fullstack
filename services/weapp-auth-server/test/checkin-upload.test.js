@@ -6,11 +6,13 @@ const { once } = require('node:events');
 const test = require('node:test');
 const jwt = require('jsonwebtoken');
 const COS = require('cos-nodejs-sdk-v5');
+const sharp = require('sharp');
 
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'checkin-upload-test-'));
 const usersFile = path.join(testDir, 'users.json');
 const jwtSecret = 'checkin-upload-test-secret-with-sufficient-length';
 const heads = new Map();
+const bodies = new Map();
 const metadataCopies = [];
 
 fs.writeFileSync(usersFile, JSON.stringify([{
@@ -46,6 +48,21 @@ COS.prototype.headObject = async function headObject(options) {
 COS.prototype.putObjectCopy = async function putObjectCopy(options) {
   metadataCopies.push(options);
   return { statusCode: 200 };
+};
+COS.prototype.getObject = function getObject(options, callback) {
+  const body = bodies.get(options.Key);
+  if (!body) return callback(new Error('NoSuchKey'));
+  return callback(null, { Body: body });
+};
+COS.prototype.putObject = function putObject(options, callback) {
+  bodies.set(options.Key, options.Body);
+  heads.set(options.Key, { headers: { 'content-length': String(options.ContentLength), 'content-type': options.ContentType } });
+  return callback(null, { statusCode: 200 });
+};
+COS.prototype.deleteObject = function deleteObject(options, callback) {
+  bodies.delete(options.Key);
+  heads.delete(options.Key);
+  return callback(null, { statusCode: 204 });
 };
 
 const app = require('../app');
@@ -93,6 +110,50 @@ test('commits both optimized objects, cache metadata, and thumbnail data', async
   assert.ok(metadataCopies.every(item => item.CacheControl === 'public, max-age=31536000, immutable'));
   const user = JSON.parse(fs.readFileSync(usersFile, 'utf8'))[0];
   assert.match(user.pendingCheckins[0].thumbnail, /_thumb\.webp$/);
+});
+
+test('presigns and commits JPEG derivatives when WebP encoding is unavailable', async () => {
+  const signed = await api('/checkin/presign', { ext: 'jpg', locationId: 4 });
+  const { main, thumbnail } = signed.body.data;
+  assert.match(main.key, /_main\.jpg$/);
+  assert.match(thumbnail.key, /_thumb\.jpg$/);
+  assert.equal(main.contentType, 'image/jpeg');
+  assert.equal(thumbnail.contentType, 'image/jpeg');
+  heads.set(main.key, { headers: { 'content-length': '600000', 'content-type': 'image/jpeg' } });
+  heads.set(thumbnail.key, { headers: { 'content-length': '60000', 'content-type': 'image/jpeg' } });
+
+  const committed = await api('/checkin/commit', {
+    key: main.key,
+    size: 600000,
+    thumbnailKey: thumbnail.key,
+    thumbnailSize: 60000,
+    mime: 'image/jpeg',
+    locationId: 4
+  });
+
+  assert.equal(committed.response.status, 200);
+  assert.match(committed.body.thumbnail, /_thumb\.jpg$/);
+  assert.equal(metadataCopies.at(-1).ContentType, 'image/jpeg');
+});
+
+test('uses a temporary original to create review-quality derivatives on the server', async () => {
+  const source = await sharp({
+    create: { width: 2400, height: 1800, channels: 3, background: '#6a8f55' }
+  }).jpeg({ quality: 95 }).toBuffer();
+  const signed = await api('/checkin/fallback/presign', { ext: 'jpg', size: source.length, locationId: 5 });
+  assert.equal(signed.response.status, 200);
+  const target = signed.body.data;
+  assert.match(target.key, /^checkin-temp\//);
+  heads.set(target.key, { headers: { 'content-length': String(source.length), 'content-type': 'image/jpeg' } });
+  bodies.set(target.key, source);
+
+  const processed = await api('/checkin/fallback/process', { key: target.key, size: source.length, locationId: 5 });
+  assert.equal(processed.response.status, 200);
+  assert.match(processed.body.data.main.key, /_main\.webp$/);
+  assert.match(processed.body.data.thumbnail.key, /_thumb\.webp$/);
+  assert.ok(processed.body.data.main.size <= 2 * 1024 * 1024);
+  assert.ok(processed.body.data.thumbnail.size <= 200 * 1024);
+  assert.equal(heads.get(processed.body.data.main.key).headers['content-type'], 'image/webp');
 });
 
 test('rejects an oversized legacy upload even when the client reports a larger size', async () => {

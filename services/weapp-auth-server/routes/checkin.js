@@ -4,6 +4,7 @@ require('dotenv').config();
 const router = require('express').Router();
 const COS = require('cos-nodejs-sdk-v5');
 const STS = require('qcloud-cos-sts');
+const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 const auth = require('../middleware/auth');
@@ -20,6 +21,8 @@ const {
 const CHECKIN_MAIN_MAX_BYTES = 2 * 1024 * 1024;
 const CHECKIN_THUMBNAIL_MAX_BYTES = 200 * 1024;
 const CHECKIN_IMAGE_CONTENT_TYPE = 'image/webp';
+const CHECKIN_JPEG_CONTENT_TYPE = 'image/jpeg';
+const CHECKIN_TEMP_MAX_BYTES = 20 * 1024 * 1024;
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 // ==== COS 实例 ====
@@ -153,13 +156,45 @@ function headType(head) {
   return String(head?.headers?.['content-type'] || head?.headers?.['Content-Type'] || '').split(';')[0].toLowerCase();
 }
 
-function validateUploadedImage(head, { maxBytes, expectedSize, label, requireWebp = false }) {
+function validateUploadedImage(head, { maxBytes, expectedSize, label, requireWebp = false, requireType = '' }) {
   const actualSize = headSize(head);
   if (!actualSize) return `${label}为空或无法读取大小`;
   if (actualSize > maxBytes) return `${label}超过大小上限`;
   if (expectedSize && Math.abs(actualSize - Number(expectedSize)) > 2048) return `${label}大小不匹配`;
-  if (requireWebp && headType(head) && headType(head) !== CHECKIN_IMAGE_CONTENT_TYPE) return `${label}必须为 WebP 图片`;
+  const expectedType = requireType || (requireWebp ? CHECKIN_IMAGE_CONTENT_TYPE : '');
+  if (expectedType && headType(head) && headType(head) !== expectedType) return `${label}图片格式不匹配`;
   return '';
+}
+
+function optimizedContentType(ext) {
+  return safeExt(ext) === 'webp' ? CHECKIN_IMAGE_CONTENT_TYPE : CHECKIN_JPEG_CONTENT_TYPE;
+}
+
+function callCos(method, params) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = (error, data) => {
+      if (settled) return;
+      settled = true;
+      if (error) reject(error);
+      else resolve(data);
+    };
+    const result = cos[method](params, done);
+    if (result && typeof result.then === 'function') result.then(data => done(null, data), done);
+  });
+}
+
+async function webpWithinReviewLimit(input, steps, maxBytes) {
+  for (const { edge, quality } of steps) {
+    const output = await sharp(input, { failOn: 'none', limitInputPixels: 80_000_000 })
+      .rotate()
+      .resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true })
+      .flatten({ background: '#ffffff' })
+      .webp({ quality })
+      .toBuffer();
+    if (output.length > 0 && output.length <= maxBytes) return output;
+  }
+  throw new Error('SERVER_IMAGE_PROCESSING_FAILED');
 }
 
 async function applyImmutableMetadata(key, contentType) {
@@ -239,11 +274,10 @@ async function listObjectsByPrefix(prefix, max = 1000) {
 router.post('/presign', auth, (req, res) => {
   if (!checkSubmissionAvailability(req, res)) return;
   const requestedExt = safeExt(req.body?.ext || 'jpg');
-  const optimized = requestedExt === 'webp';
-  const key = buildKey(req, requestedExt, optimized ? 'main' : '');
-  const thumbnailKey = optimized
-    ? key.replace(/_main\.webp$/, '_thumb.webp')
-    : key.replace(/\.[^.]+$/, '_thumb.webp');
+  const optimizedExt = requestedExt === 'webp' ? 'webp' : 'jpg';
+  const contentType = optimizedContentType(optimizedExt);
+  const key = buildKey(req, optimizedExt, 'main');
+  const thumbnailKey = key.replace(new RegExp(`_main\\.${optimizedExt}$`), `_thumb.${optimizedExt}`);
   const sign = targetKey => new Promise((resolve, reject) => {
     cos.getObjectUrl(
       { Bucket: COS_BUCKET, Region: COS_REGION, Key: targetKey, Method: 'PUT', Sign: true, Expires: 300 },
@@ -258,8 +292,8 @@ router.post('/presign', auth, (req, res) => {
         // Legacy aliases keep an older web client able to upload its single image.
         key,
         putUrl,
-        main: { key, putUrl, contentType: CHECKIN_IMAGE_CONTENT_TYPE },
-        thumbnail: { key: thumbnailKey, putUrl: thumbnailPutUrl, contentType: CHECKIN_IMAGE_CONTENT_TYPE },
+        main: { key, putUrl, contentType },
+        thumbnail: { key: thumbnailKey, putUrl: thumbnailPutUrl, contentType },
         limits: { mainBytes: CHECKIN_MAIN_MAX_BYTES, thumbnailBytes: CHECKIN_THUMBNAIL_MAX_BYTES }
       }
     }))
@@ -267,6 +301,88 @@ router.post('/presign', auth, (req, res) => {
       console.error('[PRESIGN ERROR]', error);
       res.status(500).json({ code: 1, message: '预签名失败' });
     });
+});
+
+// Browser-side decoding can fail on very large photos or memory-constrained
+// WebViews. In that case only, upload the camera file to a private temporary key
+// and let the server create review-safe derivatives without lowering below 1280px.
+router.post('/fallback/presign', auth, (req, res) => {
+  if (!checkSubmissionAvailability(req, res)) return;
+  const ext = safeExt(req.body?.ext || 'jpg');
+  const sourceType = ext === 'png' ? 'image/png' : ext === 'webp' ? CHECKIN_IMAGE_CONTENT_TYPE : CHECKIN_JPEG_CONTENT_TYPE;
+  const size = Number(req.body?.size || 0);
+  if (!size || size > CHECKIN_TEMP_MAX_BYTES) {
+    return res.status(400).json({ code: 1, message: '照片处理失败，请重新拍摄' });
+  }
+  const normalKey = buildKey(req, ext, 'source');
+  const key = normalKey.replace(/^checkin\//, 'checkin-temp/');
+  cos.getObjectUrl(
+    { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300 },
+    (error, data) => {
+      if (error || !data?.Url) return res.status(500).json({ code: 1, message: '预签名失败' });
+      return res.json({ code: 0, data: { key, putUrl: data.Url, contentType: sourceType, maxBytes: CHECKIN_TEMP_MAX_BYTES } });
+    }
+  );
+});
+
+router.post('/fallback/process', auth, async (req, res) => {
+  if (!checkSubmissionAvailability(req, res)) return;
+  const key = String(req.body?.key || '');
+  const uid = req.userId;
+  const slug = getUserSlug(req);
+  if (!key.startsWith(`checkin-temp/${uid}__${slug}/`) || !/_source\.(?:png|webp|jpe?g)$/i.test(key)) {
+    return res.status(400).json({ code: 1, message: '非法临时图片 key' });
+  }
+
+  try {
+    const head = await callCos('headObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: key });
+    const sourceError = validateUploadedImage(head, {
+      maxBytes: CHECKIN_TEMP_MAX_BYTES,
+      expectedSize: req.body?.size,
+      label: '临时照片'
+    });
+    if (sourceError) return res.status(400).json({ code: 1, message: sourceError });
+
+    const object = await callCos('getObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: key });
+    const input = Buffer.isBuffer(object.Body) ? object.Body : Buffer.from(object.Body || []);
+    const main = await webpWithinReviewLimit(input, [
+      { edge: 1600, quality: 78 },
+      { edge: 1440, quality: 68 },
+      { edge: 1280, quality: 58 },
+      { edge: 1280, quality: 48 },
+      { edge: 1280, quality: 38 }
+    ], CHECKIN_MAIN_MAX_BYTES);
+    const thumbnail = await webpWithinReviewLimit(input, [
+      { edge: 480, quality: 72 },
+      { edge: 400, quality: 60 },
+      { edge: 320, quality: 50 }
+    ], CHECKIN_THUMBNAIL_MAX_BYTES);
+    const mainKey = buildKey(req, 'webp', 'main');
+    const thumbnailKey = mainKey.replace(/_main\.webp$/, '_thumb.webp');
+    const upload = (derivedKey, body) => callCos('putObject', {
+      Bucket: COS_BUCKET,
+      Region: COS_REGION,
+      Key: derivedKey,
+      Body: body,
+      ContentLength: body.length,
+      ContentType: CHECKIN_IMAGE_CONTENT_TYPE,
+      CacheControl: IMMUTABLE_CACHE_CONTROL,
+      ACL: 'public-read'
+    });
+    await Promise.all([upload(mainKey, main), upload(thumbnailKey, thumbnail)]);
+    callCos('deleteObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: key }).catch(() => {});
+    return res.json({
+      code: 0,
+      data: {
+        main: { key: mainKey, size: main.length },
+        thumbnail: { key: thumbnailKey, size: thumbnail.length },
+        mime: CHECKIN_IMAGE_CONTENT_TYPE
+      }
+    });
+  } catch (error) {
+    console.error('[checkin/fallback/process] error:', error?.code || error?.message || error);
+    return res.status(422).json({ code: 1, message: '照片处理失败，请重新拍摄' });
+  }
 });
 
 // ==== B. STS 临时凭证（可选直传）====
@@ -329,7 +445,7 @@ router.post('/commit', auth, async (req, res) => {
   if (!key || !key.startsWith(ownedPrefix)) {
     return res.status(400).json({ code: 1, message: '非法 key' });
   }
-  if (thumbnailKey && (!thumbnailKey.startsWith(ownedPrefix) || !/_thumb\.webp$/i.test(thumbnailKey))) {
+  if (thumbnailKey && (!thumbnailKey.startsWith(ownedPrefix) || !/_thumb\.(?:webp|jpe?g)$/i.test(thumbnailKey))) {
     return res.status(400).json({ code: 1, message: '非法缩略图 key' });
   }
 
@@ -338,11 +454,16 @@ router.post('/commit', auth, async (req, res) => {
 
   const head = await cos.headObject({ Bucket: COS_BUCKET, Region: COS_REGION, Key: key }).catch(() => null);
   if (!head) return res.status(400).json({ code: 1, message: '对象不存在或未上传成功' });
+  const submittedMime = String(mime || '').toLowerCase();
+  const optimizedMime = [CHECKIN_IMAGE_CONTENT_TYPE, CHECKIN_JPEG_CONTENT_TYPE].includes(submittedMime) ? submittedMime : '';
+  if (thumbnailKey && !optimizedMime) {
+    return res.status(400).json({ code: 1, message: '图片格式不支持' });
+  }
   const mainError = validateUploadedImage(head, {
     maxBytes: CHECKIN_MAIN_MAX_BYTES,
     expectedSize: size,
     label: '打卡图片',
-    requireWebp: String(mime || '').toLowerCase() === CHECKIN_IMAGE_CONTENT_TYPE
+    requireType: optimizedMime
   });
   if (mainError) return res.status(400).json({ code: 1, message: mainError });
 
@@ -354,7 +475,7 @@ router.post('/commit', auth, async (req, res) => {
       maxBytes: CHECKIN_THUMBNAIL_MAX_BYTES,
       expectedSize: thumbnailSize,
       label: '缩略图',
-      requireWebp: true
+      requireType: optimizedMime
     });
     if (thumbnailError) return res.status(400).json({ code: 1, message: thumbnailError });
   }
@@ -362,8 +483,8 @@ router.post('/commit', auth, async (req, res) => {
 
   try {
     await Promise.all([
-      applyImmutableMetadata(key, headType(head) || (mime === CHECKIN_IMAGE_CONTENT_TYPE ? CHECKIN_IMAGE_CONTENT_TYPE : 'image/jpeg')),
-      thumbnailKey ? applyImmutableMetadata(thumbnailKey, CHECKIN_IMAGE_CONTENT_TYPE) : Promise.resolve()
+      applyImmutableMetadata(key, headType(head) || optimizedMime || CHECKIN_JPEG_CONTENT_TYPE),
+      thumbnailKey ? applyImmutableMetadata(thumbnailKey, headType(thumbnailHead) || optimizedMime || CHECKIN_IMAGE_CONTENT_TYPE) : Promise.resolve()
     ]);
   } catch (error) {
     console.error('[checkin/commit] cache metadata error:', error?.code || error?.message || error);
