@@ -76,7 +76,7 @@
                 </div>
                 <div v-else class="atlas-progress">
                   <div class="atlas-progress-number">
-                    <span>{{ overallCompleted }}</span><small>/ {{ overallTotal }} 站</small>
+                    <span>{{ overallCompleted }}</span><small>/ {{ overallTotal }} 个点</small>
                   </div>
                   <span
                     class="atlas-track"
@@ -88,7 +88,9 @@
                   >
                     <i :style="{ '--progress-scale': overallPercent / 100 }"></i>
                   </span>
-                  <p class="atlas-progress-meta">三条路线总进度 {{ overallPercent }}%</p>
+                  <p class="atlas-progress-meta">
+                    {{ overallCompleted }} 已点亮 · {{ overallPending }} 审核中 · {{ overallRejected }} 被驳回
+                  </p>
                 </div>
 
                 <div v-if="nextLocation" class="deck-next-stop">
@@ -97,7 +99,7 @@
                 </div>
                 <div v-else class="deck-next-stop deck-next-complete">
                   <MapPinned :size="15" aria-hidden="true" />
-                  <span><small>路线状态</small><strong>全部路线已打卡完成</strong></span>
+                  <span><small>路线状态</small><strong>{{ noNextLocationText }}</strong></span>
                 </div>
               </div>
             </template>
@@ -202,9 +204,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MapPinned, Navigation, Trophy } from '@lucide/vue'
-import { getPlaceById } from '@/data/campusPlaces'
+import { campusLocations, getPlaceById } from '@/data/campusPlaces'
 import routes from '@/data/routes'
-import { checkedSet, fetchUserProgress, getRouteCheckedCount } from '@/stores/userProgress'
+import { fetchUserProgress, getPlaceProgressState, getRouteCheckedCount, getRoutePendingCount, getRouteRejectedCount } from '@/stores/userProgress'
 import spriteBase from '@/assets/home/sprite-base.webp'
 import spriteLens from '@/assets/home/sprite-lens.webp'
 import spriteMaps from '@/assets/home/sprite-maps.webp'
@@ -223,8 +225,20 @@ const loading = ref(false)
 function routeProgress(route) {
   const total = route?.points?.length || 0
   const completed = route ? getRouteCheckedCount(route.id) : 0
+  const pending = route ? getRoutePendingCount(route.id) : 0
+  const rejected = route ? getRouteRejectedCount(route.id) : 0
+  const nextPlace = (route?.points || [])
+    .map(getPlaceById)
+    .find(place => {
+      if (!place || place.isHidden === 1) return false
+      const state = getPlaceProgressState(place)
+      return state === 'available' || state === 'retry'
+    }) || null
   return {
     completed,
+    pending,
+    rejected,
+    nextPlace,
     total,
     percent: total ? Math.min(100, Math.round((completed / total) * 100)) : 0,
   }
@@ -236,33 +250,31 @@ const routeSummaries = computed(() => routes.map((route, index) => ({
   ...routeProgress(route),
 })))
 const allRoutesComplete = computed(() => routeSummaries.value.every(item => item.total > 0 && item.completed >= item.total))
-const overallCompleted = computed(() => routeSummaries.value.reduce((sum, item) => sum + item.completed, 0))
-const overallTotal = computed(() => routeSummaries.value.reduce((sum, item) => sum + item.total, 0))
+const activePlaces = campusLocations.filter(place => !place.retired)
+const overallStateCounts = computed(() => activePlaces.reduce((counts, place) => {
+  const state = getPlaceProgressState(place)
+  counts[state] = (counts[state] || 0) + 1
+  return counts
+}, { completed: 0, waiting: 0, retry: 0, available: 0 }))
+const overallCompleted = computed(() => overallStateCounts.value.completed)
+const overallPending = computed(() => overallStateCounts.value.waiting)
+const overallRejected = computed(() => overallStateCounts.value.retry)
+const overallTotal = computed(() => activePlaces.length)
 const overallPercent = computed(() => (
   overallTotal.value ? Math.min(100, Math.round((overallCompleted.value / overallTotal.value) * 100)) : 0
 ))
 const recommendedRouteSummary = computed(() => {
   const incomplete = routeSummaries.value.filter(item => item.completed < item.total)
   if (!incomplete.length) return routeSummaries.value.at(-1)
-  return [...incomplete].sort((a, b) => b.percent - a.percent || a.index - b.index)[0]
+  const available = incomplete.filter(item => item.nextPlace)
+  return [...(available.length ? available : incomplete)]
+    .sort((a, b) => b.percent - a.percent || a.index - b.index)[0]
 })
 const selectedRoute = computed(() => recommendedRouteSummary.value?.route || routes[0])
-const nextLocation = computed(() => {
-  if (allRoutesComplete.value) return null
-  for (const placeId of selectedRoute.value?.points || []) {
-    const place = getPlaceById(placeId)
-    if (place && place.isHidden !== 1 && !checkedSet.value.has(place.id) && !checkedSet.value.has(place.backendId)) return place
-  }
-  return null
-})
-const primaryMapTarget = computed(() => {
-  if (allRoutesComplete.value || !nextLocation.value) return '/map'
-  return {
-    path: '/map',
-    query: { route: selectedRoute.value.id, place: nextLocation.value.id },
-  }
-})
-
+const nextLocation = computed(() => allRoutesComplete.value ? null : recommendedRouteSummary.value?.nextPlace || null)
+const noNextLocationText = computed(() => (
+  allRoutesComplete.value ? '全部路线已打卡完成' : '已提交地点正在审核中'
+))
 /* ---------- 卡牌堆 ---------- */
 
 const allCards = [
@@ -435,7 +447,8 @@ function onDeckPointerCancel() {
 }
 
 function activateCard(card) {
-  if (card.key === 'atlas') router.push(primaryMapTarget.value)
+  // 首页入口始终进入完整地图；路线与地点由用户在地图页主动选择。
+  if (card.key === 'atlas') router.push('/map')
   else if (card.key === 'iseti') router.push('/place')
   else if (card.key === 'future') goProtected('/future-card')
   else if (card.key === 'award') goProtected('/award')

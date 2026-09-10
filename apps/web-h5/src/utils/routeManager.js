@@ -15,8 +15,7 @@ export function resolveRoutePlaces(route) {
 /**
  * 生成带序号的圆形 Marker HTML
  * @param {number} number - 序号
- * @param {'todo'|'current'|'done'} state - 打卡状态：
- *   todo 未到达（灰底数字）、current 下一站（酸橙脉冲）、done 已打卡（绿底✓）
+ * @param {'todo'|'current'|'current-rejected'|'pending'|'rejected'|'done'} state - 打卡状态
  */
 export function buildNumberBadgeHTML(number, state = 'todo') {
   if (state === 'done') {
@@ -53,6 +52,31 @@ export function buildNumberBadgeHTML(number, state = 'todo') {
       font-weight:800;
       font-size:15px;
       border:2px solid #0a2e3b;
+      pointer-events:auto;
+      cursor:pointer;
+    ">${number}</div>
+  `
+  }
+  if (state === 'pending' || state === 'rejected' || state === 'current-rejected') {
+    const rejected = state !== 'pending'
+    const current = state === 'current-rejected'
+    const background = rejected ? '#d95c5c' : '#f4b942'
+    const color = rejected ? '#fff' : '#4a3200'
+    const border = rejected ? '#a93636' : '#b7791f'
+    return `
+    <div class="${current ? 'route-badge-current' : ''}" style="
+      width:${current ? 32 : 30}px;
+      height:${current ? 32 : 30}px;
+      border-radius:50%;
+      background:${background};
+      color:${color};
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      font-size:14px;
+      box-shadow:0 2px 10px rgba(0,0,0,.2);
+      border:2px solid ${border};
       pointer-events:auto;
       cursor:pointer;
     ">${number}</div>

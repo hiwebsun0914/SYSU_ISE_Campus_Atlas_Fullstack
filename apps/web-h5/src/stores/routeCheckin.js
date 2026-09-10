@@ -1,11 +1,8 @@
 import { ref, computed } from 'vue'
 import { getPlaceById } from '@/data/campusPlaces'
 import {
-  checkedPlaces,
-  completedRoutes,
-  isPlaceChecked,
-  isRouteCompleted,
   getRouteCheckedCount,
+  getPlaceProgressState,
 } from './userProgress'
 
 /**
@@ -34,9 +31,23 @@ export const completedCount = computed(() => {
   return getRouteCheckedCount(currentRoute.value.id)
 })
 
+export const pendingCount = computed(() => {
+  if (!currentRoute.value) return 0
+  return currentRoute.value.points.reduce((count, id) => (
+    getPlaceProgressState(id) === 'waiting' ? count + 1 : count
+  ), 0)
+})
+
+export const rejectedCount = computed(() => {
+  if (!currentRoute.value) return 0
+  return currentRoute.value.points.reduce((count, id) => (
+    getPlaceProgressState(id) === 'retry' ? count + 1 : count
+  ), 0)
+})
+
 export const progressText = computed(() => {
   if (!currentRoute.value) return ''
-  return `${completedCount.value}/${totalStops.value}`
+  return `${completedCount.value} 已点亮 · ${pendingCount.value} 审核中 · ${rejectedCount.value} 被驳回`
 })
 
 export const currentStepText = computed(() => {
@@ -54,12 +65,14 @@ export function getRouteProgress(routeId) {
 /**
  * 获取路线下一个未打卡目标
  */
-export function getNextTarget(routeId, points) {
+export function getNextTarget(routeId, points, excludePlaceId = null) {
   if (!points?.length) return null
   for (const id of points) {
-    if (!isPlaceChecked(id)) {
-      return getPlaceById(id)
-    }
+    const place = getPlaceById(id)
+    if (!place || place.isHidden === 1) continue
+    if (excludePlaceId != null && place.id === excludePlaceId) continue
+    const state = getPlaceProgressState(place)
+    if (state === 'available' || state === 'retry') return place
   }
   return null
 }
@@ -70,11 +83,15 @@ export function getNextTarget(routeId, points) {
 export function startExplore(route) {
   if (!route?.points?.length) return false
 
+  const nextTarget = getNextTarget(route.id, route.points)
+  if (!nextTarget) return false
+  const currentIndex = route.points.findIndex(id => getPlaceById(id)?.id === nextTarget.id)
+
   currentRoute.value = {
     id: route.id,
     name: route.name,
     points: [...route.points],
-    currentIndex: 0,
+    currentIndex,
   }
 
   return true
@@ -86,11 +103,12 @@ export function startExplore(route) {
  */
 export function advanceRoute() {
   if (!currentRoute.value) return false
-  if (currentRoute.value.currentIndex < currentRoute.value.points.length - 1) {
-    currentRoute.value.currentIndex++
-    return true
-  }
-  return false
+  const previousPlaceId = currentPlace.value?.id
+  const nextTarget = getNextTarget(currentRoute.value.id, currentRoute.value.points, previousPlaceId)
+  if (!nextTarget) return false
+  currentRoute.value.currentIndex = currentRoute.value.points
+    .findIndex(id => getPlaceById(id)?.id === nextTarget.id)
+  return true
 }
 
 /**

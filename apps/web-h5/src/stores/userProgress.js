@@ -1,4 +1,4 @@
-import { ref, computed, nextTick as vueNextTick } from 'vue'
+import { ref, computed } from 'vue'
 import routes from '@/data/routes'
 import { request } from '@/utils/request'
 import { backendToPlaceId, placeIdToBackend } from '@/data/campusPlaces'
@@ -10,6 +10,7 @@ export const checkinRecords = ref([])
 export const pendingCheckins = ref([])
 export const checkinReviewRecords = ref([])
 export const nickName = ref('')
+export const userRole = ref('visitor')
 
 export const checkedSet = computed(() => {
   const s = new Set(checkedPlaces.value) // 前端 slug
@@ -22,13 +23,6 @@ export const checkedSet = computed(() => {
 })
 export const completedSet = computed(() => new Set(completedRoutes.value))
 export const pendingSet = computed(() => new Set(pendingCheckins.value.map(item => item.placeId)))
-
-/**
- * 等待下一个微任务
- */
-function nextTick() {
-  return vueNextTick()
-}
 
 /**
  * 将后端返回的 unlockedLocations（数字ID）转换为前端字符串ID数组
@@ -78,6 +72,7 @@ function clearProgress() {
   pendingCheckins.value = []
   checkinReviewRecords.value = []
   nickName.value = ''
+  userRole.value = 'visitor'
 }
 
 /**
@@ -107,11 +102,7 @@ export async function fetchUserProgress() {
   const newPendingCheckins = normalizePendingCheckins(info.pendingCheckins)
   const newReviewRecords = normalizeReviewRecords(info.checkinReviewRecords)
 
-  // 先清空再赋值，确保 Vue 能检测到数组引用变化，触发 CampusMap 的 watch
-  checkedPlaces.value = []
-  await nextTick()
-  checkinRecords.value = []
-
+  // 替换数组引用即可触发 Vue 更新；避免先清空造成地图中间态重绘。
   points.value = newPoints
   checkedPlaces.value = newCheckedPlaces
   completedRoutes.value = newCompletedRoutes
@@ -119,8 +110,7 @@ export async function fetchUserProgress() {
   pendingCheckins.value = newPendingCheckins
   checkinReviewRecords.value = newReviewRecords
   nickName.value = info.nickName || ''
-
-  await nextTick()
+  userRole.value = info.role || 'visitor'
 
   return {
     points: points.value,
@@ -129,6 +119,7 @@ export async function fetchUserProgress() {
     checkinRecords: checkinRecords.value,
     pendingCheckins: pendingCheckins.value,
     checkinReviewRecords: checkinReviewRecords.value,
+    role: userRole.value,
   }
 }
 
@@ -140,7 +131,15 @@ export function isPlaceChecked(placeId) {
 }
 
 export function isPlacePending(placeId) {
-  return pendingSet.value.has(placeId)
+  if (pendingSet.value.has(placeId)) return true
+  const place = typeof placeId === 'object' ? placeId : null
+  if (place?.id && pendingSet.value.has(place.id)) return true
+  if (place?.backendId != null) {
+    const slug = backendToPlaceId[place.backendId]
+    return pendingSet.value.has(slug || String(place.backendId))
+  }
+  const slug = backendToPlaceId[placeId]
+  return Boolean(slug && pendingSet.value.has(slug))
 }
 
 export function getPlaceReviewState(placeId) {
@@ -155,6 +154,22 @@ export function getPlaceReviewState(placeId) {
   return [...checkinReviewRecords.value]
     .reverse()
     .find(item => item.placeId === placeId) || { status: 'idle' }
+}
+
+/**
+ * 地点探索状态：available 可前往 / waiting 审核中 / completed 已点亮 / retry 需重试
+ */
+export function getPlaceProgressState(placeId) {
+  const place = typeof placeId === 'object' ? placeId : null
+  const rawId = place?.id ?? placeId
+  const backendId = place?.backendId ?? (typeof rawId === 'number' ? rawId : placeIdToBackend[rawId])
+  const id = backendToPlaceId[backendId] || rawId
+  if (isPlaceChecked(id) || (backendId != null && isPlaceChecked(backendId))) return 'completed'
+  if (isPlacePending(place || id)) return 'waiting'
+  const review = getPlaceReviewState(id)
+  if (review.status === 'pending' || review.status === 'appealed') return 'waiting'
+  if (review.status === 'rejected') return 'retry'
+  return 'available'
 }
 
 export async function appealCheckin(placeId, reason) {
@@ -189,6 +204,28 @@ export function getRouteCheckedCount(routeId) {
 }
 
 /**
+ * 获取路线中正在审核的地点数量
+ */
+export function getRoutePendingCount(routeId) {
+  const route = routes.find(r => r.id === routeId)
+  if (!route?.points?.length) return 0
+  return route.points.reduce((count, id) => (
+    getPlaceProgressState(id) === 'waiting' ? count + 1 : count
+  ), 0)
+}
+
+/**
+ * 获取路线中当前需要重新打卡的驳回地点数量
+ */
+export function getRouteRejectedCount(routeId) {
+  const route = routes.find(r => r.id === routeId)
+  if (!route?.points?.length) return 0
+  return route.points.reduce((count, id) => (
+    getPlaceProgressState(id) === 'retry' ? count + 1 : count
+  ), 0)
+}
+
+/**
  * 重置所有进度
  */
 export function resetProgress() {
@@ -198,4 +235,5 @@ export function resetProgress() {
   checkinRecords.value = []
   pendingCheckins.value = []
   checkinReviewRecords.value = []
+  userRole.value = 'visitor'
 }

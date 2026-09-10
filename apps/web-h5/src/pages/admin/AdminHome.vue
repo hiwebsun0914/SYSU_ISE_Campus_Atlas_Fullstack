@@ -688,6 +688,75 @@
           </div>
         </section>
 
+        <section v-show="activeSection === 'route-awards'" id="route-awards" class="admin-section admin-route-awards-section" aria-labelledby="route-awards-title">
+          <div class="admin-section-head">
+            <div>
+              <h2 id="route-awards-title">路线完成统计</h2>
+              <p>以已通过审核的打卡为准；一条路线内全部地点完成后才计入，可作为后续颁奖依据。</p>
+            </div>
+            <span>{{ routeAwardRows.length }} 位用户</span>
+          </div>
+
+          <div v-if="routeAwardsLoading" class="admin-loading-inline" aria-live="polite">正在核对路线完成情况…</div>
+          <template v-else>
+            <div class="admin-route-award-summary" aria-label="路线完成概况">
+              <div>
+                <span>完成至少一条</span>
+                <strong>{{ routeAwardCandidateCount }}</strong>
+                <small>位颁奖候选人</small>
+              </div>
+              <div>
+                <span>全部路线完成</span>
+                <strong>{{ allRouteFinisherCount }}</strong>
+                <small>共 {{ routeDefinitions.length }} 条路线</small>
+              </div>
+              <div>
+                <span>累计完成路线</span>
+                <strong>{{ totalCompletedRouteCount }}</strong>
+                <small>按用户汇总</small>
+              </div>
+            </div>
+
+            <div class="admin-search-field admin-route-award-search">
+              <label for="route-award-search">查找参与者</label>
+              <div>
+                <Search :size="18" aria-hidden="true" />
+                <input id="route-award-search" v-model.trim="routeAwardSearch" type="search" placeholder="昵称、姓名或学号" />
+              </div>
+              <small>列表优先显示完成路线更多的用户，同数量时按积分排序。</small>
+            </div>
+
+            <div class="admin-route-award-list" role="list" aria-label="用户路线完成数量">
+              <article v-for="(user, index) in filteredRouteAwardRows" :key="user.id" role="listitem">
+                <span class="admin-route-rank">{{ String(index + 1).padStart(2, '0') }}</span>
+                <div class="admin-user-avatar">
+                  <img v-if="user.avatar" :src="user.avatar" :alt="user.username + '的头像'" width="48" height="48" loading="lazy" />
+                  <CircleUserRound v-else :size="23" aria-hidden="true" />
+                </div>
+                <div class="admin-route-person">
+                  <strong>{{ user.username }}</strong>
+                  <span>{{ user.realName || '未填写姓名' }} · {{ user.studentId || ('账号 ' + user.id) }}</span>
+                </div>
+                <div class="admin-route-badges" :aria-label="user.username + '的路线完成明细'">
+                  <span
+                    v-for="routeItem in routeDefinitions"
+                    :key="routeItem.id"
+                    :class="{ complete: user.completedRouteIds.includes(routeItem.id) }"
+                  >{{ routeItem.icon }} {{ routeItem.name }}</span>
+                </div>
+                <div class="admin-route-total">
+                  <strong>{{ user.completedRouteCount }}</strong>
+                  <span>/ {{ routeDefinitions.length }} 条</span>
+                </div>
+              </article>
+            </div>
+            <div v-if="!filteredRouteAwardRows.length" class="admin-empty admin-empty-inline">
+              <Trophy :size="25" aria-hidden="true" />
+              <div><strong>没有匹配的参与者</strong><p>换个昵称、姓名或学号试试。</p></div>
+            </div>
+          </template>
+        </section>
+
         <section v-show="activeSection === 'users'" id="users" class="admin-section admin-permission-section" aria-labelledby="users-title">
           <div class="admin-section-head">
             <div>
@@ -959,6 +1028,7 @@ import {
 } from '@lucide/vue'
 import { request } from '@/utils/request'
 import { campusLocations } from '@/data/campusPlaces'
+import routeDefinitions from '@/data/routes'
 
 const router = useRouter()
 const route = useRoute()
@@ -970,6 +1040,7 @@ const navigation = [
   { id: 'feedback', label: '问题反馈', icon: MessageSquareText },
   { id: 'awards', label: '投稿管理', icon: Images },
   { id: 'locations', label: '地点配置', icon: MapPinned },
+  { id: 'route-awards', label: '路线完成统计', icon: Trophy },
   { id: 'users', label: '用户权限', icon: Users }
 ]
 
@@ -991,6 +1062,9 @@ const submissions = ref([])
 const anomalies = ref([])
 const feedbackItems = ref([])
 const users = ref([])
+const routeAwardRows = ref([])
+const routeAwardSearch = ref('')
+const routeAwardsLoading = ref(false)
 const checkinStat = reactive({ all: 0, pending: 0, appealed: 0, approved: 0, rejected: 0 })
 const submissionStat = reactive({ all: 0, pending: 0, approved: 0, rejected: 0, down: 0, featured: 0 })
 const anomalyStat = reactive({ all: 0, high: 0, medium: 0, low: 0 })
@@ -1040,7 +1114,7 @@ const submissionStatus = ref('pending')
 const anomalyFilter = ref('all')
 const feedbackStatus = ref('submitted')
 const busy = ref({})
-const viewLoaded = reactive({ awards: false, locations: false })
+const viewLoaded = reactive({ awards: false, locations: false, routeAwards: false })
 
 const menuDialog = ref(null)
 const rejectDialog = ref(null)
@@ -1106,6 +1180,14 @@ const filteredUsers = computed(() => {
   return users.value.filter(user => `${user.id} ${user.username} ${user.realName || ''} ${user.studentId || ''}`.toLowerCase().includes(query))
 })
 const adminUserCount = computed(() => users.value.filter(user => user.role === 'admin' || user.role === 'owner').length)
+const routeAwardCandidateCount = computed(() => routeAwardRows.value.filter(user => user.completedRouteCount > 0).length)
+const allRouteFinisherCount = computed(() => routeAwardRows.value.filter(user => user.completedRouteCount === routeDefinitions.length).length)
+const totalCompletedRouteCount = computed(() => routeAwardRows.value.reduce((sum, user) => sum + user.completedRouteCount, 0))
+const filteredRouteAwardRows = computed(() => {
+  const query = routeAwardSearch.value.toLowerCase()
+  if (!query) return routeAwardRows.value
+  return routeAwardRows.value.filter(user => `${user.id} ${user.username} ${user.realName || ''} ${user.studentId || ''}`.toLowerCase().includes(query))
+})
 const rejectTargetLabel = computed(() => {
   if (!rejectState.item) return ''
   return rejectState.kind === 'submission'
@@ -1197,6 +1279,34 @@ async function fetchFeedback() {
 async function fetchUsers() {
   const payload = await api('/admin/users')
   users.value = payload.list || []
+}
+
+async function fetchRouteAwards() {
+  routeAwardsLoading.value = true
+  try {
+    const [userPayload, checkinPayload] = await Promise.all([
+      api('/admin/users'),
+      api('/admin/checkins', 'GET', { status: 'approved' })
+    ])
+    const userList = userPayload.list || []
+    const approvedByUser = new Map()
+    ;(checkinPayload.list || []).forEach(item => {
+      const userId = String(item.userId)
+      if (!approvedByUser.has(userId)) approvedByUser.set(userId, new Set())
+      approvedByUser.get(userId).add(Number(item.locationId))
+    })
+    routeAwardRows.value = userList.map(user => {
+      const approvedLocations = approvedByUser.get(String(user.id)) || new Set()
+      const completedRouteIds = routeDefinitions
+        .filter(routeItem => routeItem.points.length > 0 && routeItem.points.every(id => approvedLocations.has(Number(id))))
+        .map(routeItem => routeItem.id)
+      return { ...user, completedRouteIds, completedRouteCount: completedRouteIds.length }
+    }).sort((a, b) => b.completedRouteCount - a.completedRouteCount || Number(b.points || 0) - Number(a.points || 0) || String(a.username).localeCompare(String(b.username), 'zh-CN'))
+  } catch (error) {
+    showError(error.message, fetchRouteAwards)
+  } finally {
+    routeAwardsLoading.value = false
+  }
 }
 
 async function fetchAwards() {
@@ -1767,6 +1877,10 @@ function goSection(id, queue) {
   if (id === 'locations' && !viewLoaded.locations) {
     viewLoaded.locations = true
     fetchLocations()
+  }
+  if (id === 'route-awards' && !viewLoaded.routeAwards) {
+    viewLoaded.routeAwards = true
+    fetchRouteAwards()
   }
   nextTick(() => window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' }))
 }

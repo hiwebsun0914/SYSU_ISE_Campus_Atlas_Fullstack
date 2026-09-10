@@ -1232,6 +1232,58 @@ body {
   border-block-start: var(--rule) solid var(--color-rule);
 }
 
+.admin-loading-inline {
+  padding: var(--space-xl);
+  color: var(--color-muted);
+  text-align: center;
+  border: var(--rule) solid var(--color-rule);
+}
+
+.admin-route-award-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-block-end: var(--space-lg);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  border: var(--rule) solid var(--color-rule);
+}
+
+.admin-route-award-summary > div {
+  display: grid;
+  gap: var(--space-3xs);
+  padding: var(--space-lg);
+  border-inline-end: var(--rule) solid var(--color-rule);
+}
+
+.admin-route-award-summary > div:last-child { border-inline-end: 0; }
+.admin-route-award-summary span,
+.admin-route-award-summary small { color: var(--color-muted); }
+.admin-route-award-summary strong { color: var(--color-accent); font-family: var(--font-display); font-size: clamp(2rem, 6vw, 3.5rem); line-height: 1; }
+
+.admin-route-award-search { margin-block-end: var(--space-lg); }
+.admin-route-award-list { border-block-start: var(--rule) solid var(--color-rule); }
+
+.admin-route-award-list article {
+  display: grid;
+  grid-template-columns: auto auto minmax(9rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-block: var(--space-md);
+  border-block-end: var(--rule) solid var(--color-rule);
+}
+
+.admin-route-rank { color: var(--color-muted); font-family: var(--font-mono); font-size: var(--text-xs); }
+.admin-route-person { display: grid; gap: var(--space-3xs); min-width: 0; }
+.admin-route-person strong,
+.admin-route-person span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-route-person span { color: var(--color-muted); font-size: var(--text-sm); }
+.admin-route-badges { grid-column: 3 / -1; display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.admin-route-badges span { padding: .35rem .55rem; color: var(--color-muted); border: var(--rule) solid var(--color-rule); font-size: var(--text-xs); }
+.admin-route-badges span.complete { background: var(--color-accent); color: var(--color-graphite); border-color: var(--color-accent); font-weight: 700; }
+.admin-route-total { display: flex; align-items: baseline; gap: var(--space-3xs); white-space: nowrap; }
+.admin-route-total strong { color: var(--color-accent-strong); font-family: var(--font-display); font-size: 2rem; line-height: 1; }
+.admin-route-total span { color: var(--color-muted); font-size: var(--text-sm); }
+
 .admin-user-copy {
   display: grid;
   gap: var(--space-3xs);

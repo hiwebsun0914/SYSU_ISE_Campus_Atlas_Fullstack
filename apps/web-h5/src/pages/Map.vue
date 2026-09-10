@@ -149,7 +149,7 @@ import {
   advanceRoute,
   resetRouteCheckin,
 } from '@/stores/routeCheckin'
-import { fetchUserProgress } from '@/stores/userProgress'
+import { fetchUserProgress, userRole } from '@/stores/userProgress'
 import { CHECKIN_RADIUS, withinCheckinRange } from '@/utils/geoCheckin'
 import { request } from '@/utils/request'
 import checkinFlow from '@/utils/checkinFlow'
@@ -203,6 +203,7 @@ const sheetStyle = computed(() => {
 const checkinCardProps = computed(() => ({
   place: selectedPlace.value,
   primaryLabel: isExploring.value && selectedPlace.value?.id === currentPlace.value?.id ? '完成打卡' : '',
+  geoBypassed: userRole.value === 'owner' && selectedPlace.value?.isHidden !== 1,
   geoStatus: geoStatus.value,
   geoDistance: geoDistance.value,
   geoAccuracy: geoAccuracy.value,
@@ -451,6 +452,13 @@ function selectFromList(place) {
 /** 第一步 · 定位打卡：获取用户位置并判断距离（达标后由用户再点“拍照上传”） */
 async function onGeoCheckin() {
   if (!selectedPlace.value || !campusMapRef.value) return
+
+  // 超管可在异地测试普通地点的拍照审核流程；隐藏地点维持原有规则。
+  if (userRole.value === 'owner' && selectedPlace.value.isHidden !== 1) {
+    geoStatus.value = 'success'
+    await submitPhotoCheckin()
+    return
+  }
 
   // 重置状态，开始定位
   geoStatus.value = 'locating'
