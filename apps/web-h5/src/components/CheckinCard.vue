@@ -86,7 +86,7 @@
             type="button"
             @click="emit('geo-checkin')"
           >
-            <Camera :size="18" />定位并拍照打卡
+            <Camera :size="18" />{{ geoBypassed ? '拍照打卡（超管测试）' : '定位并拍照打卡' }}
           </button>
 
           <!-- 距离达标 → 拍照上传（真实点击触发，保证文件选择器能弹出） -->
@@ -99,7 +99,7 @@
             @click="emit('photo-checkin')"
           >
             <template v-if="photoBusy"><span class="checkin-geo-spinner" />正在上传照片</template>
-            <template v-else><Camera :size="18" />拍照上传</template>
+            <template v-else><Camera :size="18" />{{ geoBypassed ? '拍照打卡（超管测试）' : '拍照上传' }}</template>
           </button>
 
           <!-- 定位中 -->
@@ -155,6 +155,8 @@ const props = defineProps({
   geoAccuracy: { type: Number, default: null },
   /** 当前地点的打卡半径（米） */
   geoRadius: { type: Number, default: 50 },
+  /** 超管测试普通地点时跳过定位与距离校验 */
+  geoBypassed: { type: Boolean, default: false },
   /** 拍照上传进行中（含选图与上传），禁用按钮防重复提交 */
   photoBusy: { type: Boolean, default: false },
   /** 定位失败信息 */

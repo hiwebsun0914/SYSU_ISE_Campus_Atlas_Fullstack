@@ -26,7 +26,7 @@ import {
   getStaticRouteSegments,
   ROUTE_SEGMENT_STYLES,
 } from '@/utils/routeManager'
-import { checkedPlaces, isPlaceChecked } from '@/stores/userProgress'
+import { checkedPlaces, pendingCheckins, checkinReviewRecords, getPlaceProgressState, isPlaceChecked } from '@/stores/userProgress'
 import { getNextTarget } from '@/stores/routeCheckin'
 import { getUserPosition as geoGetUserPosition, calcDistance } from '@/utils/geoCheckin'
 
@@ -115,30 +115,21 @@ function loadAMapScript() {
 }
 
 function buildMarkerHTML(place) {
-  const checked = isPlaceChecked(place.id)
+  const progressState = getPlaceProgressState(place)
   const selected = props.selectedId === place.id
   const icon = CATEGORY_ICONS[place.category] || '📍'
   const size = selected ? 44 : 36
   const fontSize = selected ? 18 : 14
 
-  // 「点亮」语义：未打卡=虚线空心坐标，已打卡=实心酸橙+微光晕
-  let circleStyle
-  if (checked) {
-    circleStyle = `background:#c7f24a;border:2.5px solid #0a2e3b;box-shadow:0 0 0 5px rgba(199,242,74,.28),0 2px 8px rgba(10,46,59,.2);`
-  } else if (selected) {
-    circleStyle = `background:#0d9488;border:2.5px solid #0b7a72;box-shadow:0 4px 20px rgba(13,148,136,.5);`
-  } else {
-    circleStyle = `background:rgba(255,255,255,.92);border:2px dashed #9aa5ad;box-shadow:0 2px 8px rgba(10,46,59,.14);`
-  }
-
-  let labelBg, labelText
-  if (checked) {
-    labelBg = 'rgba(199,242,74,.95)'; labelText = '#0a2e3b'
-  } else if (selected) {
-    labelBg = 'rgba(13,148,136,.92)'; labelText = '#fff'
-  } else {
-    labelBg = 'rgba(255,255,255,.9)'; labelText = '#0a2e3b'
-  }
+  const palette = {
+    completed: { fill: '#388e6e', border: '#276f56', label: '#388e6e', text: '#fff', mark: '✓' },
+    waiting: { fill: '#f4b942', border: '#b7791f', label: '#f4b942', text: '#4a3200', mark: '…' },
+    retry: { fill: '#d95c5c', border: '#a93636', label: '#d95c5c', text: '#fff', mark: '!' },
+    available: { fill: 'rgba(255,255,255,.94)', border: '#9aa5ad', label: 'rgba(255,255,255,.94)', text: '#0a2e3b', mark: '' },
+  }[progressState] || { fill: 'rgba(255,255,255,.94)', border: '#9aa5ad', label: 'rgba(255,255,255,.94)', text: '#0a2e3b', mark: '' }
+  const borderStyle = progressState === 'available' ? 'dashed' : 'solid'
+  const selectedRing = selected ? `0 0 0 5px rgba(13,148,136,.34),0 5px 20px rgba(10,46,59,.32)` : '0 2px 8px rgba(10,46,59,.16)'
+  const circleStyle = `background:${palette.fill};border:2.5px ${borderStyle} ${palette.border};box-shadow:${selectedRing};`
 
   return `
 <div style="display:flex;flex-direction:column;align-items:center;">
@@ -148,10 +139,10 @@ function buildMarkerHTML(place) {
     font-size:${fontSize}px;transition:all .18s ease;position:relative;
     cursor:pointer;">
     ${icon}
-    ${checked ? '<div style="position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;background:#0a2e3b;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#c7f24a;">✓</div>' : ''}
+    ${palette.mark ? `<div style="position:absolute;top:-4px;right:-4px;width:17px;height:17px;border-radius:50%;background:${palette.border};border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;">${palette.mark}</div>` : ''}
   </div>
   <div style="margin-top:4px;padding:2px 9px;border-radius:5px;font-size:11px;
-    font-weight:600;color:${labelText};background:${labelBg};
+    font-weight:600;color:${palette.text};background:${palette.label};
     white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;
     box-shadow:0 1px 4px rgba(10,46,59,.1);">${escapeHTML(place.name)}</div>
 </div>`
@@ -189,21 +180,28 @@ function rebuildMarkers() {
 
   for (const place of props.locations) {
     if (!place?.lnglat || place.lnglat.length < 2) continue
+    const lng = Number(place.lnglat[0])
+    const lat = Number(place.lnglat[1])
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue
     if (place.isHidden === 1) continue
 
-    const marker = new AMapNS.Marker({
-      position: place.lnglat,
-      content: buildMarkerHTML(place),
-      // 用引擎级锚点对齐（底部中心对准经纬度点），不要用 CSS transform 偏移，
-      // 否则可点击热区会停留在未偏移位置，导致点到邻近标记
-      anchor: 'bottom-center',
-      zIndex: props.selectedId === place.id ? 200 : 100,
-    })
+    try {
+      const marker = new AMapNS.Marker({
+        position: [lng, lat],
+        content: buildMarkerHTML(place),
+        // 用引擎级锚点对齐（底部中心对准经纬度点），不要用 CSS transform 偏移，
+        // 否则可点击热区会停留在未偏移位置，导致点到邻近标记
+        anchor: 'bottom-center',
+        zIndex: props.selectedId === place.id ? 200 : 100,
+      })
 
-    marker.on('click', () => emit('marker-click', { ...place }))
-    marker.setMap(mapInstance)
-    markerMap.set(place.id, marker)
-    markerLevels.set(place.id, place.level ?? 2)
+      marker.on('click', () => emit('marker-click', { ...place }))
+      marker.setMap(mapInstance)
+      markerMap.set(place.id, marker)
+      markerLevels.set(place.id, place.level ?? 2)
+    } catch (error) {
+      console.warn('[CampusMap] skipped invalid marker:', place.id, error?.message || error)
+    }
   }
 
   showHideByZoom()
@@ -388,10 +386,13 @@ function isRoutePlaceChecked(place) {
   return isPlaceChecked(place.id) || (place.backendId != null && isPlaceChecked(place.backendId))
 }
 
-/** 编号牌状态：done 已打卡 / current 下一站 / todo 未到达 */
+/** 编号牌状态：done 已打卡 / pending 审核中 / rejected 被驳回 / current 下一站 / todo 未到达 */
 function routeBadgeState(place, nextTarget) {
-  if (isRoutePlaceChecked(place)) return 'done'
-  if (nextTarget && place.id === nextTarget.id) return 'current'
+  const state = getPlaceProgressState(place)
+  if (state === 'completed') return 'done'
+  if (state === 'waiting') return 'pending'
+  if (state === 'retry') return nextTarget?.id === place.id ? 'current-rejected' : 'rejected'
+  if (nextTarget?.id === place.id) return 'current'
   return 'todo'
 }
 
@@ -522,7 +523,7 @@ watch(() => props.selectedId, (newId, oldId) => {
   if (newId != null) refreshMarker(newId)
 })
 
-watch(checkedPlaces, () => {
+watch([checkedPlaces, pendingCheckins, checkinReviewRecords], () => {
   if (!mapInstance || !AMapNS) return
   if (routeMode) {
     refreshRouteStates()

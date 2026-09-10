@@ -45,7 +45,7 @@
               <span class="route-name">{{ route.name }}</span>
               <span class="route-desc">{{ route.description }}</span>
               <span class="route-meta">
-                {{ route.points?.length || 0 }}个地点 · {{ getRouteProgress(route.id) }}/{{ route.points?.length || 0 }}
+                {{ route.points?.length || 0 }}个地点 · {{ getRouteProgress(route.id) }} 已点亮 · {{ getRoutePending(route.id) }} 审核中 · {{ getRouteRejected(route.id) }} 被驳回
               </span>
 
               <!-- 进度条 -->
@@ -65,6 +65,10 @@
                 v-else-if="getNextTarget(route.id, route.points)"
                 class="route-next-target"
               >下一目标：{{ getNextTarget(route.id, route.points)?.name }}</span>
+              <span
+                v-else-if="getRoutePending(route.id)"
+                class="route-next-target"
+              >等待照片审核</span>
             </span>
             <span
               class="route-start"
@@ -91,6 +95,7 @@
 import { ref, computed } from 'vue'
 import routes from '../data/routes.js'
 import { getRouteProgress, getNextTarget, currentStepText, isExploring } from '@/stores/routeCheckin'
+import { getRoutePendingCount, getRouteRejectedCount } from '@/stores/userProgress'
 
 const props = defineProps({
   selectedRouteId: { type: String, default: null },
@@ -110,6 +115,14 @@ function routeProgressPercent(route) {
   if (total === 0) return 0
   const done = getRouteProgress(route.id)
   return Math.min(100, Math.round((done / total) * 100))
+}
+
+function getRoutePending(routeId) {
+  return getRoutePendingCount(routeId)
+}
+
+function getRouteRejected(routeId) {
+  return getRouteRejectedCount(routeId)
 }
 
 function onCardClick(route) {
