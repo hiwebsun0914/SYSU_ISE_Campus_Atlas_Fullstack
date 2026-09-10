@@ -76,7 +76,7 @@
                 </div>
                 <div v-else class="atlas-progress">
                   <div class="atlas-progress-number">
-                    <span>{{ overallCompleted }}</span><small>/ {{ overallTotal }} 站</small>
+                    <span>{{ overallCompleted }}</span><small>/ {{ overallTotal }} 个点</small>
                   </div>
                   <span
                     class="atlas-track"
@@ -204,7 +204,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MapPinned, Navigation, Trophy } from '@lucide/vue'
-import { getPlaceById } from '@/data/campusPlaces'
+import { campusLocations, getPlaceById } from '@/data/campusPlaces'
 import routes from '@/data/routes'
 import { fetchUserProgress, getPlaceProgressState, getRouteCheckedCount, getRoutePendingCount, getRouteRejectedCount } from '@/stores/userProgress'
 import spriteBase from '@/assets/home/sprite-base.webp'
@@ -250,10 +250,16 @@ const routeSummaries = computed(() => routes.map((route, index) => ({
   ...routeProgress(route),
 })))
 const allRoutesComplete = computed(() => routeSummaries.value.every(item => item.total > 0 && item.completed >= item.total))
-const overallCompleted = computed(() => routeSummaries.value.reduce((sum, item) => sum + item.completed, 0))
-const overallPending = computed(() => routeSummaries.value.reduce((sum, item) => sum + item.pending, 0))
-const overallRejected = computed(() => routeSummaries.value.reduce((sum, item) => sum + item.rejected, 0))
-const overallTotal = computed(() => routeSummaries.value.reduce((sum, item) => sum + item.total, 0))
+const activePlaces = campusLocations.filter(place => !place.retired)
+const overallStateCounts = computed(() => activePlaces.reduce((counts, place) => {
+  const state = getPlaceProgressState(place)
+  counts[state] = (counts[state] || 0) + 1
+  return counts
+}, { completed: 0, waiting: 0, retry: 0, available: 0 }))
+const overallCompleted = computed(() => overallStateCounts.value.completed)
+const overallPending = computed(() => overallStateCounts.value.waiting)
+const overallRejected = computed(() => overallStateCounts.value.retry)
+const overallTotal = computed(() => activePlaces.length)
 const overallPercent = computed(() => (
   overallTotal.value ? Math.min(100, Math.round((overallCompleted.value / overallTotal.value) * 100)) : 0
 ))
