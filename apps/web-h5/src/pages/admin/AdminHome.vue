@@ -283,7 +283,16 @@
                     :aria-label="item.photo ? '查看打卡照片大图' : '该打卡没有可预览照片'"
                     @click="item.photo && openCheckinPreview(item)"
                   >
-                    <img v-if="item.photo" :src="item.thumbnail || item.photo" :alt="item.username + '在' + item.locationName + '的打卡照片'" width="320" height="240" loading="lazy" decoding="async" />
+                    <img
+                      v-if="item.photo"
+                      :src="item.thumbnail || item.photo"
+                      :alt="item.username + '在' + item.locationName + '的打卡照片'"
+                      width="320"
+                      height="240"
+                      loading="lazy"
+                      decoding="async"
+                      @load="preloadCheckinReference(item)"
+                    />
                     <Camera v-else :size="28" aria-hidden="true" />
                   </button>
                   <div class="admin-review-copy">
@@ -939,12 +948,11 @@
         <div v-if="previewState.comparing" class="admin-preview-compare">
           <figure>
             <div class="admin-preview-frame">
-              <span v-if="previewState.referenceLoading" class="admin-preview-loading">地点图加载中…</span>
+              <span v-if="previewState.referenceLoading && !previewState.referenceDisplayUrl" class="admin-preview-loading">地点图加载中…</span>
               <img
                 v-if="previewState.referenceDisplayUrl"
                 :src="previewState.referenceDisplayUrl"
                 :alt="previewState.label + '的地点原图'"
-                :class="{ 'is-loading': previewState.referenceLoading }"
               />
               <button v-if="previewState.referenceFailed" type="button" class="admin-preview-retry" @click="retryPreview('reference')">重新加载地点图</button>
             </div>
@@ -952,12 +960,12 @@
           </figure>
           <figure>
             <div class="admin-preview-frame">
-              <span v-if="previewState.userLoading" class="admin-preview-loading">打卡图加载中…</span>
+              <span v-if="previewState.userLoading && !previewState.userDisplayUrl" class="admin-preview-loading">打卡图加载中…</span>
+              <span v-else-if="previewState.userLoading" class="admin-preview-upgrading" aria-live="polite">高清图加载中…</span>
               <img
                 v-if="previewState.userDisplayUrl"
                 :src="previewState.userDisplayUrl"
                 :alt="previewState.label + '的用户打卡图'"
-                :class="{ 'is-loading': previewState.userLoading }"
               />
               <button v-if="previewState.userFailed" type="button" class="admin-preview-retry" @click="retryPreview('user')">重新加载打卡图</button>
             </div>
@@ -1134,6 +1142,7 @@ const previewState = reactive({
   referencePreferredUrl: '', referenceFallbackUrl: ''
 })
 let previewLoadId = 0
+const imageRequestCache = new Map()
 let previewReturnScrollY = 0
 let previewReturnFocus = null
 const userDeleteDialog = ref(null)
@@ -1229,11 +1238,14 @@ async function fetchCheckins() {
   Object.assign(checkinStat, { all: 0, pending: 0, appealed: 0, approved: 0, rejected: 0, ...(payload.stat || {}) })
 }
 
-function preloadNextCheckinThumbnail(item) {
+function preloadNextCheckinImages(item) {
   const index = checkins.value.findIndex(row => row.id === item.id)
-  const nextUrl = checkins.value[index + 1]?.thumbnail
-  if (!nextUrl) return
-  const run = () => { const image = new Image(); image.decoding = 'async'; image.src = nextUrl }
+  const next = checkins.value[index + 1]
+  if (!next) return
+  const run = () => {
+    preloadImage(next.thumbnail || next.photo).catch(() => {})
+    preloadCheckinReference(next)
+  }
   if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 1500 })
   else window.setTimeout(run, 250)
 }
@@ -1725,7 +1737,7 @@ async function openCheckinPreview(item) {
   previewState.comparing = Boolean(previewState.referenceUrl)
   previewDialog.value?.showModal()
   loadCheckinPreviewImages(item, location)
-  preloadNextCheckinThumbnail(item)
+  preloadNextCheckinImages(item)
   try {
     const payload = await api('/locations')
     const remoteLocation = payload.data?.locations?.find(place => Number(place.backendId) === Number(item.locationId))
@@ -1751,17 +1763,66 @@ function locationReviewImageUrl(location) {
 }
 
 function preloadImage(url) {
-  return new Promise((resolve, reject) => {
-    if (!url) return reject(new Error('图片地址为空'))
+  if (!url) return Promise.reject(new Error('图片地址为空'))
+  if (imageRequestCache.has(url)) return imageRequestCache.get(url)
+  const request = new Promise((resolve, reject) => {
     const image = new Image()
     image.decoding = 'async'
     image.onload = () => resolve(url)
     image.onerror = reject
     image.src = url
   })
+  imageRequestCache.set(url, request)
+  request.catch(() => {
+    if (imageRequestCache.get(url) === request) imageRequestCache.delete(url)
+  })
+  return request
 }
 
-async function loadPreviewSide(side, preferredUrl, fallbackUrl = '') {
+function preloadCheckinReference(item) {
+  const location = campusLocations.find(place => Number(place.backendId) === Number(item.locationId))
+  const url = locationReviewImageUrl(location)
+  if (url) preloadImage(url).catch(() => {})
+}
+
+function loadFirstAvailable(preferredUrl, fallbackUrl, fallbackDelay = 800) {
+  if (!fallbackUrl || fallbackUrl === preferredUrl) return preloadImage(preferredUrl)
+  return new Promise((resolve, reject) => {
+    let settled = false
+    let preferredFailed = false
+    let fallbackFailed = false
+    let fallbackStarted = false
+    let fallbackTimer = 0
+    const finish = value => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(fallbackTimer)
+      resolve(value)
+    }
+    const failIfComplete = error => {
+      if (!settled && preferredFailed && fallbackFailed) {
+        settled = true
+        reject(error)
+      }
+    }
+    const startFallback = () => {
+      if (settled || fallbackStarted) return
+      fallbackStarted = true
+      preloadImage(fallbackUrl).then(finish).catch(error => {
+        fallbackFailed = true
+        failIfComplete(error)
+      })
+    }
+    fallbackTimer = window.setTimeout(startFallback, fallbackDelay)
+    preloadImage(preferredUrl).then(finish).catch(error => {
+      preferredFailed = true
+      startFallback()
+      failIfComplete(error)
+    })
+  })
+}
+
+async function loadPreviewSide(side, preferredUrl, fallbackUrl = '', options = {}) {
   const loadId = previewLoadId
   const loadingKey = `${side}Loading`
   const failedKey = `${side}Failed`
@@ -1769,15 +1830,19 @@ async function loadPreviewSide(side, preferredUrl, fallbackUrl = '') {
   previewState[loadingKey] = true
   previewState[failedKey] = false
   try {
-    const loaded = await preloadImage(preferredUrl)
+    const loaded = options.hedged
+      ? await loadFirstAvailable(preferredUrl, fallbackUrl)
+      : await preloadImage(preferredUrl)
     if (loadId === previewLoadId) previewState[displayKey] = loaded
   } catch {
-    if (fallbackUrl && fallbackUrl !== preferredUrl) {
+    if (!options.hedged && fallbackUrl && fallbackUrl !== preferredUrl) {
       try {
         const loaded = await preloadImage(fallbackUrl)
         if (loadId === previewLoadId) previewState[displayKey] = loaded
-      } catch { if (loadId === previewLoadId) previewState[failedKey] = true }
-    } else if (loadId === previewLoadId) previewState[failedKey] = true
+      } catch {
+        if (loadId === previewLoadId && !previewState[displayKey]) previewState[failedKey] = true
+      }
+    } else if (loadId === previewLoadId && !previewState[displayKey]) previewState[failedKey] = true
   } finally {
     if (loadId === previewLoadId) previewState[loadingKey] = false
   }
@@ -1790,12 +1855,24 @@ function loadCheckinPreviewImages(item, location) {
   previewState.referenceDisplayUrl = ''
   previewState.referencePreferredUrl = locationReviewImageUrl(location)
   loadPreviewSide('user', item.photo, item.thumbnail || '')
-  loadPreviewSide('reference', previewState.referencePreferredUrl, location?.image || '')
+  loadReferencePreview(previewState.referencePreferredUrl, location?.image || '')
+}
+
+async function loadReferencePreview(preferredUrl, originalUrl) {
+  const loadId = previewLoadId
+  await loadPreviewSide('reference', preferredUrl, originalUrl, { hedged: true })
+  if (loadId !== previewLoadId || !originalUrl || previewState.referenceDisplayUrl === originalUrl) return
+  try {
+    const loaded = await preloadImage(originalUrl)
+    if (loadId === previewLoadId) previewState.referenceDisplayUrl = loaded
+  } catch {
+    // 审核尺寸图已可用时，原图升级失败不影响对比。
+  }
 }
 
 function retryPreview(side) {
   if (side === 'user') loadPreviewSide('user', previewState.url, previewState.userDisplayUrl)
-  else loadPreviewSide('reference', previewState.referencePreferredUrl, previewState.referenceFallbackUrl)
+  else loadReferencePreview(previewState.referencePreferredUrl, previewState.referenceFallbackUrl)
 }
 
 function rememberPreviewOrigin() {
