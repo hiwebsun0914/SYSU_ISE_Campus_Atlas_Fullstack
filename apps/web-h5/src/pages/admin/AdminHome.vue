@@ -723,12 +723,12 @@
                 <Search :size="18" aria-hidden="true" />
                 <input id="route-award-search" v-model.trim="routeAwardSearch" type="search" placeholder="昵称、姓名或学号" />
               </div>
-              <small>列表优先显示完成路线更多的用户，同数量时按积分排序。</small>
+              <small>按完成路线数排名；路线数相同时，越早达到该完成数排名越前，不区分具体路线。</small>
             </div>
 
             <div class="admin-route-award-list" role="list" aria-label="用户路线完成数量">
-              <article v-for="(user, index) in filteredRouteAwardRows" :key="user.id" role="listitem">
-                <span class="admin-route-rank">{{ String(index + 1).padStart(2, '0') }}</span>
+              <article v-for="user in filteredRouteAwardRows" :key="user.id" role="listitem">
+                <span class="admin-route-rank" :aria-label="'第 ' + user.rank + ' 名'">{{ String(user.rank).padStart(2, '0') }}</span>
                 <div class="admin-user-avatar">
                   <img v-if="user.avatar" :src="user.avatar" :alt="user.username + '的头像'" width="48" height="48" loading="lazy" />
                   <CircleUserRound v-else :size="23" aria-hidden="true" />
@@ -745,8 +745,9 @@
                   >{{ routeItem.icon }} {{ routeItem.name }}</span>
                 </div>
                 <div class="admin-route-total">
-                  <strong>{{ user.completedRouteCount }}</strong>
-                  <span>/ {{ routeDefinitions.length }} 条</span>
+                  <div><strong>{{ user.completedRouteCount }}</strong><span>/ {{ routeDefinitions.length }} 条</span></div>
+                  <small v-if="user.rankingCompletedAt">达成于 {{ formatRouteAwardTime(user.rankingCompletedAt) }}</small>
+                  <small v-else-if="user.completedRouteCount">完成时间未知</small>
                 </div>
               </article>
             </div>
@@ -1029,6 +1030,7 @@ import {
 import { request } from '@/utils/request'
 import { campusLocations } from '@/data/campusPlaces'
 import routeDefinitions from '@/data/routes'
+import { buildRouteAwardRows } from '@/utils/routeAwardRanking'
 
 const router = useRouter()
 const route = useRoute()
@@ -1289,24 +1291,23 @@ async function fetchRouteAwards() {
       api('/admin/checkins', 'GET', { status: 'approved' })
     ])
     const userList = userPayload.list || []
-    const approvedByUser = new Map()
-    ;(checkinPayload.list || []).forEach(item => {
-      const userId = String(item.userId)
-      if (!approvedByUser.has(userId)) approvedByUser.set(userId, new Set())
-      approvedByUser.get(userId).add(Number(item.locationId))
-    })
-    routeAwardRows.value = userList.map(user => {
-      const approvedLocations = approvedByUser.get(String(user.id)) || new Set()
-      const completedRouteIds = routeDefinitions
-        .filter(routeItem => routeItem.points.length > 0 && routeItem.points.every(id => approvedLocations.has(Number(id))))
-        .map(routeItem => routeItem.id)
-      return { ...user, completedRouteIds, completedRouteCount: completedRouteIds.length }
-    }).sort((a, b) => b.completedRouteCount - a.completedRouteCount || Number(b.points || 0) - Number(a.points || 0) || String(a.username).localeCompare(String(b.username), 'zh-CN'))
+    routeAwardRows.value = buildRouteAwardRows(userList, checkinPayload.list || [], routeDefinitions)
   } catch (error) {
     showError(error.message, fetchRouteAwards)
   } finally {
     routeAwardsLoading.value = false
   }
+}
+
+function formatRouteAwardTime(timestamp) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(new Date(timestamp))
 }
 
 async function fetchAwards() {
