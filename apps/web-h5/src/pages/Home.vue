@@ -89,7 +89,7 @@
                     <i :style="{ '--progress-scale': overallPercent / 100 }"></i>
                   </span>
                   <p class="atlas-progress-meta">
-                    {{ overallCompleted }} 已点亮 · {{ overallPending }} 审核中 · {{ overallRejected }} 被驳回
+                    {{ overallPending }} 审核中 · {{ overallRejected }} 被驳回
                   </p>
                 </div>
 
