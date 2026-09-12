@@ -7,7 +7,9 @@
     "start": "node app.js",
     "test": "node --test",
     "backfill:checkin-images": "node scripts/backfill-checkin-images.js",
-    "backfill:checkin-images:apply": "node scripts/backfill-checkin-images.js --apply"
+    "backfill:checkin-images:apply": "node scripts/backfill-checkin-images.js --apply",
+    "backfill:location-review-images": "node scripts/backfill-checkin-images.js --locations-only",
+    "backfill:location-review-images:apply": "node scripts/backfill-checkin-images.js --locations-only --apply"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

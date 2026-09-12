@@ -10,6 +10,7 @@ const { locations } = require('../data/locations');
 
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const apply = process.argv.includes('--apply');
+const locationsOnly = process.argv.includes('--locations-only');
 const usersFile = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
 const { COS_BUCKET, COS_REGION, PUBLIC_ASSET_DOMAIN, TENCENT_SECRET_ID, TENCENT_SECRET_KEY } = process.env;
 
@@ -33,6 +34,15 @@ function keyFromUrl(url) {
 
 async function exists(key) {
   try { await call('headObject', objectParams(key)); return true; } catch { return false; }
+}
+
+async function locationPreviewNeedsRefresh(key) {
+  try {
+    const head = await call('headObject', objectParams(key));
+    const bytes = Number(head?.headers?.['content-length'] || 0);
+    const cacheControl = String(head?.headers?.['cache-control'] || '');
+    return !bytes || bytes > 300 * 1024 || cacheControl !== CACHE_CONTROL;
+  } catch { return true; }
 }
 
 async function hasLongCache(key) {
@@ -97,30 +107,39 @@ async function backfillCheckin(record) {
 }
 
 async function backfillLocations() {
-  for (const location of locations) {
+  async function backfillLocation(location) {
     const sourceKey = keyFromUrl(location.image);
-    if (!sourceKey) { stats.skipped += 1; continue; }
+    if (!sourceKey) { stats.skipped += 1; return; }
     const filename = path.posix.basename(sourceKey).replace(/\.[^.]+$/, '.webp');
     const previewKey = `Position/review-v1/${filename}`;
-    if (!(await exists(previewKey))) {
-      const source = await readObject(sourceKey);
-      const preview = await webpWithin(source, 1600, 2 * 1024 * 1024, 80);
-      await uploadDerived(previewKey, preview);
+    if (await locationPreviewNeedsRefresh(previewKey)) {
+      if (apply) {
+        const source = await readObject(sourceKey);
+        const preview = await webpWithin(source, 1200, 300 * 1024, 76);
+        await uploadDerived(previewKey, preview);
+      }
       stats.locations += 1;
     } else stats.skipped += 1;
     const contentType = /\.png$/i.test(sourceKey) ? 'image/png' : /\.webp$/i.test(sourceKey) ? 'image/webp' : 'image/jpeg';
-    await addLongCache(sourceKey, contentType);
+    if (apply) await addLongCache(sourceKey, contentType);
+  }
+  for (let index = 0; index < locations.length; index += 4) {
+    await Promise.all(locations.slice(index, index + 4).map(backfillLocation));
+    console.log(`地点图进度 ${Math.min(index + 4, locations.length)}/${locations.length}`);
   }
 }
 
 async function main() {
-  const users = JSON.parse(fs.readFileSync(usersFile, 'utf8') || '[]');
-  for (const user of users) {
-    for (const record of user.pendingCheckins || []) await backfillCheckin(record);
-    for (const record of user.checkinReviewRecords || []) await backfillCheckin(record);
+  let users = [];
+  if (!locationsOnly) {
+    users = JSON.parse(fs.readFileSync(usersFile, 'utf8') || '[]');
+    for (const user of users) {
+      for (const record of user.pendingCheckins || []) await backfillCheckin(record);
+      for (const record of user.checkinReviewRecords || []) await backfillCheckin(record);
+    }
   }
   await backfillLocations();
-  if (apply) {
+  if (apply && !locationsOnly) {
     const temporary = `${usersFile}.thumbnail-backfill.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(users, null, 2), 'utf8');
     fs.renameSync(temporary, usersFile);
