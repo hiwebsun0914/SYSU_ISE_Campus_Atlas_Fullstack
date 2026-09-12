@@ -1803,17 +1803,21 @@ function rememberPreviewOrigin() {
   previewReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
 }
 
-async function handlePreviewClose() {
+function handlePreviewClose() {
   const returnY = previewReturnScrollY
   const returnFocus = previewReturnFocus
+  const root = document.documentElement
+  const previousScrollBehavior = root.style.scrollBehavior
+
+  // global.css enables smooth scrolling. Override it before focus/layout changes so
+  // closing the native dialog restores the review row before the next paint.
+  root.style.scrollBehavior = 'auto'
   resetPreview()
-  await nextTick()
   try { returnFocus?.focus({ preventScroll: true }) } catch {}
-  // Native dialog focus restoration differs between Safari/WebView versions.
-  // Restore after layout settles so closing a tall comparison never jumps the queue to its start.
+  window.scrollTo(0, returnY)
+
   window.requestAnimationFrame(() => {
-    window.scrollTo({ top: returnY, behavior: 'auto' })
-    window.requestAnimationFrame(() => window.scrollTo({ top: returnY, behavior: 'auto' }))
+    root.style.scrollBehavior = previousScrollBehavior
   })
 }
 
