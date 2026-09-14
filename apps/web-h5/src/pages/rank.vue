@@ -16,6 +16,8 @@
 
     <!-- 内容 -->
     <div class="content">
+      <p v-if="resultEmbargoed" class="empty" role="status">打卡排名暂不展示，结果将于北京时间 9 月 19 日 18:00 公布。</p>
+      <template v-else>
       <!-- 我的排名卡片（如果存在） -->
       <div v-if="myItem" class="my-card">
         <img class="avatar lg" :src="myItem.avatar" alt="avatar" />
@@ -60,17 +62,19 @@
       </div>
 
       <div class="empty" v-if="!loading && list.length === 0">暂无数据</div>
+      </template>
     </div>
 
-    <button class="refresh" :disabled="loading" @click="fetchRank">
+    <button v-if="!resultEmbargoed" class="refresh" :disabled="loading" @click="fetchRank">
       {{ loading ? '加载中…' : '刷新' }}
     </button>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { request } from '@/utils/request'
+import { resultEmbargoed, refreshResultRole } from '@/stores/resultReveal'
 
 const DEFAULT_AVATAR = 'https://img.yzcdn.cn/vant/user-active.png'
 
@@ -106,7 +110,12 @@ onMounted(async () => {
     myId = localUser?.id ?? null
   } catch {}
   await fetchMeRole()
+  await refreshResultRole()
   await fetchRank()
+})
+watch(resultEmbargoed, value => {
+  if (value) list.value = []
+  else fetchRank()
 })
 
 async function fetchMeRole() {
@@ -161,7 +170,7 @@ async function fetchRank() {
       me: !!(myId && it.userId === myId)
     }))
 
-    list.value = arr
+    if (!resultEmbargoed.value) list.value = arr
   } catch (e) {
     console.error('[rank] fetch error', e)
     alert('加载失败')
