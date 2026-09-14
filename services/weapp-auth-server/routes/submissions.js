@@ -13,6 +13,8 @@ const { optionalAuth } = require('../middleware/auth');
 const awards = require('../data/awards');
 const { getLocations, getLocation } = require('../lib/locationSettings');
 const { isActivityEnded, winnerLabelOf, computeWinners } = require('../winner');
+const { rejectIfActivityClosed, requireActivityOpen } = require('../lib/activityDeadline');
+const { isHiddenFrom, setNoStore, REVEAL_AT } = require('../lib/resultEmbargo');
 
 // ====== 环境配置 ======
 // 本项目存储桶为“公有读写”，无需密钥；桶名/地域/域名已内置默认值，
@@ -118,8 +120,6 @@ const validLocationIds = () => {
   return ids;
 };
 
-const ACTIVITY_ENDED_MSG = '活动已截止，无法进行操作，请耐心期待最终结果公布';
-
 // 北京时间（UTC+8）的日期，格式 YYYY-MM-DD，用于“每天”的投票与限额
 function beijingDay(ts = Date.now()) {
   return new Date(Number(ts) + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -199,7 +199,7 @@ function findById(id) {
 }
 
 // 保留投稿记录中用户可读信息
-function publicView(s, withUser = false, viewer = null) {
+function publicView(s, withUser = false, viewer = null, hideAwards = false) {
   const votes = Array.isArray(s.votes) ? s.votes : [];
   const today = beijingDay();
   const base = {
@@ -216,8 +216,8 @@ function publicView(s, withUser = false, viewer = null) {
     })) : [],
     status: s.status || 'pending',
     featured: !!s.featured,
-    winnerRank: s.winnerRank || '',
-    winnerLabel: s.winnerLabel || winnerLabelOf(s.winnerRank),
+    winnerRank: hideAwards ? '' : (s.winnerRank || ''),
+    winnerLabel: hideAwards ? '' : (s.winnerLabel || winnerLabelOf(s.winnerRank)),
     likeCount: votes.length,
     votedToday: viewer != null && votes.some(v => voteKey(v, viewer.usersById) === viewer.myKey && v.day === today),
     appealReason: s.appealReason || '',
@@ -240,10 +240,15 @@ function publicView(s, withUser = false, viewer = null) {
 // ====== 1. 投稿规则 / 奖项信息（公开） ======
 // GET /submissions/meta
 router.get('/meta', (_req, res) => {
+  const serverNow = Date.now();
+  res.set('Cache-Control', 'no-store');
   res.json({
     code: 0,
     data: {
       deadline: awards.deadline,
+      revealAt: REVEAL_AT,
+      serverNow,
+      closed: isActivityEnded(serverNow),
       awardCeremony: awards.awardCeremony || '',
       perUserPerCategory: awards.perUserPerCategory,
       maxImagesPerWork: awards.maxImagesPerWork,
@@ -259,7 +264,7 @@ router.get('/meta', (_req, res) => {
 // ====== 2. 预签名上传地址 ======
 // POST /submissions/presign  { ext }
 // 图片将上传到 COS 的 Award/<uid>__<username>/ 目录下
-router.post('/presign', auth, (req, res) => {
+router.post('/presign', auth, requireActivityOpen, (req, res) => {
   const ext = String(req.body?.ext || 'jpg').replace('.', '').toLowerCase();
   const key = buildKey(req, ext);
 
@@ -278,6 +283,7 @@ router.post('/presign', auth, (req, res) => {
   cos.getObjectUrl(
     { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300 },
     (err, data) => {
+      if (rejectIfActivityClosed(res)) return;
       if (err || !data?.Url) {
         console.error('[submissions/presign] error:', err || data);
         return res.status(500).json({ code: 1, message: '获取上传地址失败' });
@@ -289,7 +295,7 @@ router.post('/presign', auth, (req, res) => {
 
 // ====== 3. 确认上传（校验文件存在并设置公开读） ======
 // POST /submissions/commit  { key, size }
-router.post('/commit', auth, async (req, res) => {
+router.post('/commit', auth, requireActivityOpen, async (req, res) => {
   const { key, size } = req.body || {};
   if (!key || !String(key).startsWith(userPrefix(req))) {
     return res.status(400).json({ code: 1, message: '非法的图片地址' });
@@ -299,6 +305,7 @@ router.post('/commit', auth, async (req, res) => {
   if (!cos && bucketBaseUrl) {
     try {
       const head = await fetch(`${bucketBaseUrl}/${encodeURI(key)}`, { method: 'HEAD' });
+      if (rejectIfActivityClosed(res)) return;
       if (!head.ok) return res.status(400).json({ code: 1, message: '图片尚未上传成功' });
       return res.json({ code: 0, data: { key, url: toUrl(key) } });
     } catch {
@@ -317,6 +324,7 @@ router.post('/commit', auth, async (req, res) => {
     return res.status(400).json({ code: 1, message: '图片大小不匹配' });
   }
 
+  if (rejectIfActivityClosed(res)) return;
   await cos.putObjectAcl({
     Bucket: COS_BUCKET,
     Region: COS_REGION,
@@ -324,6 +332,7 @@ router.post('/commit', auth, async (req, res) => {
     ACL: 'public-read'
   }).catch(e => console.warn('[submissions/commit] ACL fail', e?.message));
 
+  if (rejectIfActivityClosed(res)) return;
   res.json({ code: 0, data: { key, url: toUrl(key) } });
 });
 
@@ -337,7 +346,7 @@ const uploadMemory = multer({
   }
 });
 
-router.post('/upload', auth, uploadMemory.single('file'), async (req, res) => {
+router.post('/upload', auth, requireActivityOpen, uploadMemory.single('file'), requireActivityOpen, async (req, res) => {
   const file = req.file;
   if (!file) return res.json({ code: 1, message: '请选择要上传的图片' });
   if (file.size > (awards.maxImageMB || 10) * 1024 * 1024) {
@@ -374,6 +383,7 @@ router.post('/upload', auth, uploadMemory.single('file'), async (req, res) => {
       });
       if (!put.ok) return res.status(502).json({ code: 1, message: '图片上传到存储桶失败，请重试' });
     }
+    if (rejectIfActivityClosed(res)) return;
     res.json({ code: 0, data: { key, url: toUrl(key) } });
   } catch (e) {
     console.error('[submissions/upload] fail:', e);
@@ -384,7 +394,7 @@ router.post('/upload', auth, uploadMemory.single('file'), async (req, res) => {
 // ====== 4. 创建投稿 ======
 // POST /submissions  { category, title, description, locationId, images: [{key}] }
 router.post('/', auth, (req, res) => {
-  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
+  if (rejectIfActivityClosed(res, 200)) return;
   const body = req.body || {};
   const category = String(body.category || '');
   const cat = categoryById(category);
@@ -471,6 +481,7 @@ router.post('/', auth, (req, res) => {
 
   const list = readSubmissions();
   list.push(record);
+  if (rejectIfActivityClosed(res, 200)) return;
   writeSubmissions(list);
 
   res.json({ code: 0, message: '投稿成功，等待审核', data: { submission: publicView(record, true) } });
@@ -479,17 +490,20 @@ router.post('/', auth, (req, res) => {
 // ====== 5. 我的投稿 ======
 // GET /submissions/mine
 router.get('/mine', auth, (_req, res) => {
+  setNoStore(res);
   ensureWinnersComputed();
   const list = readSubmissions()
     .filter(s => String(s.userId) === String(_req.userId))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .map(s => publicView(s, true));
+    .map(s => publicView(s, true, null, isHiddenFrom(_req)));
   res.json({ code: 0, list });
 });
 
 // ====== 6. 公开作品展示（仅已通过） ======
 // GET /submissions?category=creative|photography&featured=1&limit=20
 router.get('/', optionalAuth, (req, res) => {
+  setNoStore(res);
+  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], total: 0, embargoed: true, revealAt: REVEAL_AT });
   ensureWinnersComputed();
   const q = req.query || {};
   let list = readSubmissions().filter(s => s.status === 'approved');
@@ -510,6 +524,8 @@ router.get('/', optionalAuth, (req, res) => {
 // ====== 6b. 获奖结果公示（仅已通过且已设置获奖等级） ======
 // GET /submissions/winners
 router.get('/winners', optionalAuth, (_req, res) => {
+  setNoStore(res);
+  if (isHiddenFrom(_req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: REVEAL_AT });
   ensureWinnersComputed();
   const viewer = buildViewerContext(_req.userId);
   const list = readSubmissions()
@@ -524,7 +540,7 @@ router.get('/winners', optionalAuth, (_req, res) => {
 // 规则：每个用户每天最多投 maxVotesPerDay 票；同一作品每天最多 1 票；
 // 再次点击同一作品 = 取消当天的投票；第二天可重新投票。
 router.post('/:id/vote', auth, (req, res) => {
-  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
+  if (rejectIfActivityClosed(res, 200)) return;
   const list = readSubmissions();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '作品不存在' });
@@ -561,6 +577,7 @@ router.post('/:id/vote', auth, (req, res) => {
 
   item.votes = votes;
   item.updatedAt = Date.now();
+  if (rejectIfActivityClosed(res, 200)) return;
   writeSubmissions(list);
 
   const votedToday = votes.some(v => voteKey(v, usersById) === myKey && v.day === day);
@@ -597,19 +614,20 @@ router.get('/votes/quota', auth, (_req, res) => {
 // ====== 6e. 投稿详情（仅本人） ======
 // GET /submissions/:id
 router.get('/:id', auth, (req, res) => {
+  setNoStore(res);
   ensureWinnersComputed();
   const item = readSubmissions().find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
   if (String(item.userId) !== String(req.userId)) {
     return res.status(403).json({ code: 1, message: '只能查看自己的投稿' });
   }
-  res.json({ code: 0, data: { submission: publicView(item, true, buildViewerContext(req.userId)) } });
+  res.json({ code: 0, data: { submission: publicView(item, true, buildViewerContext(req.userId), isHiddenFrom(req)) } });
 });
 
 // ====== 6f. 提交申诉（仅被驳回的投稿） ======
 // POST /submissions/:id/appeal  { reason }
 router.post('/:id/appeal', auth, (req, res) => {
-  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
+  if (rejectIfActivityClosed(res, 200)) return;
   const list = readSubmissions();
   const item = list.find(s => String(s.id) === String(req.params.id));
   if (!item) return res.status(404).json({ code: 1, message: '投稿不存在' });
@@ -632,6 +650,7 @@ router.post('/:id/appeal', auth, (req, res) => {
   item.appealStatus = 'pending';
   item.appealResult = '';
   item.updatedAt = Date.now();
+  if (rejectIfActivityClosed(res, 200)) return;
   writeSubmissions(list);
 
   res.json({ code: 0, message: '申诉已提交，等待管理员复核', data: { submission: publicView(item, true, buildViewerContext(req.userId)) } });
@@ -640,7 +659,7 @@ router.post('/:id/appeal', auth, (req, res) => {
 // ====== 7. 删除投稿（仅自己；任何状态都可删除，删除后无法找回） ======
 // DELETE /submissions/:id
 router.delete('/:id', auth, (req, res) => {
-  if (isActivityEnded()) return res.json({ code: 4, message: ACTIVITY_ENDED_MSG });
+  if (rejectIfActivityClosed(res, 200)) return;
   const list = readSubmissions();
   const idx = list.findIndex(s => String(s.id) === String(req.params.id));
   if (idx === -1) return res.status(404).json({ code: 1, message: '投稿不存在' });

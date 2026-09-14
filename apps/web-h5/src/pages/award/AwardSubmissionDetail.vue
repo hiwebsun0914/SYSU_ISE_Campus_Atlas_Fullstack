@@ -8,9 +8,9 @@
           <h1>{{ item?.title || '投稿详情' }}</h1>
         </div>
         <div class="header-side">
-          <button class="primary-btn sm" type="button" @click="router.push('/award/submit')">
+          <button class="primary-btn sm" type="button" :disabled="closed" @click="router.push('/award/submit')">
             <Plus :size="15" :stroke-width="2.4" aria-hidden="true" />
-            <span>继续投稿</span>
+            <span>{{ closed ? '投稿已截止' : '继续投稿' }}</span>
           </button>
         </div>
       </div>
@@ -94,6 +94,9 @@
             <p class="appeal-reason">复核意见：{{ item.reviewNote }}</p>
           </div>
 
+          <div v-else-if="closed" class="appeal-note no" role="status">
+            <p>申诉已于北京时间 9 月 17 日 00:00 截止，无法再发起申诉。</p>
+          </div>
           <div v-else class="appeal-form">
             <p class="appeal-hint">如果你认为驳回有误，可以提交申诉，管理员会重新复核。</p>
             <label class="field">
@@ -114,11 +117,11 @@
 
         <!-- 操作区 -->
         <section class="card actions-card">
-          <button class="primary-btn" type="button" @click="router.push('/award/submit')">
+          <button class="primary-btn" type="button" :disabled="closed" @click="router.push('/award/submit')">
             <Plus :size="15" :stroke-width="2.4" aria-hidden="true" />
-            <span>继续投稿</span>
+            <span>{{ closed ? '投稿已截止' : '继续投稿' }}</span>
           </button>
-          <button class="danger-btn" type="button" :disabled="deleting" @click="openDeleteModal">
+          <button class="danger-btn" type="button" :disabled="closed || deleting" @click="openDeleteModal">
             {{ deleting ? '删除中…' : '删除作品' }}
           </button>
         </section>
@@ -155,7 +158,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request } from '@/utils/request'
-import { AWARD_CONFIG } from '@/data/awards'
+import { ACTIVITY_CLOSED_MESSAGE, activityClosed as closed, isActivityClosed } from '@/stores/activityDeadline'
 import { ChevronDown, CircleCheck, CircleX, Clock, Heart, Plus, Trophy } from '@lucide/vue'
 
 const route = useRoute()
@@ -173,8 +176,7 @@ const deleteError = ref('')
 const toast = ref('')
 let toastTimer = 0
 
-const closed = computed(() => Date.now() > new Date(AWARD_CONFIG.deadline).getTime())
-const ACTIVITY_ENDED_MSG = '活动已截止，无法进行操作，请耐心期待最终结果公布'
+const ACTIVITY_ENDED_MSG = ACTIVITY_CLOSED_MESSAGE
 
 function showToast(msg) {
   toast.value = msg
@@ -191,7 +193,9 @@ const statusText = computed(() => {
 const statusDesc = computed(() => {
   if (!item.value) return ''
   if (item.value.status === 'pending') return '你的作品正在审核中，请耐心等待，结果会第一时间更新。'
-  if (item.value.status === 'rejected') return '很遗憾，你的作品未通过审核，可在下方查看驳回理由或提交申诉。'
+  if (item.value.status === 'rejected') return closed.value
+    ? '你的作品未通过审核，可在下方查看驳回理由。申诉通道已截止。'
+    : '很遗憾，你的作品未通过审核，可在下方查看驳回理由或提交申诉。'
   if (item.value.status === 'down') return '该作品已被管理员下架，不再公开展示。'
   if (item.value.winnerRank) return '你的作品已获奖，感谢你的参与！'
   return '你的作品已通过审核，正在作品展示区展出。'
@@ -225,7 +229,7 @@ async function load() {
 }
 
 async function submitAppeal() {
-  if (closed.value) {
+  if (isActivityClosed()) {
     showToast(ACTIVITY_ENDED_MSG)
     return
   }
@@ -257,7 +261,7 @@ function openDeleteModal() {
 }
 
 async function confirmDelete() {
-  if (closed.value) {
+  if (isActivityClosed()) {
     deleteModalVisible.value = false
     showToast(ACTIVITY_ENDED_MSG)
     return

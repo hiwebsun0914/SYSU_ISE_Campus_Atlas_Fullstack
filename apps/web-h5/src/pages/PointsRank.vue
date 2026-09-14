@@ -11,11 +11,12 @@
             返回个人主页
           </RouterLink>
         </div>
-        <p class="rank-desc">前 20 名上榜，同分时先达到该分数的用户排名靠前。去打卡、走路线，点亮下一个坐标。</p>
+        <p v-if="!resultEmbargoed" class="rank-desc">前 20 名上榜，同分时先达到该分数的用户排名靠前。去打卡、走路线，点亮下一个坐标。</p>
       </header>
 
+      <p v-if="resultEmbargoed" class="rank-empty" role="status">积分排名暂不展示，结果将于北京时间 9 月 19 日 18:00 公布。</p>
       <!-- 加载中：保留版面高度的骨架 -->
-      <section v-if="loading" class="rank-list" aria-label="正在加载积分排名">
+      <section v-else-if="loading" class="rank-list" aria-label="正在加载积分排名">
         <div v-for="i in 6" :key="i" class="rank-row rank-skeleton" aria-hidden="true">
           <span class="sk sk-no"></span>
           <span class="sk sk-avatar"></span>
@@ -69,9 +70,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { AlertCircle, ArrowLeft, RotateCcw } from '@lucide/vue'
 import { request } from '@/utils/request'
+import { resultEmbargoed, refreshResultRole } from '@/stores/resultReveal'
 
 const DEFAULT_AVATAR = 'https://img.yzcdn.cn/vant/user-active.png'
 
@@ -100,6 +102,11 @@ async function fetchRank() {
     if (!resp?.ok || resp?.data?.code !== 0 || !Array.isArray(resp?.data?.list)) {
       throw new Error(resp?.data?.message || '服务暂时不可用，请稍后重试。')
     }
+    if (resp.data.embargoed) {
+      list.value = []
+      return
+    }
+    if (resultEmbargoed.value) return
     list.value = resp.data.list.map(item => ({
       userId: item.userId,
       username: item.username || '匿名用户',
@@ -117,7 +124,12 @@ async function fetchRank() {
 
 onMounted(() => {
   document.title = '积分排名｜笃行校园探索'
+  refreshResultRole()
   fetchRank()
+})
+watch(resultEmbargoed, value => {
+  if (value) list.value = []
+  else fetchRank()
 })
 </script>
 

@@ -8,6 +8,7 @@ const COS = require('cos-nodejs-sdk-v5');
 const auth = require('../middleware/auth');
 const routes = require('../data/routes');
 const { effectiveRole, isAdminRole, canManageRoles, isConfiguredOwner } = require('../lib/roles');
+const { isHiddenFrom, setNoStore } = require('../lib/resultEmbargo');
 const { getLocations, getLocation, updateLocation } = require('../lib/locationSettings');
 const { deferLegacyPendingPoints } = require('../lib/checkinPoints');
 const { readFeedback, writeFeedback } = require('../lib/feedbackStore');
@@ -830,6 +831,7 @@ function buildSubmissionStat(list) {
 // ====== Submission list + statistics ======
 // GET /admin/submissions?status=all|pending|approved|rejected|featured&category=all|creative|photography
 router.get('/submissions', auth, adminOnly, (req, res) => {
+  setNoStore(res);
   const statusQ = String(req.query.status || 'all').toLowerCase();
   const categoryQ = String(req.query.category || 'all').toLowerCase();
 
@@ -846,6 +848,9 @@ router.get('/submissions', auth, adminOnly, (req, res) => {
     list = list.filter(s => s.category === categoryQ);
   }
   list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  // Reviewers can keep reviewing submissions, without receiving interim vote totals or winners.
+  if (isHiddenFrom(req)) list = list.map(({ votes, winnerRank, winnerLabel, ...item }) => item);
 
   const stat = buildSubmissionStat(readSubmissionsArray());
   return res.json({ code: 0, list, stat });
@@ -950,7 +955,8 @@ router.post('/submissions/:id/restore', auth, adminOnly, (req, res) => {
 
 // ====== 按当前票数刷新获奖名单（截止后自动执行；这里供管理员预览） ======
 // POST /admin/submissions/compute-winners
-router.post('/submissions/compute-winners', auth, adminOnly, (_req, res) => {
+router.post('/submissions/compute-winners', auth, adminOnly, (req, res) => {
+  if (isHiddenFrom(req)) return res.status(403).json({ code: 1, message: '结果尚未公布' });
   const list = readSubmissionsArray();
   const { list: updated, changed, summary } = computeWinners(list, true);
   if (changed) writeSubmissionsArray(updated);

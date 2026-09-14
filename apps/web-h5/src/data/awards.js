@@ -1,7 +1,8 @@
 // src/data/awards.js
 // 前端奖项展示配置（后端 /submissions/meta 会返回同样的规则，这里作为兜底）
+import { ACTIVITY_DEADLINE } from '@/stores/activityDeadline'
 export const AWARD_CONFIG = {
-  deadline: '2026-09-16T23:59:59+08:00',
+  deadline: ACTIVITY_DEADLINE,
   awardCeremony: '2026-09-19 迎新晚会后',
   perUserPerCategory: 1,
   maxImagesPerWork: 1,

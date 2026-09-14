@@ -7,8 +7,8 @@
           <h1>我的投稿</h1>
         </div>
         <div class="header-side">
-          <p class="lede">每个奖项每人限投 1 个作品。</p>
-          <button v-if="!loading && list.length" class="new-btn" type="button" @click="router.push('/award/submit')">
+          <p class="lede">{{ closed ? '投稿已于北京时间 9 月 17 日 00:00 截止，已提交的记录继续审核。' : '每个奖项每人限投 1 个作品。' }}</p>
+          <button v-if="!closed && !loading && list.length" class="new-btn" type="button" @click="router.push('/award/submit')">
             <Plus :size="15" :stroke-width="2.4" aria-hidden="true" />
             <span>继续投稿</span>
           </button>
@@ -21,7 +21,7 @@
 
       <div v-else-if="!list.length" class="empty">
         <p>你还没有投稿记录</p>
-        <button class="new-btn" type="button" @click="router.push('/award/submit')">
+        <button v-if="!closed" class="new-btn" type="button" @click="router.push('/award/submit')">
           <Plus :size="15" :stroke-width="2.4" aria-hidden="true" />
           <span>去投第一份作品</span>
         </button>
@@ -71,6 +71,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
+import { activityClosed as closed } from '@/stores/activityDeadline'
 import { ArrowRight, Heart, Plus } from '@lucide/vue'
 
 const router = useRouter()

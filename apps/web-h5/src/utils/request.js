@@ -1,4 +1,5 @@
 // utils/request.js
+import { activityDeadline, closedActivityResponse, isActivityClosed, isActivityMutation } from '@/stores/activityDeadline'
 
 // 统一基地址：开发用 /api（交给 Vite 代理），线上用环境变量
 const BASE = import.meta.env.VITE_API_BASE || '/api'
@@ -68,6 +69,9 @@ async function doFetch(finalUrl, init, { timeout, responseType, rawResponse } = 
 }
 
 export async function request(url, method = 'GET', data = null, options = {}) {
+  const activityMutation = isActivityMutation(url, method)
+  const activityMeta = String(url).split('?')[0] === '/submissions/meta'
+  if (activityMutation && isActivityClosed()) return closedActivityResponse()
   const {
     headers: extraHeaders,
     timeout      = DEFAULT_TIMEOUT,
@@ -86,6 +90,7 @@ export async function request(url, method = 'GET', data = null, options = {}) {
     ...(extraHeaders || {})
   }
   const init = { method: String(method || 'GET').toUpperCase(), headers, credentials }
+  if (activityMeta) init.cache = 'no-store'
 
   // GET -> query；其它 -> JSON body / FormData
   if (init.method === 'GET') {
@@ -107,9 +112,15 @@ export async function request(url, method = 'GET', data = null, options = {}) {
   let attempts = 0
   /* eslint-disable no-constant-condition */
   while (true) {
+    if (activityMutation && isActivityClosed()) return closedActivityResponse()
     attempts++
     try {
+      const startedAt = performance.now()
       const res = await doFetch(finalUrl, init, { timeout, responseType, rawResponse })
+      if (activityMeta && res?.data?.code === 0) activityDeadline.syncMeta(res.data.data, startedAt)
+      if (res?.data?.errorCode === 'ACTIVITY_CLOSED' || (activityMutation && res?.data?.code === 4)) {
+        activityDeadline.markClosed()
+      }
       return res
     } catch (e) {
       if (attempts > retry) {

@@ -10,6 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 const auth = require('./middleware/auth');        // 解析 JWT -> req.userId
+const { optionalAuth } = require('./middleware/auth');
+const { isHiddenFrom, setNoStore, REVEAL_AT } = require('./lib/resultEmbargo');
 const avatarRouter = require('./routes/avatar');  // 头像上传
 const checkinRouter = require('./routes/checkin');// 打卡/通用上传
 const futureCardsRouter = require('./routes/futureCards');
@@ -23,6 +25,7 @@ const { getLocations } = require('./lib/locationSettings');
 const { effectiveRole, isAdminRole } = require('./lib/roles');
 const { buildPointsRank } = require('./lib/pointsRank');
 const { deferLegacyPendingPoints } = require('./lib/checkinPoints');
+const { requireActivityOpen, rejectIfActivityClosed } = require('./lib/activityDeadline');
 
 // === 新增：COS SDK 与配置（用于列目录 + 生成签名 URL） ===
 const COS = require('cos-nodejs-sdk-v5');
@@ -355,7 +358,9 @@ app.get('/locations', (_req, res) => {
 });
 
 /* ========= 排行榜（补回此路由！） ========= */
-app.get('/rank/list', (_req, res) => {
+app.get('/rank/list', optionalAuth, (req, res) => {
+  setNoStore(res);
+  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: REVEAL_AT });
   try {
     const users = readUsers();
     const list = users.map(u => {
@@ -389,7 +394,9 @@ app.get('/rank/list', (_req, res) => {
 
 /* ========= 积分排行榜（仅昵称、头像、积分；不含真实姓名与学号） ========= */
 /* 无并列：同分时先达到该积分者排名靠前；只返回前 20 名 */
-app.get('/rank/points', (_req, res) => {
+app.get('/rank/points', optionalAuth, (req, res) => {
+  setNoStore(res);
+  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: REVEAL_AT });
   try {
     const list = buildPointsRank(readUsers(), {
       resolveAvatar: u => (u.avatarKey ? toAvatarUrl(u.avatarKey) : (u.avatar || DEFAULT_AVATAR))
@@ -601,7 +608,7 @@ app.get('/checkin/status', auth, (req, res) => {
 });
 
 /* ========= 打卡解锁 ========= */
-app.post('/user/unlock', auth, (req, res) => {
+app.post('/user/unlock', auth, requireActivityOpen, (req, res) => {
   const lid = Number((req.body || {}).locationId);
   if (!Number.isInteger(lid)) {
     return res.json({ code: 1, message: 'locationId 必须为 number/整数' });
@@ -622,6 +629,7 @@ app.post('/user/unlock', auth, (req, res) => {
   u.unlockedLocations = Array.from(unlocked);
   u.lockingLocations  = Array.from(locking);
   u.updatedAt = Date.now();
+  if (rejectIfActivityClosed(res)) return;
   writeUsers(users);
 
   return res.json({

@@ -42,7 +42,7 @@
       <div class="checkin-description" v-html="place.description || '<p>暂无描述</p>'" />
 
       <!-- 定位打卡状态区 -->
-      <div v-if="!checked && !reviewPending && geoStatus !== 'idle'" class="checkin-geo-status">
+      <div v-if="!closed && !checked && !reviewPending && geoStatus !== 'idle'" class="checkin-geo-status">
         <!-- 定位中 -->
         <div v-if="geoStatus === 'locating'" class="checkin-geo-row checkin-geo-row--locating">
           <span class="checkin-geo-spinner" />
@@ -68,6 +68,7 @@
         </div>
       </div>
 
+      <p v-if="closed" class="checkin-deadline" role="status">打卡与申诉已于北京时间 9 月 17 日 00:00 截止。截止前提交的照片仍会继续审核，通过后照常计分。</p>
       <div class="checkin-actions">
         <!-- 未打卡：定位打卡流程 -->
         <template v-if="!checked">
@@ -78,6 +79,9 @@
             disabled
           >
             <Clock3 :size="18" />{{ reviewState.status === 'appealed' ? '申诉复核中' : '照片审核中' }}
+          </button>
+          <button v-else-if="closed" class="checkin-btn checkin-btn--locating" type="button" disabled>
+            打卡已截止
           </button>
           <!-- 空闲 → 开始定位打卡 -->
           <button
@@ -104,7 +108,7 @@
 
           <!-- 定位中 -->
           <button
-            v-if="geoStatus === 'locating'"
+            v-if="!closed && geoStatus === 'locating'"
             class="checkin-btn checkin-btn--locating"
             type="button"
             disabled
@@ -113,7 +117,7 @@
           </button>
 
           <!-- 距离过远 / 定位失败：重新定位 -->
-          <template v-if="geoStatus === 'too_far' || geoStatus === 'error'">
+          <template v-if="!closed && (geoStatus === 'too_far' || geoStatus === 'error')">
             <button
               class="checkin-btn checkin-btn--ghost"
               type="button"
@@ -143,6 +147,7 @@
 import { computed, ref, watch } from 'vue'
 import { Camera, Check, Clock3, X } from '@lucide/vue'
 import { getPlaceReviewState, isPlaceChecked } from '@/stores/userProgress'
+import { activityClosed as closed } from '@/stores/activityDeadline'
 
 const props = defineProps({
   place: { type: Object, default: null },
@@ -417,6 +422,7 @@ const coverStyle = computed(() => {
   padding-top: 14px;
   margin-top: auto;
 }
+.checkin-deadline { margin: 12px 0 0; color: #63737b; font-size: 12px; line-height: 1.6; }
 
 .checkin-btn {
   flex: 1;

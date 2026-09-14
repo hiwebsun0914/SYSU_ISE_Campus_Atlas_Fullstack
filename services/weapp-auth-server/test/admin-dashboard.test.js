@@ -366,3 +366,56 @@ test('marks only approved submissions as featured and supports toggling', async 
   assert.equal(unfeatured.response.status, 200);
   assert.equal(unfeatured.body.featured, false);
 });
+
+test('reviews pre-cutoff check-ins after closure, awards route points once, and refuses new appeals', async () => {
+  const awards = require('../data/awards');
+  const route = require('../data/routes')[0];
+  const originalDeadline = awards.deadline;
+  const submittedAt = Date.parse(originalDeadline) - 1000;
+  const list = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+  list.push({
+    id: 4, username: 'late-review', role: 'visitor', points: 0,
+    unlockedLocations: route.points.filter(id => id !== 38),
+    lockingLocations: [38], completedRoutes: [], checkinRecords: [],
+    pendingCheckins: [{ locationId: 38, photo: 'https://example.com/route.jpg', submittedAt, pointsDeferred: true }],
+    checkinReviewRecords: []
+  }, {
+    id: 5, username: 'late-rejection', role: 'visitor', points: 0,
+    unlockedLocations: [], lockingLocations: [], completedRoutes: [], checkinRecords: [], pendingCheckins: [],
+    checkinReviewRecords: [{ locationId: 3, status: 'rejected', photo: 'https://example.com/rejected.jpg', submittedAt }]
+  }, {
+    id: 6, username: 'early-appeal', role: 'visitor', points: 0,
+    unlockedLocations: [], lockingLocations: [3], completedRoutes: [], checkinRecords: [],
+    pendingCheckins: [{ locationId: 3, photo: 'https://example.com/appeal.jpg', submittedAt, pointsDeferred: true, appealStatus: 'pending' }],
+    checkinReviewRecords: [{ locationId: 3, status: 'rejected', photo: 'https://example.com/appeal.jpg', submittedAt, appealStatus: 'pending' }]
+  });
+  fs.writeFileSync(usersFile, JSON.stringify(list), 'utf8');
+  tokens[5] = jwt.sign({ id: 5 }, jwtSecret, { expiresIn: '5m' });
+  awards.deadline = '2020-01-01T00:00:00+08:00';
+  try {
+    const approved = await api(2, '/admin/checkins/4_38/approve', { method: 'POST', body: '{}' });
+    assert.equal(approved.body.code, 0);
+    assert.equal(approved.body.data.pointsAwarded, 1);
+    assert.equal(approved.body.data.points, 1 + route.bonus);
+    const repeat = await api(2, '/admin/checkins/4_38/approve', { method: 'POST', body: '{}' });
+    assert.equal(repeat.body.data.pointsAwarded, 0);
+
+    const appealed = await api(2, '/admin/checkins/6_3/approve', { method: 'POST', body: '{}' });
+    assert.equal(appealed.body.data.pointsAwarded, 1.5);
+
+    const denied = await api(5, '/checkin/appeal', {
+      method: 'POST', body: JSON.stringify({ locationId: 3, reason: '请重新核对照片中的建筑细节' })
+    });
+    assert.equal(denied.response.status, 403);
+    assert.equal(denied.body.errorCode, 'ACTIVITY_CLOSED');
+
+    const saved = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+    const routeUser = saved.find(user => user.id === 4);
+    assert.equal(routeUser.points, 1 + route.bonus);
+    assert.ok(routeUser.completedRoutes.includes(route.id));
+    assert.equal(Date.parse(routeUser.checkinRecords[0].time), submittedAt);
+    assert.equal(saved.find(user => user.id === 5).pendingCheckins.length, 0);
+  } finally {
+    awards.deadline = originalDeadline;
+  }
+});

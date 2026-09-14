@@ -35,7 +35,6 @@ const router = createRouter({
     { path: '/award', component: () => import('../pages/award/AwardHome.vue') },
     { path: '/award/submit', component: () => import('../pages/award/AwardSubmit.vue') },
     { path: '/award/my', component: () => import('../pages/award/AwardMine.vue') },
-    { path: '/award/results', component: () => import('../pages/award/AwardResults.vue') },
     { path: '/award/submission/:id', component: () => import('../pages/award/AwardSubmissionDetail.vue') },
 
     {

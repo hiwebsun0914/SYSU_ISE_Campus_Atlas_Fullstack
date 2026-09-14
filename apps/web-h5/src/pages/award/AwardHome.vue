@@ -27,10 +27,12 @@
 
     <main class="award-main">
       <section class="gallery-section" aria-labelledby="gallery-title">
+        <p v-if="resultEmbargoed" class="empty" role="status">创意奖与摄影奖作品暂不展示，结果将于北京时间 9 月 19 日 18:00 公布。</p>
+        <template v-else>
         <div class="gallery-head">
           <h2 id="gallery-title" class="sr-only">{{ currentCategoryName }}</h2>
-          <span v-if="loggedIn" class="quota-chip" :class="{ ended: closed }">
-            <template v-if="!closed">今日剩余 <b>{{ remainingVotes }}</b> 票</template>
+          <span v-if="loggedIn" class="quota-chip" :class="{ ended: displayClosed }">
+            <template v-if="!displayClosed">今日剩余 <b>{{ remainingVotes }}</b> 票</template>
             <template v-else>投票已截止</template>
           </span>
           <div class="sort-controls" role="group" aria-label="作品排序方式">
@@ -58,7 +60,7 @@
 
         <div v-if="loading" class="empty">加载中…</div>
         <div v-else-if="!works.length" class="empty">
-          暂无已通过的作品，快去投出第一份吧！
+          {{ displayClosed ? '暂无已通过的作品。' : '暂无已通过的作品，快去投出第一份吧！' }}
         </div>
         <div v-else class="work-grid">
           <article v-for="w in sortedWorks" :key="w.id" class="work-card" @click="openWorkModal(w)">
@@ -77,7 +79,8 @@
                 </span>
                 <button
                   class="vote-btn"
-                  :class="{ voted: w.votedToday, closed }"
+                  :class="{ voted: w.votedToday, closed: displayClosed }"
+                  :disabled="displayClosed"
                   type="button"
                   @click.stop="toggleVote(w)"
                 >
@@ -88,21 +91,23 @@
             </div>
           </article>
         </div>
+        </template>
       </section>
     </main>
 
     <button
       class="publish-fab"
-      :class="{ closed }"
+      :class="{ closed: displayClosed }"
+      :disabled="displayClosed"
       type="button"
-      :aria-label="closed ? '投稿已截止' : `发布${currentCategoryName}作品`"
+      :aria-label="displayClosed ? '投稿已截止' : `发布${currentCategoryName}作品`"
       @click="goSubmit(galleryFilter)"
     >
       <Plus :size="29" :stroke-width="2.5" aria-hidden="true" />
     </button>
 
     <!-- 作品介绍弹窗 -->
-    <div v-if="modalWork" class="modal-mask" @click.self="modalWork = null">
+    <div v-if="modalWork && !resultEmbargoed" class="modal-mask" @click.self="modalWork = null">
       <div class="modal-card">
         <button class="modal-close" type="button" @click="modalWork = null">×</button>
         <div class="modal-images">
@@ -138,12 +143,13 @@
           </div>
           <button
             class="modal-vote"
-            :class="{ voted: modalWork.votedToday, closed }"
+            :class="{ voted: modalWork.votedToday, closed: displayClosed }"
+            :disabled="displayClosed"
             type="button"
             @click="toggleVote(modalWork)"
           >
             <Heart :size="16" aria-hidden="true" />
-            {{ modalWork.votedToday ? '已投票（点击取消）' : '投我一票' }}
+            {{ displayClosed ? '投票已截止' : modalWork.votedToday ? '已投票（点击取消）' : '投我一票' }}
             · {{ modalWork.likeCount || 0 }}
           </button>
         </div>
@@ -158,10 +164,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
 import { AWARD_CONFIG } from '@/data/awards'
+import { ACTIVITY_CLOSED_MESSAGE, activityClosed as closed, isActivityClosed } from '@/stores/activityDeadline'
+import { resultEmbargoed, refreshResultRole, previewMode } from '@/stores/resultReveal'
 import {
   ArrowDown,
   ArrowUp,
@@ -187,13 +195,9 @@ const categories = computed(() => meta.value?.categories || AWARD_CONFIG.categor
 const currentCategoryName = computed(() =>
   categories.value.find(category => category.id === galleryFilter.value)?.name || '作品展示'
 )
-const deadline = computed(() => meta.value?.deadline || AWARD_CONFIG.deadline)
 const maxVotesPerDay = computed(() => meta.value?.maxVotesPerDay ?? AWARD_CONFIG.maxVotesPerDay)
-const closed = computed(() => {
-  if (!deadline.value) return false
-  return Date.now() > new Date(deadline.value).getTime()
-})
 const loggedIn = computed(() => !!localStorage.getItem('token'))
+const displayClosed = computed(() => closed.value || (import.meta.env.DEV && ['sealed', 'owner', 'revealed'].includes(previewMode.value)))
 const remainingVotes = computed(() =>
   quota.value != null ? quota.value.remaining : maxVotesPerDay.value
 )
@@ -262,6 +266,7 @@ async function loadQuota() {
 
 async function fetchWorks(params = {}) {
   const res = await request('/submissions', 'GET', { limit: 200, ...params })
+  if (res?.data?.embargoed) return []
   if (res?.data?.code === 0) return res.data.list || []
   return []
 }
@@ -278,7 +283,8 @@ async function reloadFiltered() {
     if (galleryFilter.value !== 'all') {
       params.category = galleryFilter.value
     }
-    works.value = await fetchWorks(params)
+    const fetched = await fetchWorks(params)
+    if (!resultEmbargoed.value) works.value = fetched
   } catch {
     works.value = []
   } finally {
@@ -287,8 +293,9 @@ async function reloadFiltered() {
 }
 
 async function toggleVote(work) {
-  if (closed.value) {
-    showToast('活动已截止，无法进行操作，请耐心期待最终结果公布')
+  if (displayClosed.value) return
+  if (isActivityClosed()) {
+    showToast(ACTIVITY_CLOSED_MESSAGE)
     return
   }
   if (!loggedIn.value) {
@@ -323,8 +330,9 @@ function openWorkModal(work) {
 }
 
 function goSubmit(category) {
-  if (closed.value) {
-    showToast('活动已截止，无法进行操作，请耐心期待最终结果公布')
+  if (displayClosed.value) return
+  if (isActivityClosed()) {
+    showToast(ACTIVITY_CLOSED_MESSAGE)
     return
   }
   router.push({ path: '/award/submit', query: { category } })
@@ -336,9 +344,17 @@ function goMine() {
 
 onMounted(() => {
   document.title = '打卡作品投稿 · 2026 迎新'
+  refreshResultRole()
   loadMeta()
   reloadFiltered()
   loadQuota()
+})
+watch(resultEmbargoed, value => {
+  if (value) {
+    modalWork.value = null
+    works.value = []
+  }
+  else reloadFiltered()
 })
 </script>
 
