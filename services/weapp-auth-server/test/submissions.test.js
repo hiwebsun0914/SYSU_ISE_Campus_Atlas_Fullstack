@@ -6,6 +6,7 @@ const { once } = require('node:events');
 const test = require('node:test');
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const COS = require('cos-nodejs-sdk-v5');
 
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'submissions-test-'));
 const usersFile = path.join(testDir, 'users.json');
@@ -642,6 +643,21 @@ test('blocks user operations after activity deadline; admin still works', async 
   const originalDeadline = awards.deadline;
   awards.deadline = '2020-01-01T00:00:00+08:00';
   try {
+    const meta = await api(101, '/submissions/meta');
+    assert.equal(meta.response.headers.get('cache-control'), 'no-store');
+    assert.equal(meta.body.data.closed, true);
+    assert.equal(typeof meta.body.data.serverNow, 'number');
+
+    for (const [endpoint, payload] of [
+      ['/submissions/presign', { ext: 'jpg' }],
+      ['/submissions/commit', { key: 'Award/101__alice/test.jpg', size: 10 }],
+      ['/submissions/upload', {}]
+    ]) {
+      const upload = await api(101, endpoint, { method: 'POST', body: JSON.stringify(payload) });
+      assert.equal(upload.response.status, 403, endpoint);
+      assert.equal(upload.body.errorCode, 'ACTIVITY_CLOSED', endpoint);
+    }
+
     const create = await api(101, '/submissions', {
       method: 'POST',
       body: JSON.stringify(validPayload({ category: 'photography' }))
@@ -667,6 +683,36 @@ test('blocks user operations after activity deadline; admin still works', async 
     const adminList = await api(202, '/admin/submissions');
     assert.equal(adminList.body.code, 0);
   } finally {
+    awards.deadline = originalDeadline;
+  }
+});
+
+test('rejects an upload confirmation whose storage check finishes after closure', async () => {
+  const awards = require('../data/awards');
+  const originalDeadline = awards.deadline;
+  const originalFetch = global.fetch;
+  const originalHeadObject = COS.prototype.headObject;
+  COS.prototype.headObject = async () => {
+    awards.deadline = '2020-01-01T00:00:00+08:00';
+    return { headers: { 'content-length': '100' } };
+  };
+  global.fetch = (input, init) => {
+    if (String(input).startsWith('https://') && init?.method === 'HEAD') {
+      awards.deadline = '2020-01-01T00:00:00+08:00';
+      return Promise.resolve({ ok: true });
+    }
+    return originalFetch(input, init);
+  };
+  try {
+    const result = await api(101, '/submissions/commit', {
+      method: 'POST',
+      body: JSON.stringify({ key: 'Award/101__alice/cross-midnight.jpg', size: 100 })
+    });
+    assert.equal(result.response.status, 403);
+    assert.equal(result.body.errorCode, 'ACTIVITY_CLOSED');
+  } finally {
+    global.fetch = originalFetch;
+    COS.prototype.headObject = originalHeadObject;
     awards.deadline = originalDeadline;
   }
 });

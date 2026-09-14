@@ -17,7 +17,7 @@
     </header>
 
     <main class="submit-main">
-      <div v-if="notLoggedIn" class="empty">
+      <div v-if="notLoggedIn && !closed" class="empty">
         <p>投稿前需要先登录</p>
         <button class="primary-btn" type="button" @click="goSignin">去登录</button>
       </div>
@@ -81,7 +81,7 @@
               v-if="images.length < maxImagesPerWork"
               type="button"
               class="upload-add"
-              :disabled="uploading"
+              :disabled="closed || uploading"
               @click="pickFile"
             >
               <Plus :size="26" :stroke-width="1.8" aria-hidden="true" />
@@ -95,7 +95,7 @@
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
 
         <div class="form-actions">
-          <button class="primary-btn" type="submit" :disabled="submitting || uploading">
+          <button class="primary-btn" type="submit" :disabled="closed || submitting || uploading">
             {{ submitting ? '提交中…' : '提交投稿' }}
           </button>
           <span class="hint">提交后由管理员审核，通过后将在作品展示区公开</span>
@@ -103,7 +103,7 @@
       </form>
 
       <div v-else class="empty">
-        <p>活动已截止，无法进行操作，请耐心期待最终结果公布。</p>
+        <p>{{ ACTIVITY_CLOSED_MESSAGE }}</p>
         <button class="ghost-btn" type="button" @click="router.push('/award')">查看作品</button>
       </div>
     </main>
@@ -122,7 +122,7 @@
     </div>
 
     <!-- 已提交同类别作品提示 -->
-    <div v-if="dupModalVisible" class="success-mask">
+    <div v-if="dupModalVisible && !closed" class="success-mask">
       <div class="success-card">
         <span class="success-icon warn"><TriangleAlert :size="24" :stroke-width="2.2" aria-hidden="true" /></span>
         <h2>已提交过{{ existingActive?.categoryName }}</h2>
@@ -152,6 +152,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request } from '@/utils/request'
 import { AWARD_CONFIG } from '@/data/awards'
+import { ACTIVITY_CLOSED_MESSAGE, activityDeadline, activityClosed as closed, isActivityClosed, assertActivityOpen } from '@/stores/activityDeadline'
 import { CalendarDays, Camera, Check, Lightbulb, Plus, TriangleAlert } from '@lucide/vue'
 
 const route = useRoute()
@@ -163,16 +164,12 @@ const mine = ref([])
 const notLoggedIn = ref(false)
 
 const categories = computed(() => meta.value?.categories || AWARD_CONFIG.categories)
-const deadline = computed(() => meta.value?.deadline || AWARD_CONFIG.deadline)
+const deadline = activityDeadline.deadline
 const perUserPerCategory = computed(() => meta.value?.perUserPerCategory ?? AWARD_CONFIG.perUserPerCategory)
 const maxImagesPerWork = computed(() => meta.value?.maxImagesPerWork ?? AWARD_CONFIG.maxImagesPerWork)
 const maxImageMB = computed(() => meta.value?.maxImageMB ?? AWARD_CONFIG.maxImageMB)
 const allowedTypes = computed(() => meta.value?.allowedImageTypes || AWARD_CONFIG.allowedImageTypes)
 
-const closed = computed(() => {
-  if (!deadline.value) return false
-  return Date.now() > new Date(deadline.value).getTime()
-})
 const deadlineText = computed(() => {
   try {
     return new Date(deadline.value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
@@ -246,12 +243,14 @@ function sizeText(bytes) {
 }
 
 function pickFile() {
+  if (isActivityClosed()) { error.value = ACTIVITY_CLOSED_MESSAGE; return }
   fileInput.value?.click()
 }
 
 function onFilesChosen(e) {
   const files = Array.from(e.target.files || [])
   e.target.value = ''
+  if (isActivityClosed()) { error.value = ACTIVITY_CLOSED_MESSAGE; return }
   if (!files.length) return
 
   const maxBytes = maxImageMB.value * 1024 * 1024
@@ -285,6 +284,7 @@ function removeImage(uid) {
 }
 
 async function uploadOne(file) {
+  assertActivityOpen()
   // 图片先传给后端，由后端转发到存储桶（不依赖存储桶跨域配置，任何设备都能上传）
   const form = new FormData()
   form.append('file', file)
@@ -294,6 +294,7 @@ async function uploadOne(file) {
 }
 
 async function submit() {
+  if (isActivityClosed()) { error.value = ACTIVITY_CLOSED_MESSAGE; return }
   error.value = ''
   if (existingActive.value) {
     dupModalVisible.value = true
@@ -323,6 +324,7 @@ async function submit() {
       uploaded.push(await uploadOne(img.file))
     }
     uploading.value = false
+    assertActivityOpen()
 
     const res = await request('/submissions', 'POST', {
       category: form.value.category,
@@ -348,6 +350,7 @@ async function submit() {
 }
 
 function onSubmitClick() {
+  if (isActivityClosed()) { error.value = ACTIVITY_CLOSED_MESSAGE; return }
   if (existingActive.value) {
     dupModalVisible.value = true
     return

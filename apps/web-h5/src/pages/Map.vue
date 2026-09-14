@@ -153,6 +153,7 @@ import { fetchUserProgress, userRole } from '@/stores/userProgress'
 import { CHECKIN_RADIUS, withinCheckinRange } from '@/utils/geoCheckin'
 import { request } from '@/utils/request'
 import checkinFlow from '@/utils/checkinFlow'
+import { ACTIVITY_CLOSED_MESSAGE, isActivityClosed } from '@/stores/activityDeadline'
 
 const router = useRouter()
 const route = useRoute()
@@ -451,6 +452,7 @@ function selectFromList(place) {
 
 /** 第一步 · 定位打卡：获取用户位置并判断距离（达标后由用户再点“拍照上传”） */
 async function onGeoCheckin() {
+  if (isActivityClosed()) { showToast(ACTIVITY_CLOSED_MESSAGE); return }
   if (!selectedPlace.value || !campusMapRef.value) return
 
   // 超管可在异地测试普通地点的拍照审核流程；隐藏地点维持原有规则。
@@ -491,6 +493,7 @@ async function onGeoCheckin() {
 
 /** 第二步 · 拍照上传：距离达标后由用户真实点击触发（浏览器手势窗口内唤起相机/相册） */
 function onPhotoCheckin() {
+  if (isActivityClosed()) { showToast(ACTIVITY_CLOSED_MESSAGE); return }
   if (!selectedPlace.value || geoStatus.value !== 'success' || photoSubmitting.value) return
   submitPhotoCheckin()
 }

@@ -10,6 +10,8 @@ const path = require('path');
 const auth = require('../middleware/auth');
 const { getLocation } = require('../lib/locationSettings');
 const { deferLegacyPendingPoints } = require('../lib/checkinPoints');
+const { isActivityEnded } = require('../winner');
+const { rejectIfActivityClosed, requireActivityOpen } = require('../lib/activityDeadline');
 
 // ==== 环境变量 ====
 const {
@@ -35,11 +37,11 @@ const cos = new COS({ SecretId: TENCENT_SECRET_ID, SecretKey: TENCENT_SECRET_KEY
 
 // ==== users.json 读取 ====
 const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
-function readUsers() {
+function readUsers({ migrate = true } = {}) {
   try {
     const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
     const users = JSON.parse(raw);
-    if (deferLegacyPendingPoints(users)) {
+    if (migrate && deferLegacyPendingPoints(users)) {
       fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
     }
     return users;
@@ -48,8 +50,8 @@ function readUsers() {
     return [];
   }
 }
-function getUserById(id) {
-  return readUsers().find(u => String(u.id) === String(id));
+function getUserById(id, options) {
+  return readUsers(options).find(u => String(u.id) === String(id));
 }
 function writeUsers(list) {
   try { fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf8'); }
@@ -100,6 +102,7 @@ function publicPendingCheckins(user) {
 }
 
 function checkSubmissionAvailability(req, res) {
+  if (rejectIfActivityClosed(res)) return null;
   const locationId = Number(req.body?.locationId);
   const location = Number.isInteger(locationId) && locationId > 0 ? getLocation(locationId) : null;
   // 已下线（retired）的打卡点同样拒绝新提交，但历史记录不受影响
@@ -323,17 +326,20 @@ router.post('/presign', auth, (req, res) => {
   });
 
   Promise.all([sign(key), sign(thumbnailKey)])
-    .then(([putUrl, thumbnailPutUrl]) => res.json({
-      code: 0,
-      data: {
-        // Legacy aliases keep an older web client able to upload its single image.
-        key,
-        putUrl,
-        main: { key, putUrl, contentType },
-        thumbnail: { key: thumbnailKey, putUrl: thumbnailPutUrl, contentType },
-        limits: { mainBytes: CHECKIN_MAIN_MAX_BYTES, thumbnailBytes: CHECKIN_THUMBNAIL_MAX_BYTES }
-      }
-    }))
+    .then(([putUrl, thumbnailPutUrl]) => {
+      if (rejectIfActivityClosed(res)) return;
+      return res.json({
+        code: 0,
+        data: {
+          // Legacy aliases keep an older web client able to upload its single image.
+          key,
+          putUrl,
+          main: { key, putUrl, contentType },
+          thumbnail: { key: thumbnailKey, putUrl: thumbnailPutUrl, contentType },
+          limits: { mainBytes: CHECKIN_MAIN_MAX_BYTES, thumbnailBytes: CHECKIN_THUMBNAIL_MAX_BYTES }
+        }
+      });
+    })
     .catch(error => {
       console.error('[PRESIGN ERROR]', error);
       res.status(500).json({ code: 1, message: '预签名失败' });
@@ -356,6 +362,7 @@ router.post('/fallback/presign', auth, (req, res) => {
   cos.getObjectUrl(
     { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300, Headers: { 'x-cos-acl': 'private' } },
     (error, data) => {
+      if (rejectIfActivityClosed(res)) return;
       if (error || !data?.Url) return res.status(500).json({ code: 1, message: '预签名失败' });
       return res.json({ code: 0, data: { key, putUrl: data.Url, contentType: sourceType, headers: { 'x-cos-acl': 'private' }, maxBytes: CHECKIN_TEMP_MAX_BYTES } });
     }
@@ -415,7 +422,9 @@ router.post('/fallback/process', auth, async (req, res) => {
       CacheControl: IMMUTABLE_CACHE_CONTROL,
       ACL: 'public-read'
     });
+    if (rejectIfActivityClosed(res)) return;
     await Promise.all([upload(mainKey, main), upload(thumbnailKey, thumbnail)]);
+    if (rejectIfActivityClosed(res)) return;
     return res.json({
       code: 0,
       data: {
@@ -434,7 +443,7 @@ router.post('/fallback/process', auth, async (req, res) => {
 });
 
 // ==== B. STS 临时凭证（可选直传）====
-router.post('/init', auth, (req, res) => {
+router.post('/init', auth, requireActivityOpen, (req, res) => {
   const key = buildKey(req, req.body?.ext);
   const [, appid] = String(COS_BUCKET).split(/-(?=[^-]+$)/);
   const prefix = key.replace(/\/[^/]+$/, '/*');
@@ -460,6 +469,7 @@ router.post('/init', auth, (req, res) => {
     durationSeconds: Number(STS_DURATION) || 300,
     policy
   }, (err, creds) => {
+    if (rejectIfActivityClosed(res)) return;
     if (err || !creds?.credentials) {
       console.error('[checkin/init] STS error:', err || creds);
       return res.status(500).json({ code: 1, message: '获取上传凭证失败' });
@@ -497,12 +507,14 @@ router.post('/commit', auth, async (req, res) => {
     return res.status(400).json({ code: 1, message: '非法缩略图 key' });
   }
 
-  const currentUser = getUserById(uid);
+  // A retry of an accepted commit can still acknowledge it after the deadline,
+  // without migrating user data or touching COS objects.
+  const currentUser = getUserById(uid, { migrate: false });
   if (currentUser) {
     normalizeUserCheckins(currentUser);
     const existing = currentUser.pendingCheckins.find(item => item.key === key);
     if (existing) {
-      if (temporaryKey && temporaryKey.startsWith(`checkin-temp/${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'idempotent commit');
+      if (!isActivityEnded() && temporaryKey && temporaryKey.startsWith(`checkin-temp/${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'idempotent commit');
       return res.json({ code: 0, key, url: existing.photo || toUrl(key), thumbnail: existing.thumbnail || '', awardedPoints: 0, reviewStatus: 'pending', idempotent: true });
     }
   }
@@ -537,8 +549,7 @@ router.post('/commit', auth, async (req, res) => {
     });
     if (thumbnailError) return res.status(400).json({ code: 1, message: thumbnailError });
   }
-
-
+  if (rejectIfActivityClosed(res)) return;
   try {
     await Promise.all([
       applyImmutableMetadata(key, headType(head) || optimizedMime || CHECKIN_JPEG_CONTENT_TYPE),
@@ -549,6 +560,10 @@ router.post('/commit', auth, async (req, res) => {
     return res.status(502).json({ code: 1, message: '图片缓存配置失败，请重试' });
   }
 
+  // COS validation/metadata work may have crossed midnight. No new record may
+  // be accepted using the request's earlier arrival or upload-signing time.
+  if (rejectIfActivityClosed(res)) return;
+
   // === 关键：把 locationId 写入 users.json 的 lockingLocations（仅数字） ===
   // 说明：前端打卡时会把 locationId 一并传给 commit
   const locNum = Number(req.body?.locationId);
@@ -556,6 +571,8 @@ router.post('/commit', auth, async (req, res) => {
     const users = readUsers();
     const idx = users.findIndex(u => String(u.id) === String(uid));
     if (idx !== -1) {
+      const submittedAt = Date.now();
+      if (rejectIfActivityClosed(res, 403, submittedAt)) return;
       const u = users[idx];
       normalizeUserCheckins(u);
 
@@ -570,7 +587,7 @@ router.post('/commit', auth, async (req, res) => {
           photo: toUrl(key),
           thumbnailKey: thumbnailKey || '',
           thumbnail: thumbnailKey ? toUrl(thumbnailKey) : '',
-          submittedAt: Date.now(),
+          submittedAt,
           pointsDeferred: true,
           appealStatus: ''
         };
@@ -579,6 +596,7 @@ router.post('/commit', auth, async (req, res) => {
         else u.pendingCheckins[pendingIndex] = pending;
       }
       u.updatedAt = Date.now();
+      if (rejectIfActivityClosed(res)) return;
       writeUsers(users);
     }
   }
@@ -634,7 +652,7 @@ router.get('/status', auth, (req, res) => {
 // ==== E. 地图 GPS 打卡（已关闭即时计分）====
 // 规则：所有打卡统一走「50 米范围内拍照上传 → 审核通过」流程，
 // 本接口不再直接加分，避免绕过审核刷分；仅保留状态提示能力。
-router.post('/map', auth, (req, res) => {
+router.post('/map', auth, requireActivityOpen, (req, res) => {
   try {
     const { locationId } = req.body || {};
     const locNum = Number(locationId);
@@ -682,7 +700,7 @@ router.post('/map', auth, (req, res) => {
 });
 
 // ==== F. 对被驳回的照片打卡发起申诉 ====
-router.post('/appeal', auth, (req, res) => {
+router.post('/appeal', auth, requireActivityOpen, (req, res) => {
   const locationId = Number(req.body?.locationId);
   const reason = String(req.body?.reason || '').normalize('NFC').trim().slice(0, 500);
   if (!Number.isInteger(locationId) || locationId <= 0) {
@@ -726,6 +744,7 @@ router.post('/appeal', auth, (req, res) => {
     appealedAt: rejected.appealedAt
   });
   user.updatedAt = Date.now();
+  if (rejectIfActivityClosed(res)) return;
   writeUsers(users);
 
   return res.json({ code: 0, message: '申诉已提交，请等待管理员复核', data: { locationId, appealStatus: 'pending' } });

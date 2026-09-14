@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import routes from '@/data/routes'
 import { request } from '@/utils/request'
 import { backendToPlaceId, placeIdToBackend } from '@/data/campusPlaces'
+import { assertActivityOpen } from '@/stores/activityDeadline'
 
 export const points = ref(0)
 export const checkedPlaces = ref([])
@@ -173,6 +174,7 @@ export function getPlaceProgressState(placeId) {
 }
 
 export async function appealCheckin(placeId, reason) {
+  assertActivityOpen()
   const backendId = placeIdToBackend[placeId]
   if (!backendId) throw new Error(`未知地点ID: ${placeId}`)
   const response = await request('/checkin/appeal', 'POST', { locationId: backendId, reason })

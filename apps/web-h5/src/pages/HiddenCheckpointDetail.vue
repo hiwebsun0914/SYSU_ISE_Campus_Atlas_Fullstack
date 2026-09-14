@@ -39,7 +39,7 @@
           <AlertCircle :size="19" aria-hidden="true" />
           <div>
             <strong>本次照片未通过审核</strong>
-            <p>{{ reviewState.note || '照片未满足打卡要求，你可以重新提交照片或发起申诉。' }}</p>
+            <p>{{ reviewState.note || (closed ? '照片未满足打卡要求，活动已截止，无法重新提交或申诉。' : '照片未满足打卡要求，你可以重新提交照片或发起申诉。') }}</p>
           </div>
         </aside>
 
@@ -47,7 +47,7 @@
           <Clock3 :size="19" aria-hidden="true" />
           <div>
             <strong>{{ reviewState.status === 'appealed' ? '申诉正在复核' : '照片正在审核' }}</strong>
-            <p>审核期间不能重复打卡；管理员处理后，这里会显示结果。</p>
+            <p>管理员处理后，这里会显示结果；截止前提交的照片，审核通过后照常计分。</p>
           </div>
         </aside>
 
@@ -59,16 +59,17 @@
           ></article>
         </div>
 
+        <p v-if="closed" class="deadline-note" role="status">打卡与申诉已于北京时间 9 月 17 日 00:00 截止。已提交的记录仍会继续审核。</p>
         <button
           class="hd-action"
           type="button"
-          :disabled="reviewState.status === 'pending' || reviewState.status === 'appealed' || checking"
+          :disabled="(closed && !isPlaceChecked(place.id)) || reviewState.status === 'pending' || reviewState.status === 'appealed' || checking"
           @click="onStartCheckin(place)"
         >
           {{ actionLabel }}
         </button>
 
-        <form v-if="reviewState.status === 'rejected'" class="appeal-form" @submit.prevent="submitAppeal">
+        <form v-if="!closed && reviewState.status === 'rejected'" class="appeal-form" @submit.prevent="submitAppeal">
           <label for="checkin-appeal">认为审核结果有误？提交申诉说明</label>
           <textarea
             id="checkin-appeal"
@@ -102,6 +103,7 @@ import { campusLocations } from '@/data/campusPlaces'
 import { appealCheckin, fetchUserProgress, getPlaceReviewState, isPlaceChecked } from '@/stores/userProgress'
 import { placeIdToBackend } from '@/data/campusPlaces'
 import { checkinFlow } from '@/utils/checkinFlow'
+import { ACTIVITY_CLOSED_MESSAGE, activityClosed as closed, isActivityClosed } from '@/stores/activityDeadline'
 
 document.title = '隐藏打卡点详情'
 
@@ -127,7 +129,7 @@ const statusLabel = computed(() => ({
   approved: '✅ 已发现',
   pending: '⏳ 审核中',
   appealed: '↻ 申诉复核中',
-  rejected: '⚠️ 未通过，可重新打卡',
+  rejected: closed.value ? '⚠️ 未通过，活动已截止' : '⚠️ 未通过，可重新打卡',
 }[reviewState.value.status] || '🔒 未发现'))
 const heroStatusText = computed(() => ({
   pending: '隐藏地点 · 照片审核中',
@@ -138,6 +140,7 @@ const actionLabel = computed(() => {
   if (isPlaceChecked(place.value?.id)) return '在地图中查看'
   if (reviewState.value.status === 'pending') return '照片审核中，请耐心等待'
   if (reviewState.value.status === 'appealed') return '申诉复核中'
+  if (closed.value) return '打卡已截止'
   if (checking.value) return '正在提交…'
   return reviewState.value.status === 'rejected' ? '重新拍照打卡' : '立即打卡'
 })
@@ -154,6 +157,7 @@ async function onStartCheckin(p) {
   }
 
   // 共享拍照打卡流程：拍照→上传→审核
+  if (isActivityClosed()) { alert(ACTIVITY_CLOSED_MESSAGE); return }
   if (!checkinFlow.isAuthed()) {
     checkinFlow.pushOrRedirect('/signin', route, router)
     return
@@ -180,6 +184,7 @@ async function onStartCheckin(p) {
 }
 
 async function submitAppeal() {
+  if (isActivityClosed()) { appealError.value = ACTIVITY_CLOSED_MESSAGE; return }
   const reason = appealReason.value.trim()
   appealError.value = reason.length < 4 ? '请填写至少 4 个字符的申诉说明' : ''
   if (appealError.value || appealing.value || !place.value) return
@@ -200,6 +205,7 @@ function goList() {
 </script>
 
 <style scoped>
+.deadline-note { font-size: 13px; line-height: 1.6; opacity: .8; }
 .hd-shell {
   min-height: 100vh;
   background: linear-gradient(180deg, #0f2e2a 0%, #14403a 100%);

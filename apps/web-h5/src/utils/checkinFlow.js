@@ -5,6 +5,7 @@
  * 不新建任何接口 / 上传逻辑 / 审核逻辑，仅作为公共入口被两个页面调用。
  */
 import { request as _reqNamed } from '@/utils/request'
+import { ACTIVITY_CLOSED_MESSAGE, assertActivityOpen, isActivityClosed } from '@/stores/activityDeadline'
 
 const request = _reqNamed
 
@@ -24,6 +25,10 @@ function isAuthed() {
 
 /* ===== 共享拍照打卡流程：错误/步骤提示 ===== */
 function showStepError(step, errOrMsg, extra = {}) {
+  if (isActivityClosed()) {
+    alert(ACTIVITY_CLOSED_MESSAGE)
+    return
+  }
   const msg = typeof errOrMsg === 'string' ? errOrMsg : (errOrMsg?.message || '未知错误')
   console.groupCollapsed(`[checkin] ❌ ${step} 失败：${msg}`)
   console.log('extra =>', extra)
@@ -55,6 +60,7 @@ function ensureFileInput() {
 }
 
 function pickImageOnce() {
+  if (isActivityClosed()) return Promise.resolve(null)
   return new Promise((resolve) => {
     const input = ensureFileInput()
     // 清空上次选择，确保重复选择同一文件也能触发 change
@@ -101,6 +107,7 @@ function sourceExtension(file) {
 async function uploadWithRetry(putUrl, contentType, body, extraHeaders = {}) {
   let lastError
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    assertActivityOpen()
     try {
       const response = await fetch(putUrl, {
         method: 'PUT',
@@ -143,6 +150,12 @@ async function prepareCheckinOnServer(file, locationId) {
 
 /* ===== 共享拍照打卡流程：统一打卡主流程 ===== */
 async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
+  const stopForDeadline = () => {
+    alert(ACTIVITY_CLOSED_MESSAGE)
+    if (onError) onError('activity-closed')
+    return { ok: false, reason: 'activity-closed' }
+  }
+  if (isActivityClosed()) return stopForDeadline()
   if (!isAuthed()) {
     if (onError) onError('unauthorized')
     return { ok: false, reason: 'unauthorized' }
@@ -152,6 +165,7 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
   // iOS Safari / 微信 WebView 的用户激活跨不过网络 await，若先做状态校验再选图，
   // 文件选择器会被静默拦截（此前“距离达标却弹不出上传窗口”的根因之一）。
   const file = await pickImageOnce()
+  if (isActivityClosed()) return stopForDeadline()
   if (!file) return { ok: false, reason: 'no-file' }
 
   // 选图后再同步状态，避免对待审/已通过地点发起无效上传；
@@ -172,9 +186,11 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
 
   let prepared
   let serverPrepared
+  if (isActivityClosed()) return stopForDeadline()
   try {
     prepared = await prepareCheckinImages(file)
   } catch (error) {
+    if (isActivityClosed()) return stopForDeadline()
     try {
       serverPrepared = await prepareCheckinOnServer(file, locationId)
     } catch (fallbackError) {
@@ -185,6 +201,7 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
   }
 
   try {
+    if (isActivityClosed()) return stopForDeadline()
     /* 1) 预签名 */
     let mainTarget = serverPrepared?.main
     let thumbnailTarget = serverPrepared?.thumbnail
@@ -276,6 +293,7 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
     alert('照片已提交审核。审核期间不能重复打卡，通过后才会计入积分。')
     return { ok: true, photoUrl, locationId, awardedPoints }
   } catch (err) {
+    if (isActivityClosed()) return stopForDeadline()
     console.error('[checkin] 未捕获错误', err)
     alert('网络异常（可能是 CORS、跨域 Cookie 或对象存储拦截）')
     if (onError) onError('unknown', err)

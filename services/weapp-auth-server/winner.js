@@ -3,7 +3,7 @@ const awards = require('./data/awards');
 
 function isActivityEnded(now = Date.now()) {
   if (!awards.deadline) return false;
-  return now > new Date(awards.deadline).getTime();
+  return now >= new Date(awards.deadline).getTime();
 }
 
 function winnerLabelOf(rank) {

@@ -34,7 +34,7 @@
           <div>
             <p class="panel-label">MY SUBMISSIONS</p>
             <h2 id="records-title">投稿记录</h2>
-            <p class="section-desc">打卡照片与作品投稿的审核进度都在这里。</p>
+            <p class="section-desc">{{ closed ? '打卡、投稿与新申诉已截止。已提交记录继续审核，打卡通过后照常计分。' : '打卡照片与作品投稿的审核进度都在这里。' }}</p>
           </div>
         </div>
 
@@ -135,9 +135,9 @@
             <Camera :size="24" aria-hidden="true" />
             <div>
               <strong>{{ photoItems.length ? '当前筛选下没有打卡照片' : '还没有上传过打卡照片' }}</strong>
-              <p>{{ photoItems.length ? '切换状态筛选查看其他照片。' : '到校园里找到一个打卡点，拍照上传后状态会显示在这里。' }}</p>
+              <p>{{ photoItems.length ? '切换状态筛选查看其他照片。' : closed ? '打卡通道已截止，仍可在地图中查看校园地点。' : '到校园里找到一个打卡点，拍照上传后状态会显示在这里。' }}</p>
             </div>
-            <button v-if="!photoItems.length" class="ghost-button" type="button" @click="router.push('/map')">去地图打卡</button>
+            <button v-if="!photoItems.length" class="ghost-button" type="button" @click="router.push('/map')">{{ closed ? '查看地图' : '去地图打卡' }}</button>
           </div>
         </div>
 
@@ -197,9 +197,9 @@
             <Trophy :size="24" aria-hidden="true" />
             <div>
               <strong>{{ workItems.length ? '当前筛选下没有作品' : '还没有投稿作品' }}</strong>
-              <p>{{ workItems.length ? '切换状态筛选查看其他作品。' : '提交创意或摄影作品后，审核状态会显示在这里。' }}</p>
+              <p>{{ workItems.length ? '切换状态筛选查看其他作品。' : closed ? '作品投稿已截止。' : '提交创意或摄影作品后，审核状态会显示在这里。' }}</p>
             </div>
-            <button v-if="!workItems.length" class="ghost-button" type="button" @click="router.push('/award/submit')">去投稿</button>
+            <button v-if="!closed && !workItems.length" class="ghost-button" type="button" @click="router.push('/award/submit')">去投稿</button>
           </div>
         </div>
       </section>
@@ -228,6 +228,7 @@ import {
   XCircle
 } from '@lucide/vue'
 import { request } from '@/utils/request'
+import { activityClosed as closed } from '@/stores/activityDeadline'
 import { backendToPlaceId, getPlaceById } from '@/data/campusPlaces'
 
 const router = useRouter()

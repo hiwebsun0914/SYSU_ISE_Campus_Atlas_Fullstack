@@ -196,3 +196,63 @@ test('rejects a missing thumbnail without accepting the review record', async ()
   assert.equal(result.response.status, 400);
   assert.match(result.body.message, /缩略图不存在/);
 });
+
+test('does not create a pending check-in when COS validation crosses the deadline', async () => {
+  const awards = require('../data/awards');
+  const originalDeadline = awards.deadline;
+  const originalCopy = COS.prototype.putObjectCopy;
+  const key = 'checkin/901__photo-user/7/cross_main.webp';
+  const thumbnailKey = 'checkin/901__photo-user/7/cross_thumb.webp';
+  heads.set(key, { headers: { 'content-length': '800000', 'content-type': 'image/webp' } });
+  heads.set(thumbnailKey, { headers: { 'content-length': '70000', 'content-type': 'image/webp' } });
+  const before = fs.readFileSync(usersFile, 'utf8');
+  COS.prototype.putObjectCopy = async function crossMidnight(options) {
+    awards.deadline = '2020-01-01T00:00:00+08:00';
+    return originalCopy.call(this, options);
+  };
+  try {
+    const result = await api('/checkin/commit', {
+      key, size: 800000, thumbnailKey, thumbnailSize: 70000,
+      mime: 'image/webp', locationId: 7
+    });
+    assert.equal(result.response.status, 403);
+    assert.equal(result.body.errorCode, 'ACTIVITY_CLOSED');
+    assert.equal(fs.readFileSync(usersFile, 'utf8'), before);
+  } finally {
+    COS.prototype.putObjectCopy = originalCopy;
+    awards.deadline = originalDeadline;
+  }
+});
+
+test('closes every check-in entry at the deadline while preserving accepted commit retries', async () => {
+  const awards = require('../data/awards');
+  const originalDeadline = awards.deadline;
+  const before = fs.readFileSync(usersFile, 'utf8');
+  const pending = JSON.parse(before)[0].pendingCheckins[0];
+  const operations = [
+    ['/checkin/presign', { ext: 'jpg', locationId: 2 }],
+    ['/checkin/fallback/presign', { ext: 'jpg', size: 100, locationId: 2 }],
+    ['/checkin/fallback/process', { key: 'checkin-temp/901__photo-user/test.jpg', locationId: 2 }],
+    ['/checkin/init', { ext: 'jpg', locationId: 2 }],
+    ['/checkin/commit', { key: 'checkin/901__photo-user/2/new_main.jpg', size: 100, locationId: 2 }],
+    ['/checkin/map', { locationId: 2 }],
+    ['/checkin/appeal', { locationId: 3, reason: '请复核这张照片的建筑细节' }],
+    ['/user/unlock', { locationId: 2 }]
+  ];
+  awards.deadline = '2020-01-01T00:00:00+08:00';
+  try {
+    for (const [route, payload] of operations) {
+      const result = await api(route, payload);
+      assert.equal(result.response.status, 403, route);
+      assert.equal(result.body.errorCode, 'ACTIVITY_CLOSED', route);
+    }
+    const repeated = await api('/checkin/commit', {
+      key: pending.key, size: 800000, thumbnailKey: pending.thumbnailKey,
+      thumbnailSize: 70000, mime: 'image/webp', locationId: pending.locationId
+    });
+    assert.equal(repeated.body.idempotent, true);
+    assert.equal(fs.readFileSync(usersFile, 'utf8'), before);
+  } finally {
+    awards.deadline = originalDeadline;
+  }
+});

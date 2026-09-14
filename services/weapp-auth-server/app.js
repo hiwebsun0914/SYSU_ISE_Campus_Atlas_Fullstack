@@ -23,6 +23,7 @@ const { getLocations } = require('./lib/locationSettings');
 const { effectiveRole, isAdminRole } = require('./lib/roles');
 const { buildPointsRank } = require('./lib/pointsRank');
 const { deferLegacyPendingPoints } = require('./lib/checkinPoints');
+const { requireActivityOpen, rejectIfActivityClosed } = require('./lib/activityDeadline');
 
 // === 新增：COS SDK 与配置（用于列目录 + 生成签名 URL） ===
 const COS = require('cos-nodejs-sdk-v5');
@@ -601,7 +602,7 @@ app.get('/checkin/status', auth, (req, res) => {
 });
 
 /* ========= 打卡解锁 ========= */
-app.post('/user/unlock', auth, (req, res) => {
+app.post('/user/unlock', auth, requireActivityOpen, (req, res) => {
   const lid = Number((req.body || {}).locationId);
   if (!Number.isInteger(lid)) {
     return res.json({ code: 1, message: 'locationId 必须为 number/整数' });
@@ -622,6 +623,7 @@ app.post('/user/unlock', auth, (req, res) => {
   u.unlockedLocations = Array.from(unlocked);
   u.lockingLocations  = Array.from(locking);
   u.updatedAt = Date.now();
+  if (rejectIfActivityClosed(res)) return;
   writeUsers(users);
 
   return res.json({
