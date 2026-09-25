@@ -151,7 +151,6 @@ import {
 } from '@/stores/routeCheckin'
 import { fetchUserProgress, userRole } from '@/stores/userProgress'
 import { CHECKIN_RADIUS, withinCheckinRange } from '@/utils/geoCheckin'
-import { request } from '@/utils/request'
 import checkinFlow from '@/utils/checkinFlow'
 import { ACTIVITY_CLOSED_MESSAGE, isActivityClosed } from '@/stores/activityDeadline'
 
@@ -633,22 +632,10 @@ onMounted(() => {
       showToast('请先登录，打卡数据将同步到云端')
     }
   })
-  // 同步后端配置的打卡半径覆盖（管理端可调大场馆类地点的打卡范围）
-  request('/locations', 'GET')
-    .then((res) => {
-      const list = res?.data?.data?.locations || res?.data?.locations || []
-      const map = {}
-      for (const loc of list) {
-        const r = Number(loc?.checkinRadius)
-        if (loc?.backendId != null && Number.isFinite(r) && r > 0) {
-          map[Number(loc.backendId)] = r
-        }
-      }
-      radiusOverrides.value = map
-    })
-    .catch((err) => {
-      console.warn('[Map] fetch checkin radius overrides failed:', err)
-    })
+  // 活动期启动时已经载入地点配置，直接复用，避免进入地图后重复请求。
+  radiusOverrides.value = Object.fromEntries(campusLocations
+    .map(loc => [Number(loc.backendId), Number(loc.checkinRadius)])
+    .filter(([id, radius]) => Number.isFinite(id) && Number.isFinite(radius) && radius > 0))
 })
 
 onBeforeUnmount(() => {

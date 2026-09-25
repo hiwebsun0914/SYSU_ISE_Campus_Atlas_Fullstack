@@ -75,7 +75,23 @@ router.beforeEach(async to => {
 
   const response = await request('/auth/me', 'GET', null, { cacheBust: true })
   const user = response?.data?.userInfo || null
-  if (!response?.ok || response?.data?.code !== 0 || !user) {
+  if (!response?.ok) {
+    // A transient proxy/cloud failure must not turn into a logout. The server
+    // still enforces every admin API; this only lets a previously verified
+    // admin keep the local page open until connectivity recovers.
+    let cachedUser: { role?: string } = {}
+    try { cachedUser = JSON.parse(localStorage.getItem('userInfo') || '{}') } catch {}
+    if ((response?.status === 0 || response?.status === 503) && ADMIN_ROLES.has(cachedUser.role || '')) {
+      return true
+    }
+    if (response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+    }
+    return { path: '/signin', query: { redirect: to.fullPath, mode: 'admin' } }
+  }
+
+  if (response?.data?.code !== 0 || !user) {
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
     return { path: '/signin', query: { redirect: to.fullPath, mode: 'admin' } }
