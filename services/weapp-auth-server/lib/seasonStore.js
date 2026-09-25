@@ -54,6 +54,8 @@ function state(id = selectedId()) {
   return value;
 }
 function saveState(value) { write(path.join(root(), validId(value.seasonId), 'state.json'), value); }
+function readRoster(id = selectedId()) { return read(path.join(root(), validId(id), 'roster.json'), null); }
+function saveRoster(value) { write(path.join(root(), validId(value.seasonId), 'roster.json'), value); }
 function emptyProgress(userId, seasonId) {
   return { userId, seasonId, points: 0, pointsUpdatedAt: 0, unlockedLocations: [], lockingLocations: [], completedRoutes: [], checkinRecords: [], pendingCheckins: [], checkinReviewRecords: [] };
 }
@@ -176,4 +178,4 @@ function lock() {
   process.once('exit', release);
   return release;
 }
-module.exports = { context, root, legacy, clone, fields, fail, validId, atomic, read, write, enabled, registry, selectedId, state, saveState, emptyProgress, stripAccount, activity, readAccounts, participantSeasonId, readUsers, writeUsers, readSubmissions, writeSubmissions, config, configProxy, readSettings, writeSettings, mediaRoot, pending, audit, recover, commit, transaction, lock };
+module.exports = { context, root, legacy, clone, fields, fail, validId, atomic, read, write, enabled, registry, selectedId, state, saveState, readRoster, saveRoster, emptyProgress, stripAccount, activity, readAccounts, participantSeasonId, readUsers, writeUsers, readSubmissions, writeSubmissions, config, configProxy, readSettings, writeSettings, mediaRoot, pending, audit, recover, commit, transaction, lock };

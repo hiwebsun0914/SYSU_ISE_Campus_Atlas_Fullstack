@@ -28,6 +28,11 @@ async function api(url,{user=1,season='2026-welcome',method='GET',body}={}) {
  if(season!==null)headers['X-Season-Id']=season;
  const r=await fetch(base+url,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,...await r.json()};
 }
+async function apiFile(url,{user=1,season,buffer,name}) {
+ const headers={Authorization:'Bearer '+jwt.sign({id:user},process.env.JWT_SECRET),'X-Season-Id':season};
+ const body=new FormData();body.append('file',new Blob([buffer]),name);
+ const r=await fetch(base+url,{method:'POST',headers,body});return {status:r.status,...await r.json()};
+}
 function refreshInventory(){
   const refs = backup.mediaReferences(store.state());
   for(const key of refs){const f=path.join(media,key);fs.mkdirSync(path.dirname(f),{recursive:true});if(!fs.existsSync(f))fs.writeFileSync(f,'fixture-object');}
@@ -69,12 +74,19 @@ test('new draft remains empty, switching needs proof and exact admin review',asy
  const draft={seasonId:'2027-welcome',name:'2027迎新',deadline:'2099-09-17T00:00:00Z',revealAt:'2099-09-19T00:00:00Z'};
  assert.equal((await api('/seasons',{method:'POST',body:draft})).code,0);
  assert.deepEqual(store.state('2027-welcome').progress,{});
- assert.equal((await api('/seasons/activate',{method:'POST',season:'2027-welcome',body:{reviewedAdminIds:[1,3]}})).errorCode,'ELIGIBILITY_REQUIRED');
+ assert.equal((await api('/seasons/roster',{user:3,season:'2027-welcome'})).status,403);
+ const workbook=new (require('exceljs').Workbook)(),sheet=workbook.addWorksheet('新生花名册');sheet.addRows([['姓名','学号','入学年份','学院'],['张三','27300001','2027','智能工程学院'],['李四','27300002','2027','智能工程学院']]);
+ const rosterResult=await apiFile('/seasons/roster/import',{season:'2027-welcome',buffer:await workbook.xlsx.writeBuffer(),name:'2027级新生花名册.xlsx'});
+ assert.equal(rosterResult.code,0,JSON.stringify(rosterResult));assert.equal(rosterResult.data.count,2);assert.equal(rosterResult.data.colleges[0].count,2);assert.ok(!Object.hasOwn(rosterResult.data,'records'));assert.equal(store.readRoster('2027-welcome').records[0].studentId,'27300001');
+ const duplicate=Buffer.from('姓名,学号,入学年份,学院\n张三,27300001,2027,智能工程学院\n李四,27300001,2027,智能工程学院');
+ assert.equal((await apiFile('/seasons/roster/import',{season:'2027-welcome',buffer:duplicate,name:'duplicate.csv'})).errorCode,'ROSTER_DUPLICATE_STUDENT_ID');assert.equal(store.readRoster('2027-welcome').count,2);assert.equal(store.state('2027-welcome').status,'draft');assert.equal(store.state('2026-welcome').status,'archived');
+ const eligibilityCheck=await api('/seasons/activate',{method:'POST',season:'2027-welcome',body:{reviewedAdminIds:[1,3]}});assert.equal(eligibilityCheck.errorCode,'ELIGIBILITY_REQUIRED',JSON.stringify(eligibilityCheck));
  let next=store.state('2027-welcome');next.eligibility['1']={seasonId:'2027-welcome',userId:1,source:'roster',capabilities:{checkin:true,submit:true,vote:true}};store.saveState(next);
  assert.equal((await api('/seasons/activate',{method:'POST',season:'2027-welcome',body:{reviewedAdminIds:[1,3]}})).errorCode,'RESTORE_DRILL_REQUIRED');
  drill();assert.equal((await api('/seasons/activate',{method:'POST',season:'2027-welcome',body:{reviewedAdminIds:[1]}})).errorCode,'ADMIN_REVIEW_REQUIRED');
  assert.equal(store.registry().currentSeasonId,'2026-welcome');
  assert.equal((await api('/seasons/activate',{method:'POST',season:'2027-welcome',body:{reviewedAdminIds:[1,3]}})).code,0);
+ assert.equal((await apiFile('/seasons/roster/import',{season:'2027-welcome',buffer:duplicate,name:'late.csv'})).errorCode,'ROSTER_SEASON_LOCKED');
  const blocked=await api('/auth/me',{user:2,season:null});assert.equal(blocked.errorCode,'SEASON_NOT_VISIBLE');
  const own=await api('/auth/me',{user:2});assert.equal(own.userInfo.points,7);assert.deepEqual(own.userInfo.completedRoutes,['old-route']);
  const visible=await api('/seasons',{user:2});assert.equal(visible.currentSeasonId,'2026-welcome');assert.deepEqual(visible.list.map(x=>x.seasonId),['2026-welcome']);assert.equal(fs.readFileSync(process.env.FUTURE_CARDS_FILE,'utf8'),future);

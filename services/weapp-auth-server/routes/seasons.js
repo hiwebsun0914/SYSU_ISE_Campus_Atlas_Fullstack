@@ -7,6 +7,16 @@ const { getLocations } = require('../lib/locationSettings');
 const lifecycle = require('../lib/seasonLifecycle');
 const { effectiveRole, isAdminRole } = require('../lib/roles');
 const { isHiddenFrom } = require('../lib/resultEmbargo');
+const multer = require('multer');
+const rosterImport = require('../lib/rosterImport');
+const rosterUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
+function receiveRoster(req, res, next) {
+  rosterUpload.single('file')(req, res, error => {
+    if (!error) return next();
+    if (error.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ code: 1, errorCode: 'ROSTER_TOO_LARGE', message: '花名册文件不能超过 5MB' });
+    return res.status(400).json({ code: 1, errorCode: 'ROSTER_UPLOAD_INVALID', message: '花名册上传格式无效' });
+  });
+}
 function run(fn) { return (req, res, next) => { try { fn(req, res); } catch (e) { if (e.errorCode) return res.status(e.status || 409).json({ code: 1, errorCode: e.errorCode, message: e.message }); next(e); } }; }
 function admin(req, res, next) { return isAdminRole(effectiveRole(req.user)) ? next() : res.status(403).json({ code: 1, message: '需要管理员权限' }); }
 function owner(req, res, next) { return effectiveRole(req.user) === 'owner' ? next() : res.status(403).json({ code: 1, message: '仅超管可以管理活动期' }); }
@@ -35,6 +45,23 @@ router.get('/archive', auth, admin, run((_req, res) => {
   res.json({ code: 0, data: { ...s, accounts: s.archive.identities } });
 }));
 router.get('/admin-config', auth, owner, run((_req, res) => res.json({ code: 0, data: store.state().config })));
+router.get('/roster', auth, owner, run((_req, res) => res.json({ code: 0, data: rosterImport.summary(store.readRoster()) })));
+router.post('/roster/import', auth, owner, receiveRoster, async (req, res, next) => {
+  try {
+    if (!req.get('X-Season-Id')) store.fail('请选择活动期', 'SEASON_REQUIRED', 428);
+    const s = store.state(req.seasonId);
+    if (s.status !== 'draft') store.fail('仅草稿活动期可以导入或替换花名册', 'ROSTER_SEASON_LOCKED', 409);
+    if (!req.file?.buffer) store.fail('请选择花名册文件', 'ROSTER_FILE_REQUIRED', 400);
+    const roster = await rosterImport.parse(req.file.buffer, req.file.originalname, s.seasonId);
+    roster.importedBy = String(req.userId);
+    store.saveRoster(roster);
+    store.audit('roster-import', req.userId, { seasonId: s.seasonId, count: roster.count, sha256: roster.sha256 });
+    res.json({ code: 0, data: rosterImport.summary(roster) });
+  } catch (error) {
+    if (error.errorCode) return res.status(error.status || 409).json({ code: 1, errorCode: error.errorCode, message: error.message });
+    next(error);
+  }
+});
 router.put('/admin-config', auth, owner, run((req, res) => {
   if (!req.get('X-Season-Id')) store.fail('请选择活动期', 'SEASON_REQUIRED', 428);
   const s = store.state();
