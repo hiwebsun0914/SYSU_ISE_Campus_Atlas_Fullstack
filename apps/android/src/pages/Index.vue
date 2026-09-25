@@ -111,6 +111,8 @@
 </template>
 
 <script setup>
+import { activityCacheKey } from '@/stores/seasons'
+
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -596,9 +598,9 @@ async function checkIn(id) {
     const photoUrl = commit?.data?.url || ''
 
     const nowISO = new Date().toISOString()
-    const records = JSON.parse(localStorage.getItem('checkinRecords') || '[]')
+    const records = JSON.parse(localStorage.getItem(activityCacheKey('checkinRecords')) || '[]')
     records.push({ locationId: id, time: nowISO, photo: photoUrl })
-    localStorage.setItem('checkinRecords', JSON.stringify(records))
+    localStorage.setItem(activityCacheKey('checkinRecords'), JSON.stringify(records))
 
     locations.value = (locations.value || []).map(it =>
       it.backendId === id ? { ...it, status: 'pending' } : it
@@ -628,7 +630,7 @@ async function previewExistingPhoto(locationId) {
   else alert('未找到已提交的照片')
 }
 function getLocalPhotoUrl(locationId) {
-  const records = JSON.parse(localStorage.getItem('checkinRecords') || '[]')
+  const records = JSON.parse(localStorage.getItem(activityCacheKey('checkinRecords')) || '[]')
   const list = records
     .filter(r => Number(r.locationId) === Number(locationId) && r.photo)
     .sort((a, b) => String(b.time).localeCompare(String(a.time)))

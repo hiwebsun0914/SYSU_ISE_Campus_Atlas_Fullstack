@@ -19,6 +19,7 @@ const router = createRouter({
     return { top: 0, left: 0 }
   },
   routes: [
+    { path: '/seasons', component: () => import('../pages/SeasonHistory.vue') },
     { path: '/', component: () => import('../pages/Home.vue') },
     { path: '/map', component: () => import('../pages/Map.vue') },
     { path: '/place', component: () => import('../pages/PlaceTest.vue') },

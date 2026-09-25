@@ -1,3 +1,4 @@
+import { ensureSeasons, seasons, requestScope } from '@/stores/seasons'
 // utils/request.js
 import { activityDeadline, closedActivityResponse, isActivityClosed, isActivityMutation } from '@/stores/activityDeadline'
 
@@ -69,9 +70,14 @@ async function doFetch(finalUrl, init, { timeout, responseType, rawResponse } = 
 }
 
 export async function request(url, method = 'GET', data = null, options = {}) {
+  if (!options.skipSeason) {
+    try { await ensureSeasons() } catch (error) { return { ok: false, status: 503, data: { code: 1, message: error.message } } }
+  }
+  const scope = requestScope()
+
   const activityMutation = isActivityMutation(url, method)
   const activityMeta = String(url).split('?')[0] === '/submissions/meta'
-  if (activityMutation && isActivityClosed()) return closedActivityResponse()
+  if (!options.skipSeason && activityMutation && isActivityClosed()) return closedActivityResponse()
   const {
     headers: extraHeaders,
     timeout      = DEFAULT_TIMEOUT,
@@ -87,6 +93,7 @@ export async function request(url, method = 'GET', data = null, options = {}) {
   const headers = {
     'Accept': 'application/json, text/plain, */*',
     'X-Requested-With': 'XMLHttpRequest',
+    ...(!options.skipSeason ? { 'X-Season-Id': seasons.selected } : {}),
     ...(extraHeaders || {})
   }
   const init = { method: String(method || 'GET').toUpperCase(), headers, credentials }
@@ -112,11 +119,12 @@ export async function request(url, method = 'GET', data = null, options = {}) {
   let attempts = 0
   /* eslint-disable no-constant-condition */
   while (true) {
-    if (activityMutation && isActivityClosed()) return closedActivityResponse()
+    if (!options.skipSeason && activityMutation && isActivityClosed()) return closedActivityResponse()
     attempts++
     try {
       const startedAt = performance.now()
       const res = await doFetch(finalUrl, init, { timeout, responseType, rawResponse })
+      if (!options.skipSeason && scope !== requestScope()) throw new Error('STALE_SEASON_RESPONSE')
       if (activityMeta && res?.data?.code === 0) activityDeadline.syncMeta(res.data.data, startedAt)
       if (res?.data?.errorCode === 'ACTIVITY_CLOSED' || (activityMutation && res?.data?.code === 4)) {
         activityDeadline.markClosed()

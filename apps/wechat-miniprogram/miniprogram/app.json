@@ -2,7 +2,8 @@
   "pages": [
     "pages/index/index",
     "pages/rank/rank",
-    "pages/connect/connect"
+    "pages/connect/connect",
+    "pages/seasons/seasons"
   ],
   "window": {
     "navigationBarTitleText": "打卡地图",

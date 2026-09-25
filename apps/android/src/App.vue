@@ -1,5 +1,6 @@
-﻿<template>
-  <RouterView />
+<template>
+  <template v-if="seasons.ready"><SeasonBar /><RouterView /></template>
+  <div v-else class="season-loading" role="status">{{ seasons.error || '正在读取活动期…' }}<button v-if="seasons.error" @click="boot">重试</button></div>
   <button
     v-if="showHomeButton"
     class="home-fab"
@@ -12,6 +13,12 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import SeasonBar from '@/components/SeasonBar.vue'
+import { seasons, ensureSeasons } from '@/stores/seasons'
+const boot = () => ensureSeasons().catch(() => {})
+onMounted(boot)
+
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -28,6 +35,8 @@ function goHome() {
 
 <style>
 @import "@/styles/global.css";
+
+.season-loading{padding:48px 20px;text-align:center}.season-loading button{margin-left:12px}
 
 html, body {
   font-family: "SimHei", "黑体", sans-serif !important;

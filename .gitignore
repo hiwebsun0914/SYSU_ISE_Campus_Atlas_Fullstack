@@ -67,3 +67,7 @@ services/weapp-auth-server/*.json.*.tmp
 # Keep the intentionally archived production deployment snapshot
 !deploy/web-h5-dist/
 !deploy/web-h5-dist/**
+
+# Season runtime records and offline backup assets (contain personal data)
+services/weapp-auth-server/data/seasons/
+services/weapp-auth-server/season-backups/

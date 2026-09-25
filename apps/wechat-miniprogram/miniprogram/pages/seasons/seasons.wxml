@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="eyebrow">迎新活动 · 我的记录</view><view class="title">{{list[index].name || '我的活动记录'}}</view>
+  <picker wx:if="{{list.length > 1}}" range="{{list}}" range-key="name" value="{{index}}" bindchange="changeSeason"><view class="picker">{{list[index].name || '选择活动期'}} ▾</view></picker>
+  <view wx:if="loading">正在读取…</view><view wx:if="error" class="notice">{{error}}</view>
+  <block wx:if="mine"><view wx:if="mine.readOnly" class="notice">{{mine.status === 'archived' ? '往届归档 · 只读' : '活动已截止'}}</view>
+    <view wx:if="mine.status === 'open' && !mine.eligibility" class="notice">你可以查看本届公开内容，但目前没有本届打卡、投稿或投票资格。</view>
+    <view class="stats"><view><text>{{mine.progress.points}}</text>积分</view><view><text>{{mine.progress.unlockedLocations.length}}</text>打卡</view><view><text>{{mine.progress.completedRoutes.length}}</text>路线</view></view>
+    <view class="heading">获奖记录</view><view wx:if="!mine.awards.length">暂无已公布的获奖记录</view><view wx:for="{{mine.awards}}" wx:key="id">{{item.title}} · {{item.winnerLabel}}</view>
+    <view class="heading">完成路线</view><view wx:for="{{routes}}" wx:key="*this">{{item}}</view><view wx:if="!routes.length">本届尚无完成路线</view>
+    <view class="heading">打卡与审核记录</view><view wx:if="!records.length">本届尚无记录</view><view class="record" wx:for="{{records}}" wx:key="index"><view>{{item.name}} · {{item.status}}</view><view>{{item.note}}</view><button wx:if="item.photo || item.thumbnail" size="mini" data-url="{{item.photo || item.thumbnail}}" bindtap="previewPhoto">查看照片</button></view>
+  </block>
+</view>

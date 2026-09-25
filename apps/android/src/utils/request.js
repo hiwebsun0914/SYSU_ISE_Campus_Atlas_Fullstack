@@ -1,4 +1,5 @@
-﻿import { CapacitorHttp } from '@capacitor/core'
+import { ensureSeasons, seasons, requestScope } from '@/stores/seasons'
+import { CapacitorHttp } from '@capacitor/core'
 
 function isNativeApp() {
   if (typeof window === 'undefined') return false
@@ -143,6 +144,11 @@ async function doNativeHttp(finalUrl, init, { responseType } = {}) {
 }
 
 export async function request(url, method = 'GET', data = null, options = {}) {
+  if (!options.skipSeason) {
+    try { await ensureSeasons() } catch (error) { return { ok: false, status: 503, data: { code: 1, message: error.message } } }
+  }
+  const scope = requestScope()
+
   const {
     headers: extraHeaders,
     timeout = DEFAULT_TIMEOUT,
@@ -159,6 +165,7 @@ export async function request(url, method = 'GET', data = null, options = {}) {
   const token = localStorage.getItem('token') || ''
   const headers = {
     Accept: 'application/json, text/plain, */*',
+    ...(!options.skipSeason ? { 'X-Season-Id': seasons.selected } : {}),
     ...(extraHeaders || {})
   }
   if (sendRequestedWith && !headers['X-Requested-With'] && !headers['x-requested-with']) {
@@ -218,6 +225,7 @@ export async function request(url, method = 'GET', data = null, options = {}) {
           transport: useNativeHttp ? 'capacitor-http' : 'fetch'
         })
       }
+      if (!options.skipSeason && scope !== requestScope()) throw new Error('STALE_SEASON_RESPONSE')
       return res
     } catch (e) {
       if (debug) {

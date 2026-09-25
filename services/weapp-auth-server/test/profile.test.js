@@ -58,6 +58,7 @@ process.env.PORT = '0';
 process.env.DEV_BYPASS_AUTH = 'false';
 process.env.ADMIN_OWNER_IDS = '101';
 
+const seasonFixture = require('./helpers/seasonFixture')();
 const app = require('../app');
 const server = app.listen(0, '127.0.0.1');
 let baseUrl = '';
@@ -71,7 +72,7 @@ async function api(userId, url, options = {}) {
     ...options,
     headers: {
       Authorization: `Bearer ${tokens[userId]}`,
-      'Content-Type': 'application/json',
+      'X-Season-Id': '2026-welcome', 'Content-Type': 'application/json',
       ...(options.headers || {})
     }
   });

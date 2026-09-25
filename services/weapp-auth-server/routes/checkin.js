@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 // routes/checkin.js
 require('dotenv').config();
 
@@ -38,24 +39,13 @@ const cos = new COS({ SecretId: TENCENT_SECRET_ID, SecretKey: TENCENT_SECRET_KEY
 // ==== users.json 读取 ====
 const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
 function readUsers({ migrate = true } = {}) {
-  try {
-    const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-    const users = JSON.parse(raw);
-    if (migrate && deferLegacyPendingPoints(users)) {
-      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
-    }
-    return users;
-  } catch (e) {
-    console.error('[checkin] read users.json fail:', e);
-    return [];
-  }
+  return seasonStore.readUsers();
 }
 function getUserById(id, options) {
   return readUsers(options).find(u => String(u.id) === String(id));
 }
 function writeUsers(list) {
-  try { fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf8'); }
-  catch (e) { console.error('[checkin] write users fail:', e); }
+  return seasonStore.writeUsers(list);
 }
 
 function normalizeUserCheckins(user) {
@@ -153,7 +143,7 @@ function buildKey(req, ext = 'jpg', variant = '') {
   const ts = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
   const suffix = variant ? `_${variant}` : '';
-  return `checkin/${uid}__${slug}/${loc}/${ts}_${rand}${suffix}.${safeExt(ext)}`;
+  return `${seasonStore.mediaRoot('checkin')}${uid}__${slug}/${loc}/${ts}_${rand}${suffix}.${safeExt(ext)}`;
 }
 
 function headSize(head) {
@@ -215,14 +205,16 @@ function consumeFallbackAttempt(userId) {
 }
 
 function deleteTemporaryObject(key, context) {
+  if (seasonStore.enabled()) return; // Offline retention tool checks references before deletion.
   callCos('deleteObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: key })
     .catch(error => console.warn(`[checkin] ${context} temporary cleanup failed:`, key, error?.code || error?.message || error));
 }
 
 async function cleanupExpiredTemporaryObjects(now = Date.now()) {
+  if (seasonStore.enabled()) return; // Retention is explicit and reference-checked by offline tooling.
   const cutoff = now - 24 * 60 * 60 * 1000;
   try {
-    const listed = await callCos('getBucket', { Bucket: COS_BUCKET, Region: COS_REGION, Prefix: 'checkin-temp/', MaxKeys: 1000 });
+    const listed = await callCos('getBucket', { Bucket: COS_BUCKET, Region: COS_REGION, Prefix: seasonStore.mediaRoot('checkin-temp'), MaxKeys: 1000 });
     const expired = (listed.Contents || []).filter(item => new Date(item.LastModified).getTime() < cutoff);
     await Promise.all(expired.map(item => callCos('deleteObject', { Bucket: COS_BUCKET, Region: COS_REGION, Key: item.Key })
       .catch(error => console.warn('[checkin] expired temporary cleanup failed:', item.Key, error?.code || error?.message || error))));
@@ -260,12 +252,12 @@ function getUserPrefix(req, locationId) {
   const slug = getUserSlug(req);
   const uid  = req.userId;
   const loc  = String(locationId || 'general');
-  return `checkin/${uid}__${slug}/${loc}/`;
+  return `${seasonStore.mediaRoot('checkin')}${uid}__${slug}/${loc}/`;
 }
 function getUserRootPrefixes(req) {
   const slug = getUserSlug(req);
   const uid  = req.userId;
-  return [`checkin/${uid}__${slug}/`];
+  return [`${seasonStore.mediaRoot('checkin')}${uid}__${slug}/`];
 }
 // 校验某 key 是否属于当前用户的打卡目录
 function ensureKeyOwned(req, key) {
@@ -358,7 +350,7 @@ router.post('/fallback/presign', auth, (req, res) => {
     return res.status(400).json({ code: 1, message: '照片处理失败，请重新拍摄' });
   }
   const normalKey = buildKey(req, ext, 'source');
-  const key = normalKey.replace(/^checkin\//, 'checkin-temp/');
+  const key = normalKey.replace(seasonStore.mediaRoot('checkin'), seasonStore.mediaRoot('checkin-temp'));
   cos.getObjectUrl(
     { Bucket: COS_BUCKET, Region: COS_REGION, Key: key, Method: 'PUT', Sign: true, Expires: 300, Headers: { 'x-cos-acl': 'private' } },
     (error, data) => {
@@ -382,7 +374,7 @@ router.post('/fallback/process', auth, async (req, res) => {
   const key = String(req.body?.key || '');
   const uid = req.userId;
   const slug = getUserSlug(req);
-  if (!key.startsWith(`checkin-temp/${uid}__${slug}/`) || !/_source\.(?:png|webp|jpe?g)$/i.test(key)) {
+  if (!key.startsWith(`${seasonStore.mediaRoot('checkin-temp')}${uid}__${slug}/`) || !/_source\.(?:png|webp|jpe?g)$/i.test(key)) {
     return res.status(400).json({ code: 1, message: '非法临时图片 key' });
   }
 
@@ -410,7 +402,7 @@ router.post('/fallback/process', auth, async (req, res) => {
       { edge: 400, quality: 60 },
       { edge: 320, quality: 50 }
     ], CHECKIN_THUMBNAIL_MAX_BYTES);
-    const mainKey = key.replace(/^checkin-temp\//, 'checkin/').replace(/_source\.[^.]+$/, '_main.webp');
+    const mainKey = key.replace(seasonStore.mediaRoot('checkin-temp'), seasonStore.mediaRoot('checkin')).replace(/_source\.[^.]+$/, '_main.webp');
     const thumbnailKey = mainKey.replace(/_main\.webp$/, '_thumb.webp');
     const upload = (derivedKey, body) => callCos('putObject', {
       Bucket: COS_BUCKET,
@@ -498,7 +490,7 @@ router.post('/commit', auth, async (req, res) => {
   const uid = req.userId;
   const slug = safeSlug(req.user?.username || 'user');
 
-  const ownedPrefix = `checkin/${uid}__${slug}/`;
+  const ownedPrefix = `${seasonStore.mediaRoot('checkin')}${uid}__${slug}/`;
 
   if (!key || !key.startsWith(ownedPrefix)) {
     return res.status(400).json({ code: 1, message: '非法 key' });
@@ -514,7 +506,7 @@ router.post('/commit', auth, async (req, res) => {
     normalizeUserCheckins(currentUser);
     const existing = currentUser.pendingCheckins.find(item => item.key === key);
     if (existing) {
-      if (!isActivityEnded() && temporaryKey && temporaryKey.startsWith(`checkin-temp/${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'idempotent commit');
+      if (!isActivityEnded() && temporaryKey && temporaryKey.startsWith(`${seasonStore.mediaRoot('checkin-temp')}${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'idempotent commit');
       return res.json({ code: 0, key, url: existing.photo || toUrl(key), thumbnail: existing.thumbnail || '', awardedPoints: 0, reviewStatus: 'pending', idempotent: true });
     }
   }
@@ -610,7 +602,7 @@ router.post('/commit', auth, async (req, res) => {
     reviewStatus: 'pending',
     message: '照片已提交审核，审核通过后计入积分'
   });
-  if (temporaryKey && temporaryKey.startsWith(`checkin-temp/${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'committed');
+  if (temporaryKey && temporaryKey.startsWith(`${seasonStore.mediaRoot('checkin-temp')}${uid}__${slug}/`)) deleteTemporaryObject(temporaryKey, 'committed');
 });
 
 router._test = {
@@ -776,12 +768,12 @@ router.get('/photo/list', auth, async (req, res) => {
 router.get('/photo/history', auth, async (req, res) => {
   try {
     // 实际目录格式是 checkin/<uid>__<slug>/，保持与上传和其它取图接口一致。
-    const userPrefix = `checkin/${req.userId}__${getUserSlug(req)}/`;
+    const userPrefix = `${seasonStore.mediaRoot('checkin')}${req.userId}__${getUserSlug(req)}/`;
     const keys = await listObjectsByPrefix(userPrefix, 1000);
     const photos = keys.map(key => {
-      const parts = String(key).split('/');
-      const locationId = Number(parts[2]);
-      const filename = parts[3] || '';
+      const parts = String(key).slice(seasonStore.mediaRoot('checkin').length).split('/');
+      const locationId = Number(parts[1]);
+      const filename = parts[2] || '';
       const timestampMatch = filename.match(/^(\d{10,})_/);
       return {
         key,

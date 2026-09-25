@@ -9,7 +9,11 @@
     "backfill:checkin-images": "node scripts/backfill-checkin-images.js",
     "backfill:checkin-images:apply": "node scripts/backfill-checkin-images.js --apply",
     "backfill:location-review-images": "node scripts/backfill-checkin-images.js --locations-only",
-    "backfill:location-review-images:apply": "node scripts/backfill-checkin-images.js --locations-only --apply"
+    "backfill:location-review-images:apply": "node scripts/backfill-checkin-images.js --locations-only --apply",
+    "seasons:migrate": "node scripts/migrate-seasons.js",
+    "seasons:backup": "node scripts/season-backup.js",
+    "seasons:mirror": "node scripts/season-media-mirror.js",
+    "seasons:retention": "node scripts/season-retention.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

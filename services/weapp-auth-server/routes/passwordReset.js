@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 'use strict';
 const express = require('express');
 const fs = require('fs');
@@ -10,11 +11,9 @@ const { effectiveRole } = require('../lib/roles');
 const router = express.Router();
 const usersFile = path.resolve(process.env.USERS_FILE || path.join(__dirname, '../users.json'));
 const day = 24 * 60 * 60 * 1000;
-const read = () => JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+const read = () => seasonStore.readUsers();
 function write(users) {
-  const tmp = usersFile + '.reset-tmp';
-  fs.writeFileSync(tmp, JSON.stringify(users, null, 2), { mode: 0o600 });
-  fs.renameSync(tmp, usersFile);
+  return seasonStore.writeUsers(users);
 }
 const hash = token => crypto.createHash('sha256').update(token).digest('hex');
 function status(r) {

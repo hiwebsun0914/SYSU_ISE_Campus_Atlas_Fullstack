@@ -1,4 +1,5 @@
-﻿import axios from 'axios'
+import { ensureSeasons, seasons, requestScope } from '@/stores/seasons'
+import axios from 'axios'
 
 function isNativeApp() {
   if (typeof window === 'undefined') return false
@@ -61,6 +62,17 @@ if (API_DEBUG) {
     return config
   })
 }
+
+api.interceptors.request.use(async config => {
+  await ensureSeasons()
+  config.headers['X-Season-Id'] = seasons.selected
+  config.seasonScope = requestScope()
+  return config
+})
+api.interceptors.response.use(response => {
+  if (response.config.seasonScope !== requestScope()) return Promise.reject(new Error('STALE_SEASON_RESPONSE'))
+  return response
+})
 
 api.interceptors.response.use(
   (r) => {

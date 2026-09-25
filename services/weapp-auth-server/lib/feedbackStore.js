@@ -1,3 +1,4 @@
+const seasonStore = require('./seasonStore');
 const fs = require('fs');
 const path = require('path');
 
@@ -13,17 +14,13 @@ function ensureStore() {
 }
 
 function readFeedback() {
-  const raw = fs.readFileSync(ensureStore(), 'utf8') || '[]';
-  const parsed = JSON.parse(raw);
+  const parsed = seasonStore.read(feedbackFile(), []);
   if (!Array.isArray(parsed)) throw new Error('FEEDBACK_FILE must contain an array');
   return parsed;
 }
 
 function writeFeedback(list) {
-  const file = ensureStore();
-  const tempFile = `${file}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(list, null, 2), 'utf8');
-  fs.renameSync(tempFile, file);
+  seasonStore.write(feedbackFile(), list);
 }
 
 module.exports = { readFeedback, writeFeedback };

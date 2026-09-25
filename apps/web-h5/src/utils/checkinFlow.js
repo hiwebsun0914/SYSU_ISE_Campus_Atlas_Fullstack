@@ -1,3 +1,4 @@
+import { activityCacheKey } from '@/stores/seasons'
 /**
  * 共享拍照打卡流程
  *
@@ -283,9 +284,9 @@ async function runCheckin({ locationId, onPhotoUrl, onSubmitted, onError }) {
 
     /* 4) 共享拍照打卡流程的本地记录（写入 localStorage） */
     const nowISO = new Date().toISOString()
-    const records = JSON.parse(localStorage.getItem('checkinRecords') || '[]')
+    const records = JSON.parse(localStorage.getItem(activityCacheKey('checkinRecords')) || '[]')
     records.push({ locationId, time: nowISO, photo: photoUrl, status: 'pending' })
-    localStorage.setItem('checkinRecords', JSON.stringify(records))
+    localStorage.setItem(activityCacheKey('checkinRecords'), JSON.stringify(records))
 
     if (onPhotoUrl) onPhotoUrl(photoUrl)
     if (onSubmitted) onSubmitted({ photoUrl, locationId, awardedPoints })

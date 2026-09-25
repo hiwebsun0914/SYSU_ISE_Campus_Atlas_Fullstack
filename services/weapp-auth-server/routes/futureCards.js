@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -157,7 +158,7 @@ function readStore() {
   ensureStore();
   let parsed;
   try {
-    parsed = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
+    parsed = seasonStore.read(STORE_FILE);
   } catch (error) {
     console.error('[future-cards] store read failed:', error.code || 'INVALID_JSON');
     throw new ApiError(503, 'STORE_UNAVAILABLE', '信笺暂时无法读取，请稍后重试');
@@ -169,16 +170,7 @@ function readStore() {
 }
 
 function writeStore(store) {
-  fs.mkdirSync(path.dirname(STORE_FILE), { recursive: true });
-  const temporary = `${STORE_FILE}.${process.pid}.${crypto.randomBytes(6).toString('hex')}.tmp`;
-  try {
-    fs.writeFileSync(temporary, JSON.stringify(store, null, 2), { encoding: 'utf8', flag: 'wx' });
-    fs.renameSync(temporary, STORE_FILE);
-  } catch (error) {
-    try { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); } catch {}
-    console.error('[future-cards] store write failed:', error.code || 'WRITE_FAILED');
-    throw new ApiError(503, 'STORE_UNAVAILABLE', '信笺暂时无法保存，本地草稿仍然保留');
-  }
+  seasonStore.write(STORE_FILE, store);
 }
 
 function validatePayload(body, user) {

@@ -7,6 +7,8 @@ const test = require('node:test');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
+require('../data/awards').deadline = '2099-01-01T00:00:00Z';
+
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-dashboard-test-'));
 const usersFile = path.join(testDir, 'users.json');
 const submissionsFile = path.join(testDir, 'submissions.json');
