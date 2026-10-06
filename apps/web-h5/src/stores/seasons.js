@@ -4,7 +4,7 @@ import routes from '@/data/routes'
 import { reactive } from 'vue'
 import { request } from '@/utils/request'
 
-export const seasons = reactive({ ready: false, selected: '', current: '', list: [], config: null, error: '' })
+export const seasons = reactive({ ready: false, selected: '', current: '', participantSeasonId: null, list: [], config: null, error: '' })
 let loading
 let loadedFor = ''
 export function accountKey() {
@@ -28,12 +28,16 @@ export function clearActivityCache() {
 export async function ensureSeasons() {
   const owner = accountKey()
   if (seasons.ready && loadedFor === owner) return
-  if (loadedFor !== owner) seasons.ready = false
+  if (loadedFor !== owner) {
+    seasons.ready = false
+    seasons.participantSeasonId = null
+  }
   if (loading) return loading
   loading = (async () => {
     const res = await request('/seasons', 'GET', null, { skipSeason: true })
     if (!res.ok || res.data?.code !== 0) throw new Error(res.data?.message || '无法读取活动期')
     seasons.list = res.data.list
+    seasons.participantSeasonId = res.data.participantSeasonId || null
     seasons.current = res.data.currentSeasonId
     seasons.selected = seasons.current
     if (!seasons.selected || !seasons.list.some(x => x.seasonId === seasons.selected)) throw new Error('账号尚未绑定新生届次')
