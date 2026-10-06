@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -39,18 +40,11 @@ const BADGES = Object.freeze({
 });
 
 function readUsers() {
-  const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-  const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed)) throw new Error('USERS_FILE must contain an array');
-  return parsed;
+  return seasonStore.readUsers();
 }
 
 function writeUsers(users) {
-  const dir = path.dirname(USERS_FILE);
-  fs.mkdirSync(dir, { recursive: true });
-  const tempFile = `${USERS_FILE}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(users, null, 2), 'utf8');
-  fs.renameSync(tempFile, USERS_FILE);
+  return seasonStore.writeUsers(users);
 }
 
 function cleanText(value, maxLength) {

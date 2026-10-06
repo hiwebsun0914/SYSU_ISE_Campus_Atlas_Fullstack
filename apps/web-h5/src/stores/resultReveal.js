@@ -1,3 +1,4 @@
+import { seasons } from './seasons'
 import { computed, ref } from 'vue'
 import { activityDeadline } from './activityDeadline'
 import { request } from '@/utils/request'
@@ -16,7 +17,7 @@ export const previewMode = preview
 export const resultEmbargoed = computed(() => {
   if (import.meta.env.DEV && preview.value !== 'live') return preview.value === 'sealed'
   const now = activityDeadline.now.value
-  return now >= START_AT && now < END_AT && (!roleReady.value || role.value !== 'owner')
+  return now >= Date.parse(seasons.config?.deadline || '2026-09-17T00:00:00+08:00') && now < Date.parse(seasons.config?.revealAt || REVEAL_AT) && (!roleReady.value || role.value !== 'owner')
 })
 
 export async function refreshResultRole() {

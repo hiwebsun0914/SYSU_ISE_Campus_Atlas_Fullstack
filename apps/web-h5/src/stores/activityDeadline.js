@@ -58,6 +58,12 @@ export function createActivityDeadlineState({
     armTimer()
   }
 
+  function resetForSeason(meta) {
+    serverClosed.value = false
+    latestServerTime = -Infinity
+    syncMeta(meta)
+  }
+
   function markClosed() {
     // An old in-flight "open" response must never reopen a server-closed activity.
     serverClosed.value = true
@@ -75,7 +81,7 @@ export function createActivityDeadlineState({
     timer = null
   }
 
-  return { deadline, now, closed, tick, syncMeta, markClosed, start, stop }
+  return { resetForSeason, deadline, now, closed, tick, syncMeta, markClosed, start, stop }
 }
 
 export const activityDeadline = createActivityDeadlineState()

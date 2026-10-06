@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 // middleware/auth.js
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
@@ -25,13 +26,7 @@ const USERS_FILE = resolveUsersFile();
 
 /* ========== 读库工具（保持原有签名） ========== */
 function readUsers() {
-  try {
-    if (!fs.existsSync(USERS_FILE)) return [];
-    const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  return seasonStore.readUsers();
 }
 function getUserById(id) {
   const users = readUsers();
@@ -86,6 +81,48 @@ function send401(res, msg) {
   return res.status(401).json({ code: 1, message: msg || '未授权' });
 }
 
+function participantCapability(req) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(String(req.method).toUpperCase())) return '';
+  const route = `${req.baseUrl || ''}${req.path || ''}`;
+  if (route === '/user/unlock' || route.startsWith('/checkin/')) return 'checkin';
+  if (/^\/submissions\/[^/]+\/vote$/.test(route)) return 'vote';
+  if (route === '/submissions' || route.startsWith('/submissions/')) return 'submit';
+  return '';
+}
+
+function enforceActivityEligibility(req, res) {
+  const capability = participantCapability(req);
+  if (!capability || !seasonStore.enabled()) return false;
+  const eligibility = seasonStore.state().eligibility?.[String(req.userId)] || null;
+  req.activityEligibility = eligibility;
+  if (eligibility?.capabilities?.[capability] === true) return false;
+  res.status(403).json({
+    code: 1,
+    errorCode: 'ACTIVITY_NOT_ELIGIBLE',
+    message: capability === 'vote'
+      ? '你不具备本届作品投票资格'
+      : capability === 'submit'
+        ? '你不具备本届投稿资格'
+        : '你不具备本届打卡资格'
+  });
+  return true;
+}
+
+function enforceSeasonVisibility(req, res) {
+  if (!seasonStore.enabled() || ['admin', 'owner'].includes(req.role)) return false;
+  const route = `${req.baseUrl || ''}${req.path || ''}`;
+  if (route === '/seasons' || route === '/seasons/' || route === '/seasons/current') return false;
+  const participantSeasonId = seasonStore.participantSeasonId(req.user);
+  req.participantSeasonId = participantSeasonId;
+  if (participantSeasonId && participantSeasonId === req.seasonId) return false;
+  res.status(403).json({
+    code: 1,
+    errorCode: participantSeasonId ? 'SEASON_NOT_VISIBLE' : 'PARTICIPANT_SEASON_REQUIRED',
+    message: participantSeasonId ? '该活动期不属于你的新生届次' : '你的账号尚未绑定新生届次'
+  });
+  return true;
+}
+
 /* ========== 从 payload 取用户 ID（兼容 id / sub / userId） ========== */
 function getUserIdFromPayload(payload) {
   if (!payload || typeof payload !== 'object') return null;
@@ -114,6 +151,8 @@ function auth(req, res, next) {
       req.userId = user.id;
       req.user = user;
       req.role = user.role || 'visitor';
+      if (enforceSeasonVisibility(req, res)) return;
+      if (enforceActivityEligibility(req, res)) return;
       return next();
     }
     // 测试用户不存在时继续走 401，由 app.js 自动创建
@@ -142,8 +181,11 @@ function auth(req, res, next) {
     req.userId = user.id;
     req.user = user;
     req.role = user.role || 'visitor';
+    if (enforceSeasonVisibility(req, res)) return;
+    if (enforceActivityEligibility(req, res)) return;
     next();
-  } catch {
+  } catch (error) {
+    if (error.errorCode === 'STORE_UNAVAILABLE') return res.status(503).json({ code: 1, errorCode: error.errorCode, message: error.message });
     return send401(res, '登录已过期或无效');
   }
 }
@@ -166,8 +208,10 @@ function optionalAuth(req, res, next) {
       req.userId = user.id;
       req.user = user;
       req.role = user.role || 'visitor';
+      if (enforceSeasonVisibility(req, res)) return;
     }
-  } catch {
+  } catch (error) {
+    if (error.errorCode === 'STORE_UNAVAILABLE') return res.status(503).json({ code: 1, errorCode: error.errorCode, message: error.message });
     // 忽略错误，按未登录处理
   }
   next();

@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 // routes/admin.js
 require('dotenv').config();
 
@@ -6,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const COS = require('cos-nodejs-sdk-v5');
 const auth = require('../middleware/auth');
-const routes = require('../data/routes');
+const routes = seasonStore.configProxy('routes', require('../data/routes'));
 const { effectiveRole, isAdminRole, canManageRoles, isConfiguredOwner } = require('../lib/roles');
 const { isHiddenFrom, setNoStore } = require('../lib/resultEmbargo');
 const { getLocations, getLocation, updateLocation } = require('../lib/locationSettings');
@@ -50,39 +51,11 @@ function ensureFile(fp, init = '[]') {
 
 // 读取 users.json（始终返回数组）
 function readUsers() {
-  ensureFile(USERS_FILE, '[]');
-  try {
-    const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-    const arr = JSON.parse(raw);
-    const users = Array.isArray(arr) ? arr : [];
-    if (deferLegacyPendingPoints(users)) {
-      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
-    }
-    return users.map(u => ({
-      ...u,
-      role: u.role || DEFAULT_ROLE,
-      avatar: u.avatar || DEFAULT_AVATAR,
-      username: u.username || '未命名',
-      unlockedLocations: Array.isArray(u.unlockedLocations) ? u.unlockedLocations : [],
-      lockingLocations : Array.isArray(u.lockingLocations)  ? u.lockingLocations  : [],
-      completedRoutes  : Array.isArray(u.completedRoutes)   ? u.completedRoutes   : [],
-      checkinRecords   : Array.isArray(u.checkinRecords)    ? u.checkinRecords    : [],
-      pendingCheckins  : Array.isArray(u.pendingCheckins)   ? u.pendingCheckins   : [],
-      checkinReviewRecords: Array.isArray(u.checkinReviewRecords) ? u.checkinReviewRecords : [],
-      points: Number.isFinite(Number(u.points)) ? Number(u.points) : 0,
-    }));
-  } catch (e) {
-    console.error('[admin] readUsers fail:', e);
-    return [];
-  }
+  return seasonStore.readUsers().map(u => ({ ...u, role: u.role || DEFAULT_ROLE, avatar: u.avatar || DEFAULT_AVATAR, username: u.username || '未命名', unlockedLocations: u.unlockedLocations || [], lockingLocations: u.lockingLocations || [], completedRoutes: u.completedRoutes || [], checkinRecords: u.checkinRecords || [], pendingCheckins: u.pendingCheckins || [], checkinReviewRecords: u.checkinReviewRecords || [], points: Number(u.points) || 0 }));
 }
 
 function writeUsers(list) {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf8');
-  } catch (e) {
-    console.error('[admin] writeUsers fail:', e);
-  }
+  return seasonStore.writeUsers(list);
 }
 
 // ====== 权限：管理员 ======
@@ -112,7 +85,7 @@ function listLatestPhoto(uid, username, locationId) {
     if (!cos || !COS_BUCKET || !COS_REGION) {
       return resolve(null); // 无法列目录
     }
-    const prefix = `checkin/${uid}__${safeSlug(username)}/${locationId}/`;
+    const prefix = `${seasonStore.mediaRoot('checkin')}${uid}__${safeSlug(username)}/${locationId}/`;
     cos.getBucket(
       { Bucket: COS_BUCKET, Region: COS_REGION, Prefix: prefix, MaxKeys: 1000 },
       (err, data) => {
@@ -274,6 +247,7 @@ function buildActivity(users, days = 7) {
 }
 
 function buildHotspots(users, limit = 8) {
+  const locations = new Map(getLocations({ includeRetired: true }).map(item => [Number(item.backendId), item]));
   const counts = new Map();
   users.forEach(user => {
     new Set(user.unlockedLocations.map(Number)).forEach(locationId => {
@@ -283,7 +257,7 @@ function buildHotspots(users, limit = 8) {
 
   return Array.from(counts.entries())
     .map(([locationId, count]) => {
-      const location = getLocation(locationId);
+      const location = locations.get(locationId);
       return {
         locationId,
         name: location?.name || `未知地点 #${locationId}`,
@@ -296,6 +270,7 @@ function buildHotspots(users, limit = 8) {
 }
 
 function buildAnomalies(users) {
+  const locations = new Map(getLocations({ includeRetired: true }).map(item => [Number(item.backendId), item]));
   const anomalies = [];
   const distanceLimit = Math.max(1, Number(process.env.CHECKIN_ANOMALY_DISTANCE_M || 200));
   const staleLimit = Math.max(1, Number(process.env.CHECKIN_PENDING_STALE_HOURS || 48)) * 60 * 60 * 1000;
@@ -307,7 +282,7 @@ function buildAnomalies(users) {
 
     user.checkinRecords.forEach((record, index) => {
       const locationId = Number(record.locationId);
-      const location = getLocation(locationId);
+      const location = locations.get(locationId);
       const occurredAt = timestampOf(record.time || record.createdAt);
       const distance = Number(record.distance);
 
@@ -368,7 +343,7 @@ function buildAnomalies(users) {
       const submittedAt = timestampOf(pending.submittedAt || pending.createdAt);
       if (!submittedAt || now - submittedAt <= staleLimit) return;
       const locationId = Number(pending.locationId);
-      const location = getLocation(locationId);
+      const location = locations.get(locationId);
       anomalies.push({
         id: `stale-${user.id}-${locationId}-${index}`,
         type: 'stale_pending',
@@ -641,6 +616,10 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
   const alreadyUnlocked = u.unlockedLocations.includes(locationId);
   const newlyCompletedRoutes = [];
   const pending = u.pendingCheckins.find(item => Number(item.locationId) === locationId);
+  if (seasonStore.enabled() && !pending) {
+    if (alreadyUnlocked) return res.json({ code: 0, data: { pointsAwarded: 0, newlyUnlocked: false, newlyCompletedRoutes: [], points: u.points } });
+    return res.status(404).json({ code: 1, message: '本届没有该待审核记录' });
+  }
   const location = getLocation(locationId);
   const configuredPoints = Number.isFinite(Number(location?.points)) ? Number(location.points) : 1;
   // 所有待审记录均已迁移为积分延后，只有审核通过才计分。
@@ -698,7 +677,7 @@ router.post('/checkins/:id/approve', auth, adminOnly, (req, res) => {
     reviewerId: req.userId,
     reviewedAt: Date.now()
   });
-  u.checkinReviewRecords = u.checkinReviewRecords.slice(-100);
+  if (!seasonStore.enabled()) u.checkinReviewRecords = u.checkinReviewRecords.slice(-100);
 
   u.updatedAt = Date.now();
   writeUsers(users);
@@ -740,6 +719,7 @@ router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
   u.pendingCheckins = Array.isArray(u.pendingCheckins) ? u.pendingCheckins : [];
   u.points = Number.isFinite(Number(u.points)) ? Number(u.points) : 0;
   const pending = u.pendingCheckins.find(item => Number(item.locationId) === locationId);
+  if (seasonStore.enabled() && !pending) return res.status(404).json({ code: 1, message: '本届没有该待审核记录' });
   const pointsReverted = 0;
   u.pendingCheckins = u.pendingCheckins.filter(item => Number(item.locationId) !== locationId);
   u.checkinReviewRecords = Array.isArray(u.checkinReviewRecords) ? u.checkinReviewRecords : [];
@@ -764,7 +744,7 @@ router.post('/checkins/:id/reject', auth, adminOnly, (req, res) => {
     reviewerId: req.userId,
     reviewedAt: Date.now()
   });
-  u.checkinReviewRecords = u.checkinReviewRecords.slice(-100);
+  if (!seasonStore.enabled()) u.checkinReviewRecords = u.checkinReviewRecords.slice(-100);
   u.updatedAt = Date.now();
   writeUsers(users);
 
@@ -781,23 +761,11 @@ const AWARDS = require('../data/awards');
 const { isActivityEnded, computeWinners } = require('../winner');
 
 function readSubmissionsArray() {
-  ensureFile(SUBMISSIONS_FILE, '[]');
-  try {
-    const raw = fs.readFileSync(SUBMISSIONS_FILE, 'utf8') || '[]';
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch (e) {
-    console.error('[admin] readSubmissionsArray fail:', e);
-    return [];
-  }
+  return seasonStore.readSubmissions();
 }
 
 function writeSubmissionsArray(list) {
-  try {
-    fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
-  } catch (e) {
-    console.error('[admin] writeSubmissionsArray fail:', e);
-  }
+  return seasonStore.writeSubmissions(list);
 }
 
 // Build statistics: total + per-status + per-category
@@ -837,7 +805,7 @@ router.get('/submissions', auth, adminOnly, (req, res) => {
 
   // 截止后自动按票数统计获奖名单
   const all = readSubmissionsArray();
-  const { list: computedList, changed } = computeWinners(all, false);
+  const { list: computedList, changed } = seasonStore.enabled() ? { list: all, changed: false } : computeWinners(all, false);
   if (changed) writeSubmissionsArray(computedList);
 
   let list = computedList.slice();

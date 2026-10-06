@@ -65,6 +65,7 @@ COS.prototype.deleteObject = function deleteObject(options, callback) {
   return callback(null, { statusCode: 204 });
 };
 
+const seasonFixture = require('./helpers/seasonFixture')();
 const app = require('../app');
 const server = app.listen(0, '127.0.0.1');
 const token = jwt.sign({ id: 901 }, jwtSecret, { expiresIn: '5m' });
@@ -73,7 +74,7 @@ let baseUrl = '';
 async function api(route, body) {
   const response = await fetch(`${baseUrl}${route}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${token}`, 'X-Season-Id': '2026-welcome', 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   return { response, body: await response.json() };
@@ -108,7 +109,7 @@ test('commits both optimized objects, cache metadata, and thumbnail data', async
   assert.match(committed.body.thumbnail, /_thumb\.webp$/);
   assert.equal(metadataCopies.length, 2);
   assert.ok(metadataCopies.every(item => item.CacheControl === 'public, max-age=31536000, immutable'));
-  const user = JSON.parse(fs.readFileSync(usersFile, 'utf8'))[0];
+  const user = seasonFixture.store.readUsers()[0];
   assert.match(user.pendingCheckins[0].thumbnail, /_thumb\.webp$/);
 });
 
@@ -169,7 +170,8 @@ test('uses a temporary original to create review-quality derivatives on the serv
   const committed = await api('/checkin/commit', commitBody);
   assert.equal(committed.response.status, 200);
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(bodies.has(target.key), false);
+  // No automatic object deletion until a reference-checked retention policy is configured.
+  assert.equal(bodies.has(target.key), true);
   const repeated = await api('/checkin/commit', commitBody);
   assert.equal(repeated.response.status, 200);
   assert.equal(repeated.body.idempotent, true);
@@ -198,7 +200,7 @@ test('rejects a missing thumbnail without accepting the review record', async ()
 });
 
 test('does not create a pending check-in when COS validation crosses the deadline', async () => {
-  const awards = require('../data/awards');
+  const awards = seasonFixture.awards;
   const originalDeadline = awards.deadline;
   const originalCopy = COS.prototype.putObjectCopy;
   const key = 'checkin/901__photo-user/7/cross_main.webp';
@@ -225,10 +227,10 @@ test('does not create a pending check-in when COS validation crosses the deadlin
 });
 
 test('closes every check-in entry at the deadline while preserving accepted commit retries', async () => {
-  const awards = require('../data/awards');
+  const awards = seasonFixture.awards;
   const originalDeadline = awards.deadline;
   const before = fs.readFileSync(usersFile, 'utf8');
-  const pending = JSON.parse(before)[0].pendingCheckins[0];
+  const pending = seasonFixture.store.readUsers()[0].pendingCheckins[0];
   const operations = [
     ['/checkin/presign', { ext: 'jpg', locationId: 2 }],
     ['/checkin/fallback/presign', { ext: 'jpg', size: 100, locationId: 2 }],

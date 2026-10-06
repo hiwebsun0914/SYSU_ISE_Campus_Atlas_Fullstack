@@ -13,6 +13,11 @@ export const checkinReviewRecords = ref([])
 export const nickName = ref('')
 export const userRole = ref('visitor')
 
+let progressRequest = null
+let progressLoadedAt = 0
+let progressScope = ''
+const PROGRESS_CACHE_MS = 15_000
+
 export const checkedSet = computed(() => {
   const s = new Set(checkedPlaces.value) // 前端 slug
   // 同时加入对应的后端 backendId，便于与路线中的 backendId 比对打卡进度
@@ -80,7 +85,26 @@ function clearProgress() {
  * 从后端 /auth/me 拉取用户完整进度
  * 后端是唯一数据源
  */
-export async function fetchUserProgress() {
+export async function fetchUserProgress({ force = false } = {}) {
+  const scope = `${localStorage.getItem('token') || 'guest'}`
+  if (!force && progressScope === scope && Date.now() - progressLoadedAt < PROGRESS_CACHE_MS) {
+    return {
+      points: points.value,
+      checkedPlaces: checkedPlaces.value,
+      completedRoutes: completedRoutes.value,
+      checkinRecords: checkinRecords.value,
+      pendingCheckins: pendingCheckins.value,
+      checkinReviewRecords: checkinReviewRecords.value,
+      role: userRole.value,
+    }
+  }
+  if (!force && progressRequest && progressScope === scope) return progressRequest
+  progressScope = scope
+  progressRequest = loadUserProgress()
+  try { return await progressRequest } finally { progressRequest = null }
+}
+
+async function loadUserProgress() {
   const res = await request('/auth/me', 'GET', null, { cacheBust: true })
   if (!res.ok) {
     clearProgress()
@@ -112,6 +136,7 @@ export async function fetchUserProgress() {
   checkinReviewRecords.value = newReviewRecords
   nickName.value = info.nickName || ''
   userRole.value = info.role || 'visitor'
+  progressLoadedAt = Date.now()
 
   return {
     points: points.value,

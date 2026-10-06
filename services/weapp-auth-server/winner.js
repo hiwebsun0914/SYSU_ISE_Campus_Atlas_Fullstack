@@ -1,7 +1,9 @@
+const seasonStore = require('./lib/seasonStore');
 // winner.js — 按票数自动评选获奖作品（活动截止后执行；管理员可强制预览）
-const awards = require('./data/awards');
+const awards = seasonStore.configProxy('awards', require('./data/awards'));
 
 function isActivityEnded(now = Date.now()) {
+  if (seasonStore.enabled() && seasonStore.state().status !== 'open') return true;
   if (!awards.deadline) return false;
   return now >= new Date(awards.deadline).getTime();
 }

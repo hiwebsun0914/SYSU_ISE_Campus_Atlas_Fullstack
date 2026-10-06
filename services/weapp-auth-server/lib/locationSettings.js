@@ -1,3 +1,4 @@
+const seasonStore = require('./seasonStore');
 'use strict';
 
 const fs = require('fs');
@@ -17,28 +18,15 @@ function settingsFile() {
 }
 
 function readSettings() {
-  const file = settingsFile();
-  try {
-    if (!fs.existsSync(file)) return {};
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8') || '{}');
-    return parsed && !Array.isArray(parsed) && typeof parsed === 'object' ? parsed : {};
-  } catch (error) {
-    console.error('[locations] read settings fail:', error);
-    return {};
-  }
+  return seasonStore.readSettings();
 }
 
 function writeSettings(settings) {
-  const file = settingsFile();
-  const dir = path.dirname(file);
-  fs.mkdirSync(dir, { recursive: true });
-  const tempFile = `${file}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(settings, null, 2), 'utf8');
-  fs.renameSync(tempFile, file);
+  return seasonStore.writeSettings(settings);
 }
 
 function baseLocations() {
-  return Array.isArray(baseLocationData.locations) ? baseLocationData.locations : [];
+  return seasonStore.config('locations', baseLocationData.locations || []);
 }
 
 function getLocations(options = {}) {
@@ -149,6 +137,7 @@ function updateLocation(backendId, input) {
 }
 
 module.exports = {
+  validatePatch,
   DEFAULT_POINTS,
   HIDDEN_DEFAULT_POINTS,
   DEFAULT_CHECKIN_RADIUS,

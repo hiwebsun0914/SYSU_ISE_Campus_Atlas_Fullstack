@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 // routes/avatar.js
 require('dotenv').config();
 
@@ -38,16 +39,10 @@ const upload = multer({
 const USERS_FILE = path.resolve(process.env.USERS_FILE || path.join(__dirname, '..', 'users.json'));
 
 function readUsers() {
-  try {
-    if (!fs.existsSync(USERS_FILE)) return [];
-    const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  return seasonStore.readUsers();
 }
 function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  return seasonStore.writeUsers(users);
 }
 function toUrl(key) {
   if (!key) return null;

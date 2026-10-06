@@ -1,3 +1,4 @@
+const seasonStore = require('../lib/seasonStore');
 // routes/submissions.js
 // 第六部分：最佳创意奖 / 最佳摄影奖 投稿接口
 // 用户端：投稿（预签名上传 → 确认上传 → 创建投稿记录）、我的投稿、公开作品展示
@@ -9,12 +10,11 @@ const path = require('path');
 const COS = require('cos-nodejs-sdk-v5');
 const multer = require('multer');
 const auth = require('../middleware/auth');
-const { optionalAuth } = require('../middleware/auth');
-const awards = require('../data/awards');
+const awards = seasonStore.configProxy('awards', require('../data/awards'));
 const { getLocations, getLocation } = require('../lib/locationSettings');
 const { isActivityEnded, winnerLabelOf, computeWinners } = require('../winner');
 const { rejectIfActivityClosed, requireActivityOpen } = require('../lib/activityDeadline');
-const { isHiddenFrom, setNoStore, REVEAL_AT } = require('../lib/resultEmbargo');
+const { isHiddenFrom, setNoStore, revealAt } = require('../lib/resultEmbargo');
 
 // ====== 环境配置 ======
 // 本项目存储桶为“公有读写”，无需密钥；桶名/地域/域名已内置默认值，
@@ -54,32 +54,15 @@ function ensureFile(file, fallback = '[]') {
 }
 
 function readSubmissions() {
-  ensureFile(SUBMISSIONS_FILE);
-  try {
-    const raw = fs.readFileSync(SUBMISSIONS_FILE, 'utf8') || '[]';
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch (e) {
-    console.error('[submissions] read fail:', e);
-    return [];
-  }
+  return seasonStore.readSubmissions();
 }
 
 function writeSubmissions(list) {
-  try {
-    fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
-  } catch (e) {
-    console.error('[submissions] write fail:', e);
-  }
+  return seasonStore.writeSubmissions(list);
 }
 
 function readUsers() {
-  ensureFile(USERS_FILE);
-  try {
-    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8') || '[]');
-  } catch {
-    return [];
-  }
+  return seasonStore.readUsers();
 }
 
 // ====== 工具 ======
@@ -172,6 +155,8 @@ function buildViewerContext(userId) {
 
 // 截止后自动按票数统计获奖名单（读取时触发，保证展示最新结果）
 function ensureWinnersComputed(force = false) {
+  if (seasonStore.enabled()) return; // Explicit settlement freezes results; reads never write.
+
   if (!force && !isActivityEnded()) return null;
   const list = readSubmissions();
   const { list: updated, changed } = computeWinners(list, force);
@@ -185,7 +170,7 @@ function categoryById(id) {
 
 function userPrefix(req) {
   const slug = safeSlug(req.user?.username || 'user');
-  return `Award/${req.userId}__${slug}/`;
+  return `${seasonStore.mediaRoot('Award')}${req.userId}__${slug}/`;
 }
 
 function buildKey(req, ext = 'jpg') {
@@ -246,7 +231,7 @@ router.get('/meta', (_req, res) => {
     code: 0,
     data: {
       deadline: awards.deadline,
-      revealAt: REVEAL_AT,
+      revealAt: revealAt(),
       serverNow,
       closed: isActivityEnded(serverNow),
       awardCeremony: awards.awardCeremony || '',
@@ -501,9 +486,9 @@ router.get('/mine', auth, (_req, res) => {
 
 // ====== 6. 公开作品展示（仅已通过） ======
 // GET /submissions?category=creative|photography&featured=1&limit=20
-router.get('/', optionalAuth, (req, res) => {
+router.get('/', auth, (req, res) => {
   setNoStore(res);
-  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], total: 0, embargoed: true, revealAt: REVEAL_AT });
+  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], total: 0, embargoed: true, revealAt: revealAt() });
   ensureWinnersComputed();
   const q = req.query || {};
   let list = readSubmissions().filter(s => s.status === 'approved');
@@ -523,9 +508,9 @@ router.get('/', optionalAuth, (req, res) => {
 
 // ====== 6b. 获奖结果公示（仅已通过且已设置获奖等级） ======
 // GET /submissions/winners
-router.get('/winners', optionalAuth, (_req, res) => {
+router.get('/winners', auth, (_req, res) => {
   setNoStore(res);
-  if (isHiddenFrom(_req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: REVEAL_AT });
+  if (isHiddenFrom(_req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: revealAt() });
   ensureWinnersComputed();
   const viewer = buildViewerContext(_req.userId);
   const list = readSubmissions()

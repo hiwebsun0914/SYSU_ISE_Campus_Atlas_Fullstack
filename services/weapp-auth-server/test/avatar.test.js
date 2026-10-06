@@ -28,6 +28,7 @@ process.env.COS_REGION = 'ap-guangzhou';
 process.env.TENCENT_SECRET_ID = cosSecretId;
 process.env.TENCENT_SECRET_KEY = cosSecretKey;
 
+const seasonFixture = require('./helpers/seasonFixture')();
 const app = require('../app');
 const server = app.listen(0, '127.0.0.1');
 const token = jwt.sign({ id: 101 }, jwtSecret, { expiresIn: '5m' });
@@ -54,7 +55,7 @@ test('creates a scoped avatar upload URL without exposing the server secret key'
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'X-Season-Id': '2026-welcome', 'Content-Type': 'application/json'
     },
     body: JSON.stringify({ ext: 'png' })
   });
@@ -75,7 +76,7 @@ test('creates separate optimized check-in upload targets and publishes hard limi
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'X-Season-Id': '2026-welcome', 'Content-Type': 'application/json'
     },
     body: JSON.stringify({ ext: 'webp', locationId: 1 })
   });

@@ -1190,12 +1190,14 @@ async function fetchDashboard() {
   pageNotice.value = ''
 
   try {
-    const [meResponse, statusResponse, submissionsResponse, feedbackResponse] = await Promise.all([
-      request('/auth/me', 'GET', null, { cacheBust: true }),
+    // 资料接口决定首屏；打卡、投稿和反馈并行加载，但不再阻塞整页显示。
+    const mePromise = request('/auth/me', 'GET', null, { cacheBust: true })
+    const supplementaryPromise = Promise.all([
       request('/checkin/status', 'GET', null, { cacheBust: true }),
       request('/submissions/mine', 'GET', null, { cacheBust: true }),
       request('/feedback/mine', 'GET', null, { cacheBust: true })
     ])
+    const meResponse = await mePromise
 
     if (meResponse.status === 401) {
       redirectToSignin()
@@ -1206,6 +1208,14 @@ async function fetchDashboard() {
     }
 
     const serverUser = meResponse.data.userInfo || {}
+    userInfo.value = serverUser
+    avatarFailed.value = false
+    const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
+    localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...serverUser }))
+    await syncLocalPersonality()
+    loading.value = false
+
+    const [statusResponse, submissionsResponse, feedbackResponse] = await supplementaryPromise
     if (responseOkay(statusResponse)) {
       serverUser.unlockedLocations = statusResponse.data.unlockedLocations || serverUser.unlockedLocations || []
       serverUser.lockingLocations = statusResponse.data.lockingLocations || serverUser.lockingLocations || []
@@ -1215,9 +1225,7 @@ async function fetchDashboard() {
       pageNotice.value = '打卡审核状态暂时未更新，页面已显示最近一次账户数据。'
     }
 
-    userInfo.value = serverUser
-    avatarFailed.value = false
-    const localUser = safeJsonParse(localStorage.getItem('userInfo'), {})
+    userInfo.value = { ...userInfo.value, ...serverUser }
     localStorage.setItem('userInfo', JSON.stringify({ ...localUser, ...serverUser }))
 
     if (responseOkay(submissionsResponse)) {
@@ -1234,8 +1242,6 @@ async function fetchDashboard() {
       feedbackHistory.value = []
       pageNotice.value = pageNotice.value || '反馈历史暂时无法读取，你仍可尝试提交新反馈。'
     }
-
-    await syncLocalPersonality()
   } catch (error) {
     loadError.value = error?.message || '网络连接异常，请稍后重试。'
   } finally {

@@ -8,6 +8,8 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const COS = require('cos-nodejs-sdk-v5');
 
+require('../data/awards').deadline = '2099-01-01T00:00:00Z';
+
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'submissions-test-'));
 const usersFile = path.join(testDir, 'users.json');
 const submissionsFile = path.join(testDir, 'submissions.json');
@@ -20,6 +22,7 @@ const users = [
 ];
 
 fs.writeFileSync(usersFile, JSON.stringify(users), 'utf8');
+fs.writeFileSync(submissionsFile, '[]', 'utf8');
 process.env.USERS_FILE = usersFile;
 process.env.SUBMISSIONS_FILE = submissionsFile;
 process.env.JWT_SECRET = jwtSecret;
@@ -40,6 +43,8 @@ function adminOnly(req, res, next) {
   next();
 }
 app.use('/admin', authMw, adminOnly, adminRouter);
+
+app.use((err, req, res, next) => res.status(err.status || 500).json({ code: 1, message: err.message }));
 
 const server = app.listen(0, '127.0.0.1');
 let baseUrl = '';
@@ -157,6 +162,14 @@ test('meta returns categories, deadline and limits', async () => {
   assert.ok(body.data.maxVotesPerDay > 0);
   assert.ok(body.data.winnerCounts.creative > 0);
   assert.ok(body.data.winnerCounts.photography > 0);
+});
+
+test('public work list and winner results reject guests', async () => {
+  for (const url of ['/submissions', '/submissions/winners']) {
+    const response = await fetch(`${baseUrl}${url}`);
+    assert.equal(response.status, 401, url);
+    assert.equal((await response.json()).message, '未登录');
+  }
 });
 
 test('creates a pending submission', async () => {
@@ -720,5 +733,6 @@ test('rejects an upload confirmation whose storage check finishes after closure'
 test('handles corrupted storage without crashing', async () => {
   fs.writeFileSync(submissionsFile, '{broken', 'utf8');
   const after = await api(101, '/submissions/mine');
-  assert.equal(after.body.code, 0);
+  assert.equal(after.response.status, 503);
+  assert.equal(fs.readFileSync(submissionsFile, 'utf8'), '{broken');
 });

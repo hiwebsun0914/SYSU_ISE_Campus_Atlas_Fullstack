@@ -15,7 +15,6 @@ export default defineConfig(({ mode }) => {
           // in an ignored .env.local file supplied to an authorized developer.
           target: env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000',
           changeOrigin: true,
-          rewrite: p => p.replace(/^\/api/, ''),
         },
       },
     },

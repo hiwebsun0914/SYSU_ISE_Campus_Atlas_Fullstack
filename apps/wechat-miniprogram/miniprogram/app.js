@@ -6,9 +6,9 @@ App({
     request('/auth/me','GET').then(res=>{
       if(res.data?.code===0){
         wx.setStorageSync('userInfo',res.data.userInfo);
-      }else{
+      }else if(res.statusCode === 401){
         wx.clearStorageSync();             // 401 时清缓存
       }
-    }).catch(()=>wx.clearStorageSync());
+    }).catch(()=>{});
   }
 });

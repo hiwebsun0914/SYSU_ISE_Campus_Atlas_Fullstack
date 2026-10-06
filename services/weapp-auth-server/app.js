@@ -1,3 +1,4 @@
+const seasonStore = require('./lib/seasonStore');
 // app.js — 登录/注册 + 头像直传 COS + 角色/打卡 + 访问日志 + /api 兼容
 require('dotenv').config();
 
@@ -10,8 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const auth = require('./middleware/auth');        // 解析 JWT -> req.userId
-const { optionalAuth } = require('./middleware/auth');
-const { isHiddenFrom, setNoStore, REVEAL_AT } = require('./lib/resultEmbargo');
+const { isHiddenFrom, setNoStore, revealAt } = require('./lib/resultEmbargo');
 const avatarRouter = require('./routes/avatar');  // 头像上传
 const checkinRouter = require('./routes/checkin');// 打卡/通用上传
 const futureCardsRouter = require('./routes/futureCards');
@@ -64,6 +64,9 @@ app.use((req, _res, next) => {
   }
   next();
 });
+
+app.use(require('./middleware/seasonContext'));
+app.use('/seasons', require('./routes/seasons'));
 
 /* ========= 访问日志（时间、IP、方法、URL、状态、耗时、UA、userId） ========= */
 const LOG_DIR = path.join(__dirname, 'logs');
@@ -160,28 +163,14 @@ function ensureFile(file, fallbackJson = '[]') {
     process.exit(1);
   }
 }
-ensureFile(USERS_FILE, '[]');
+// Migration is explicit; do not create or overwrite legacy files at startup.
 
 /* ========= 通用读写 ========= */
 function readUsers() {
-  try {
-    const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]';
-    const users = JSON.parse(raw);
-    if (deferLegacyPendingPoints(users)) {
-      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
-    }
-    return users;
-  } catch (e) {
-    console.error('读取 users.json 失败：', e);
-    return [];
-  }
+  return seasonStore.readUsers();
 }
 function writeUsers(list) {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf8');
-  } catch (e) {
-    console.error('写入 users.json 失败：', e);
-  }
+  return seasonStore.writeUsers(list);
 }
 function findUserById(id) {
   return readUsers().find(u => String(u.id) === String(id));
@@ -322,7 +311,7 @@ async function findLatestCheckinKey(user, locationId) {
   const exts = /\.(png|jpe?g|webp|gif|bmp)$/i;
 
   // A. 先尝试"精确用户名"的前缀
-  const prefixA = `checkin/${id}__${name}/${locationId}/`;
+  const prefixA = `${seasonStore.mediaRoot('checkin')}${id}__${name}/${locationId}/`;
   let keys = await listAllKeys(prefixA);
   keys = keys.filter(k => exts.test(k))
              // 文件名以时间戳开头，字符串倒序≈时间倒序
@@ -330,14 +319,14 @@ async function findLatestCheckinKey(user, locationId) {
   if (keys[0]) return keys[0];
 
   // B. 用户名变更的宽松匹配：checkin/{id}__*
-  const prefixB = `checkin/${id}__`;
+  const prefixB = `${seasonStore.mediaRoot('checkin')}${id}__`;
   let keysB = await listAllKeys(prefixB);
   keysB = keysB
-    .filter(k => k.startsWith(`checkin/${id}__`))
+    .filter(k => k.startsWith(`${seasonStore.mediaRoot('checkin')}${id}__`))
     .filter(k => {
-      const parts = k.split('/');
-      // parts: ["checkin", "{id}__{name}", "{locationId}", "{filename}"]
-      return parts[2] == String(locationId);
+      const parts = k.slice(seasonStore.mediaRoot('checkin').length).split('/');
+      // Relative parts: ["{id}__{name}", "{locationId}", "{filename}"]
+      return parts[1] == String(locationId);
     })
     .filter(k => exts.test(k))
     .sort((a, b) => b.localeCompare(a));
@@ -358,10 +347,11 @@ app.get('/locations', (_req, res) => {
 });
 
 /* ========= 排行榜（补回此路由！） ========= */
-app.get('/rank/list', optionalAuth, (req, res) => {
+app.get('/rank/list', auth, (req, res) => {
   setNoStore(res);
-  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: REVEAL_AT });
+  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: revealAt() });
   try {
+    if (seasonStore.enabled() && seasonStore.state().archive) return res.json({ code: 0, list: seasonStore.state().archive.checkinRank });
     const users = readUsers();
     const list = users.map(u => {
       const unlocked = Array.isArray(u.unlockedLocations) ? u.unlockedLocations.length : 0;
@@ -394,11 +384,11 @@ app.get('/rank/list', optionalAuth, (req, res) => {
 
 /* ========= 积分排行榜（仅昵称、头像、积分；不含真实姓名与学号） ========= */
 /* 无并列：同分时先达到该积分者排名靠前；只返回前 20 名 */
-app.get('/rank/points', optionalAuth, (req, res) => {
+app.get('/rank/points', auth, (req, res) => {
   setNoStore(res);
-  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: REVEAL_AT });
+  if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: revealAt() });
   try {
-    const list = buildPointsRank(readUsers(), {
+    const list = (seasonStore.enabled() && seasonStore.state().archive?.pointsRank) || buildPointsRank(readUsers(), {
       resolveAvatar: u => (u.avatarKey ? toAvatarUrl(u.avatarKey) : (u.avatar || DEFAULT_AVATAR))
     });
     res.json({ code: 0, list });
@@ -705,7 +695,7 @@ app.use((req, res) => res.status(404).json({ code: 1, message: 'Not Found' }));
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
   console.error('Unhandled Error:', err);
-  res.status(500).json({ code: 1, message: '服务器错误' });
+  res.status(err.status || 500).json({ code: 1, errorCode: err.errorCode, message: err.errorCode ? err.message : '服务器错误' });
 });
 
 /* ========= 开发模式：自动创建默认测试用户 ========= */
@@ -754,8 +744,10 @@ function ensureDevUser() {
 }
 
 /* ========= 启动 ========= */
-ensureDevUser();
+// Development accounts are created explicitly in isolated test fixtures.
 if (require.main === module) {
+  seasonStore.lock();
+  seasonStore.recover();
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Server running at http://0.0.0.0:${PORT}`);
   });

@@ -1,3 +1,4 @@
+<navigator url="/pages/seasons/seasons" style="padding:20rpx;background:#edf3ee;color:#244c3c;text-align:center">活动期与我的往届记录 →</navigator>
 <view class="bg-wrapper">
   <!-- 背景图 -->
   <image class="bg-img"
