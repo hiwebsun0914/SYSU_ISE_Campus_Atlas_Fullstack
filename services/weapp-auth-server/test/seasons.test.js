@@ -24,7 +24,8 @@ const backup=require('../scripts/season-backup');
 const media=path.join(dir,'objects');fs.mkdirSync(path.join(media,'checkin/2__student/1'),{recursive:true});fs.writeFileSync(path.join(media,'checkin/2__student/1/main.webp'),'test-image');
 let server,base,sequence=0;
 async function api(url,{user=1,season='2026-welcome',method='GET',body}={}) {
- const headers={'Content-Type':'application/json',Authorization:'Bearer '+jwt.sign({id:user},process.env.JWT_SECRET)};
+ const headers={'Content-Type':'application/json'};
+ if(user!=null)headers.Authorization='Bearer '+jwt.sign({id:user},process.env.JWT_SECRET);
  if(season!==null)headers['X-Season-Id']=season;
  const r=await fetch(base+url,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,...await r.json()};
 }
@@ -44,6 +45,12 @@ test.after(async()=>{server.close();await once(server,'close');fs.rmSync(dir,{re
 test('migration is repeatable, preserves source credentials, progress and future cards',()=>{
  assert.equal(migration.migrate(true).alreadyMigrated,true);assert.equal(fs.readFileSync(process.env.USERS_FILE,'utf8'),original);assert.equal(fs.readFileSync(process.env.FUTURE_CARDS_FILE,'utf8'),future);
  assert.equal(store.readUsers().find(x=>x.id===2).points,7);assert.ok(!Object.hasOwn(store.readAccounts()[1],'points'));assert.ok(store.readAccounts().every(x=>x.participantSeasonId==='2026-welcome'));assert.ok(Object.values(store.state().eligibility).every(x=>x.capabilities.checkin&&x.capabilities.submit&&x.capabilities.vote));assert.equal(store.state().submissions[0].votes[0].seasonId,'2026-welcome');
+});
+test('works and rankings require an account bound to the selected season',async()=>{
+ for(const url of ['/submissions','/submissions/winners','/rank/list','/rank/points']) {
+  const guest=await api(url,{user:null});assert.equal(guest.status,401,url);
+  const participant=await api(url,{user:2});assert.equal(participant.status,200,url);
+ }
 });
 test('legacy write clients are rejected; accounts still log in during settlement',async()=>{
  assert.equal((await api('/checkin/map',{user:2,method:'POST',season:null,body:{locationId:1}})).errorCode,'SEASON_REQUIRED');

@@ -11,7 +11,6 @@ const fs = require('fs');
 const path = require('path');
 
 const auth = require('./middleware/auth');        // 解析 JWT -> req.userId
-const { optionalAuth } = require('./middleware/auth');
 const { isHiddenFrom, setNoStore, revealAt } = require('./lib/resultEmbargo');
 const avatarRouter = require('./routes/avatar');  // 头像上传
 const checkinRouter = require('./routes/checkin');// 打卡/通用上传
@@ -348,7 +347,7 @@ app.get('/locations', (_req, res) => {
 });
 
 /* ========= 排行榜（补回此路由！） ========= */
-app.get('/rank/list', optionalAuth, (req, res) => {
+app.get('/rank/list', auth, (req, res) => {
   setNoStore(res);
   if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: revealAt() });
   try {
@@ -385,7 +384,7 @@ app.get('/rank/list', optionalAuth, (req, res) => {
 
 /* ========= 积分排行榜（仅昵称、头像、积分；不含真实姓名与学号） ========= */
 /* 无并列：同分时先达到该积分者排名靠前；只返回前 20 名 */
-app.get('/rank/points', optionalAuth, (req, res) => {
+app.get('/rank/points', auth, (req, res) => {
   setNoStore(res);
   if (isHiddenFrom(req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: revealAt() });
   try {

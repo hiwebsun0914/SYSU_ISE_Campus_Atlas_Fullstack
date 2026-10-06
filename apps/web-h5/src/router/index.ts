@@ -26,17 +26,17 @@ const router = createRouter({
     { path: '/profile', redirect: '/myCheckins' },
     { path: '/myCheckins', component: () => import('../pages/myCheckins.vue') },
     { path: '/my/submissions', component: () => import('../pages/MySubmissions.vue') },
-    { path: '/points-rank', component: () => import('../pages/PointsRank.vue') },
-    { path: '/rank', component: () => import('../pages/rank.vue') },
+    { path: '/points-rank', component: () => import('../pages/PointsRank.vue'), meta: { requiresParticipant: true } },
+    { path: '/rank', component: () => import('../pages/rank.vue'), meta: { requiresParticipant: true } },
     { path: '/future-card', component: () => import('../pages/futureCard.vue') },
     { path: '/reset-password', component: () => import('../pages/PasswordReset.vue') },
     { path: '/signin', component: () => import('../pages/signin.vue') },
     { path: '/hidden-checkpoints', component: () => import('../pages/HiddenCheckpoints.vue') },
     { path: '/hidden-checkpoints/:id', component: () => import('../pages/HiddenCheckpointDetail.vue') },
-    { path: '/award', component: () => import('../pages/award/AwardHome.vue') },
-    { path: '/award/submit', component: () => import('../pages/award/AwardSubmit.vue') },
-    { path: '/award/my', component: () => import('../pages/award/AwardMine.vue') },
-    { path: '/award/submission/:id', component: () => import('../pages/award/AwardSubmissionDetail.vue') },
+    { path: '/award', component: () => import('../pages/award/AwardHome.vue'), meta: { requiresParticipant: true } },
+    { path: '/award/submit', component: () => import('../pages/award/AwardSubmit.vue'), meta: { requiresParticipant: true } },
+    { path: '/award/my', component: () => import('../pages/award/AwardMine.vue'), meta: { requiresParticipant: true } },
+    { path: '/award/submission/:id', component: () => import('../pages/award/AwardSubmissionDetail.vue'), meta: { requiresParticipant: true } },
 
     {
       path: '/admin',
@@ -66,11 +66,11 @@ router.beforeEach(async to => {
     }
   }
 
-  if (!to.meta.requiresAdmin) return true
+  if (!to.meta.requiresAdmin && !to.meta.requiresParticipant) return true
 
   const token = localStorage.getItem('token') || ''
   if (!token) {
-    return { path: '/signin', query: { redirect: to.fullPath, mode: 'admin' } }
+    return { path: '/signin', query: { redirect: to.fullPath, ...(to.meta.requiresAdmin ? { mode: 'admin' } : {}) } }
   }
 
   const response = await request('/auth/me', 'GET', null, { cacheBust: true })
@@ -88,16 +88,18 @@ router.beforeEach(async to => {
       localStorage.removeItem('token')
       localStorage.removeItem('userInfo')
     }
-    return { path: '/signin', query: { redirect: to.fullPath, mode: 'admin' } }
+    if (response?.status === 403) return { path: '/' }
+    return { path: '/signin', query: { redirect: to.fullPath, ...(to.meta.requiresAdmin ? { mode: 'admin' } : {}) } }
   }
 
   if (response?.data?.code !== 0 || !user) {
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
-    return { path: '/signin', query: { redirect: to.fullPath, mode: 'admin' } }
+    return { path: '/signin', query: { redirect: to.fullPath, ...(to.meta.requiresAdmin ? { mode: 'admin' } : {}) } }
   }
 
   localStorage.setItem('userInfo', JSON.stringify(user))
+  if (!to.meta.requiresAdmin) return true
   if (!ADMIN_ROLES.has(user.role)) {
     return {
       path: '/signin',

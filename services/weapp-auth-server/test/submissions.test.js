@@ -164,6 +164,14 @@ test('meta returns categories, deadline and limits', async () => {
   assert.ok(body.data.winnerCounts.photography > 0);
 });
 
+test('public work list and winner results reject guests', async () => {
+  for (const url of ['/submissions', '/submissions/winners']) {
+    const response = await fetch(`${baseUrl}${url}`);
+    assert.equal(response.status, 401, url);
+    assert.equal((await response.json()).message, '未登录');
+  }
+});
+
 test('creates a pending submission', async () => {
   const { response, body } = await api(101, '/submissions', {
     method: 'POST',

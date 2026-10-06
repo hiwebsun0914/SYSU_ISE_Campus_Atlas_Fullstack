@@ -10,7 +10,6 @@ const path = require('path');
 const COS = require('cos-nodejs-sdk-v5');
 const multer = require('multer');
 const auth = require('../middleware/auth');
-const { optionalAuth } = require('../middleware/auth');
 const awards = seasonStore.configProxy('awards', require('../data/awards'));
 const { getLocations, getLocation } = require('../lib/locationSettings');
 const { isActivityEnded, winnerLabelOf, computeWinners } = require('../winner');
@@ -487,7 +486,7 @@ router.get('/mine', auth, (_req, res) => {
 
 // ====== 6. 公开作品展示（仅已通过） ======
 // GET /submissions?category=creative|photography&featured=1&limit=20
-router.get('/', optionalAuth, (req, res) => {
+router.get('/', auth, (req, res) => {
   setNoStore(res);
   if (isHiddenFrom(req)) return res.json({ code: 0, list: [], total: 0, embargoed: true, revealAt: revealAt() });
   ensureWinnersComputed();
@@ -509,7 +508,7 @@ router.get('/', optionalAuth, (req, res) => {
 
 // ====== 6b. 获奖结果公示（仅已通过且已设置获奖等级） ======
 // GET /submissions/winners
-router.get('/winners', optionalAuth, (_req, res) => {
+router.get('/winners', auth, (_req, res) => {
   setNoStore(res);
   if (isHiddenFrom(_req)) return res.json({ code: 0, list: [], embargoed: true, revealAt: revealAt() });
   ensureWinnersComputed();
