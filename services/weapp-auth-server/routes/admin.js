@@ -247,6 +247,7 @@ function buildActivity(users, days = 7) {
 }
 
 function buildHotspots(users, limit = 8) {
+  const locations = new Map(getLocations({ includeRetired: true }).map(item => [Number(item.backendId), item]));
   const counts = new Map();
   users.forEach(user => {
     new Set(user.unlockedLocations.map(Number)).forEach(locationId => {
@@ -256,7 +257,7 @@ function buildHotspots(users, limit = 8) {
 
   return Array.from(counts.entries())
     .map(([locationId, count]) => {
-      const location = getLocation(locationId);
+      const location = locations.get(locationId);
       return {
         locationId,
         name: location?.name || `未知地点 #${locationId}`,
@@ -269,6 +270,7 @@ function buildHotspots(users, limit = 8) {
 }
 
 function buildAnomalies(users) {
+  const locations = new Map(getLocations({ includeRetired: true }).map(item => [Number(item.backendId), item]));
   const anomalies = [];
   const distanceLimit = Math.max(1, Number(process.env.CHECKIN_ANOMALY_DISTANCE_M || 200));
   const staleLimit = Math.max(1, Number(process.env.CHECKIN_PENDING_STALE_HOURS || 48)) * 60 * 60 * 1000;
@@ -280,7 +282,7 @@ function buildAnomalies(users) {
 
     user.checkinRecords.forEach((record, index) => {
       const locationId = Number(record.locationId);
-      const location = getLocation(locationId);
+      const location = locations.get(locationId);
       const occurredAt = timestampOf(record.time || record.createdAt);
       const distance = Number(record.distance);
 
@@ -341,7 +343,7 @@ function buildAnomalies(users) {
       const submittedAt = timestampOf(pending.submittedAt || pending.createdAt);
       if (!submittedAt || now - submittedAt <= staleLimit) return;
       const locationId = Number(pending.locationId);
-      const location = getLocation(locationId);
+      const location = locations.get(locationId);
       anomalies.push({
         id: `stale-${user.id}-${locationId}-${index}`,
         type: 'stale_pending',
